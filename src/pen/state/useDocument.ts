@@ -5,6 +5,7 @@
 
 import { useCallback, useReducer } from 'react';
 import { parsePenText, type ParseError } from '../parser';
+import { layoutDocument } from '../layout';
 import type { PenDocument } from '../types';
 import { readFileAsText } from '../../utils/readFile';
 import { fetchPenText } from '../../utils/fetchPen';
@@ -58,7 +59,8 @@ export function useDocument(): {
   const loadText = useCallback(async (source: Source, text: string) => {
     const result = parsePenText(text);
     if (result.ok) {
-      dispatch({ type: 'LOAD_SUCCESS', source, doc: result.doc });
+      const laidOut = layoutDocument(result.doc);
+      dispatch({ type: 'LOAD_SUCCESS', source, doc: laidOut });
     } else {
       dispatch({
         type: 'LOAD_FAILURE',
