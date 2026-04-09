@@ -1,0 +1,84 @@
+{
+  "version": "2.10",
+  "children": [
+    {
+      "type": "frame",
+      "id": "card",
+      "x": 40,
+      "y": 40,
+      "width": 480,
+      "height": 240,
+      "fill": "#FFFFFF",
+      "stroke": { "thickness": 1, "fill": "#E5E7EB" },
+      "cornerRadius": 16,
+      "layout": "none",
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "header-bg",
+          "x": 0,
+          "y": 0,
+          "width": 480,
+          "height": 64,
+          "fill": "#7C3AED"
+        },
+        {
+          "type": "text",
+          "id": "title",
+          "x": 24,
+          "y": 20,
+          "content": "Frame sample",
+          "fontSize": 20,
+          "fontWeight": "700",
+          "fill": "#FFFFFF"
+        },
+        {
+          "type": "ellipse",
+          "id": "avatar",
+          "x": 24,
+          "y": 96,
+          "width": 56,
+          "height": 56,
+          "fill": "#10B981"
+        },
+        {
+          "type": "text",
+          "id": "name",
+          "x": 96,
+          "y": 100,
+          "content": "Nested children inside a frame",
+          "fontSize": 14,
+          "fontWeight": "600",
+          "fill": "#111827"
+        },
+        {
+          "type": "text",
+          "id": "caption",
+          "x": 96,
+          "y": 124,
+          "content": "clip, background fill, recursive rendering を確認",
+          "fontSize": 12,
+          "fill": "#6B7280"
+        },
+        {
+          "type": "line",
+          "id": "divider",
+          "x": 24,
+          "y": 180,
+          "width": 432,
+          "height": 0,
+          "stroke": { "thickness": 1, "fill": "#E5E7EB" }
+        },
+        {
+          "type": "text",
+          "id": "footer",
+          "x": 24,
+          "y": 196,
+          "content": "Step 5 renderer",
+          "fontSize": 12,
+          "fill": "#9CA3AF"
+        }
+      ]
+    }
+  ]
+}

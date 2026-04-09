@@ -2,6 +2,11 @@
   {
     "name": "shapes.pen",
     "label": "基本図形",
-    "description": "rectangle / ellipse の動作確認"
+    "description": "rect / ellipse / polygon / line / text / path"
+  },
+  {
+    "name": "layout.pen",
+    "label": "フレーム",
+    "description": "frame と子ノードの再帰描画"
   }
 ]

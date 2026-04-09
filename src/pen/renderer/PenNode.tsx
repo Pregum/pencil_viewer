@@ -1,14 +1,21 @@
 /**
  * ノード種別で dispatch する共通エントリ。
  *
- * MVP では rectangle / ellipse のみ実装し、その他は `Unsupported` でプレース
- * ホルダ表示(全体描画は停止しない)。Step 5 で line / polygon / path / text /
- * group / frame を追加する。
+ * Step 5 までで対応: rectangle / ellipse / line / polygon / path / text /
+ * frame (layout 計算なし) / group / icon_font 一部
+ *
+ * 未対応 type は `Unsupported` でプレースホルダ表示(全体描画は停止しない)。
  */
 
 import type { PenNode } from '../types';
 import { Rectangle } from './Rectangle';
 import { Ellipse } from './Ellipse';
+import { Line } from './Line';
+import { Polygon } from './Polygon';
+import { Path } from './Path';
+import { Text } from './Text';
+import { Frame } from './Frame';
+import { Group } from './Group';
 import { Unsupported } from './Unsupported';
 
 export function PenNodeView({ node }: { node: PenNode }) {
@@ -17,23 +24,39 @@ export function PenNodeView({ node }: { node: PenNode }) {
       return <Rectangle node={node} />;
     case 'ellipse':
       return <Ellipse node={node} />;
-    case 'unsupported':
-      return <Unsupported node={node} />;
-    default:
-      // Step 5 で対応するまでは未実装ノードは警告表示
+    case 'line':
+      return <Line node={node} />;
+    case 'polygon':
+      return <Polygon node={node} />;
+    case 'path':
+      return <Path node={node} />;
+    case 'text':
+      return <Text node={node} />;
+    case 'frame':
+      return <Frame node={node} />;
+    case 'group':
+      return <Group node={node} />;
+    case 'icon_font':
+      // 実装は Step 6 で Material Symbols を @font-face 読み込み後に対応
       return (
         <Unsupported
           node={{
             type: 'unsupported',
             id: node.id,
-            x: (node as { x?: number }).x ?? 0,
-            y: (node as { y?: number }).y ?? 0,
-            width: (node as { width?: number | string }).width ?? 120,
-            height: (node as { height?: number | string }).height ?? 60,
-            originalType: node.type,
+            x: node.x ?? 0,
+            y: node.y ?? 0,
+            width: typeof node.width === 'number' ? node.width : 24,
+            height: typeof node.height === 'number' ? node.height : 24,
+            originalType: `icon_font:${node.iconFontName ?? '?'}`,
             raw: node,
           }}
         />
       );
+    case 'unsupported':
+      return <Unsupported node={node} />;
+    default:
+      // ここに来るのは型の網羅漏れ。型エラーを出すため never に代入
+      node satisfies never;
+      return null;
   }
 }
