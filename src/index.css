@@ -615,6 +615,32 @@ html,
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+.frame-search__cat {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  min-width: 32px;
+  text-align: center;
+}
+
+.frame-search__minimap {
+  height: 100px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-canvas);
+  padding: 8px;
+}
+
+.frame-search__minimap-svg {
+  width: 100%;
+  height: 100%;
+}
+
 .frame-search__item--current {
   border-left: 3px solid var(--color-accent);
 }
