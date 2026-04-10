@@ -8,7 +8,8 @@ import { EditorProvider, useEditor as useEditorInternal } from '../../pen/state/
 import { PropertyPanel } from './PropertyPanel';
 import { ExportButton } from './ExportButton';
 import { AutoIdDialog } from './AutoIdDialog';
-import { CommandPalette, type Command } from './CommandPalette';
+import { type Command } from './CommandPalette';
+import { CommandPaletteWrapper } from './CommandPaletteWrapper';
 import { NodeTree } from './NodeTree';
 import { VimTextObjects } from './VimTextObjects';
 import { ZoomToSelected } from './ZoomToSelected';
@@ -665,8 +666,8 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
       <PropertyPanel />
       {showAutoId && <AutoIdDialog onClose={() => setShowAutoId(false)} />}
       {showCommandPalette && (
-        <CommandPalette
-          commands={[
+        <CommandPaletteWrapper
+          baseCommands={[
             { id: 'vim-toggle', label: `Vim Mode: ${vimMode ? 'ON → OFF' : 'OFF → ON'}`, action: () => setVimMode((v) => !v) },
             { id: 'frame-search', label: 'Search Frames', shortcut: 'Cmd+P', action: () => setShowFrameSearch(true) },
             { id: 'auto-id', label: 'Auto ID / Rename Frames', shortcut: 'Cmd+I', action: () => setShowAutoId(true) },

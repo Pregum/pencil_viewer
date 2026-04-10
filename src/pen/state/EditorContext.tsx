@@ -227,9 +227,15 @@ export function EditorProvider({
           return s;
         });
       }
-      // Backspace/Delete: delete selected node (only when not in input)
+      // Backspace/Delete: delete selected node(s) (only when not in input)
       if (!isInput && (e.key === 'Backspace' || e.key === 'Delete')) {
         setState((s) => {
+          // Multi-select: delete all selected
+          if (s.selectedNodeIds.size > 0) {
+            e.preventDefault();
+            for (const id of s.selectedNodeIds) deleteNode(id);
+            return s;
+          }
           if (s.selectedNodeId) {
             e.preventDefault();
             deleteNode(s.selectedNodeId);

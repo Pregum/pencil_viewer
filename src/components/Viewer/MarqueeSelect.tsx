@@ -1,7 +1,6 @@
 /**
  * マーキー（矩形）範囲選択。
  * キャンバス上でドラッグして矩形を描画し、範囲内のノードをマルチ選択する。
- * EditorProvider 内に配置する。
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -16,7 +15,6 @@ interface Rect {
 }
 
 interface Props {
-  /** SVG viewBox (for coordinate conversion) */
   viewBox: Rect;
   svgRef: React.RefObject<SVGSVGElement | null>;
 }
@@ -34,21 +32,18 @@ function screenToSvg(
   };
 }
 
-/** Check if a node's bounding box intersects with the selection rect */
-function nodeIntersects(node: PenNode, rect: Rect, offsetX = 0, offsetY = 0): boolean {
-  const nx = (node.x ?? 0) + offsetX;
-  const ny = (node.y ?? 0) + offsetY;
+function nodeIntersects(node: PenNode, rect: Rect): boolean {
+  const nx = node.x ?? 0;
+  const ny = node.y ?? 0;
   const nw = typeof (node as { width?: unknown }).width === 'number'
     ? (node as { width: number }).width : 0;
   const nh = typeof (node as { height?: unknown }).height === 'number'
     ? (node as { height: number }).height : 0;
   if (nw === 0 && nh === 0) return false;
-
   return !(nx + nw < rect.x || nx > rect.x + rect.width ||
            ny + nh < rect.y || ny > rect.y + rect.height);
 }
 
-/** Collect all nodes (top-level) that intersect with the rect */
 function collectIntersecting(nodes: PenNode[], rect: Rect): string[] {
   const result: string[] = [];
   for (const node of nodes) {
@@ -65,24 +60,31 @@ export function MarqueeSelect({ svgRef }: Props) {
   const [marquee, setMarquee] = useState<Rect | null>(null);
   const startPoint = useRef({ x: 0, y: 0 });
   const hasMoved = useRef(false);
+  const pointerId = useRef<number | null>(null);
 
   const handlePointerDown = useCallback(
     (e: PointerEvent) => {
-      // Only left button, no modifier keys (those are for pan)
       if (e.button !== 0 || e.altKey || e.metaKey || e.ctrlKey) return;
-      // Don't start marquee if space is held (pan mode)
-      // Check if the click is on the SVG background (not on a node)
-      const target = e.target as Element;
-      const isSvgBg = target.tagName === 'svg' || target.tagName === 'rect' && target.getAttribute('fill') === 'transparent' && !target.closest('[data-node-id]');
-
-      if (!isSvgBg) return;
-
       const svg = svgRef.current;
       if (!svg) return;
+
+      // Only start marquee if the pointer is within the SVG canvas area
+      const svgRect = svg.getBoundingClientRect();
+      if (e.clientX < svgRect.left || e.clientX > svgRect.right ||
+          e.clientY < svgRect.top || e.clientY > svgRect.bottom) return;
+
+      // Check target: only start on SVG background or the deselect rect
+      const target = e.target as Element;
+      const tagName = target.tagName.toLowerCase();
+      // Allow: svg element itself, or a transparent rect (background hit area)
+      const isBackground = tagName === 'svg' ||
+        (tagName === 'rect' && target.getAttribute('fill') === 'transparent');
+      if (!isBackground) return;
 
       const pt = screenToSvg(e.clientX, e.clientY, svg);
       startPoint.current = pt;
       hasMoved.current = false;
+      pointerId.current = e.pointerId;
       setDragging(true);
       setMarquee(null);
     },
@@ -91,7 +93,7 @@ export function MarqueeSelect({ svgRef }: Props) {
 
   const handlePointerMove = useCallback(
     (e: PointerEvent) => {
-      if (!dragging) return;
+      if (!dragging || e.pointerId !== pointerId.current) return;
       const svg = svgRef.current;
       if (!svg) return;
 
@@ -104,32 +106,42 @@ export function MarqueeSelect({ svgRef }: Props) {
       if (width > 3 || height > 3) {
         hasMoved.current = true;
         setMarquee({ x, y, width, height });
+
+        // Live preview: select intersecting nodes during drag
+        const ids = collectIntersecting(state.doc.children, { x, y, width, height });
+        if (ids.length > 0) {
+          selectMultiple(ids);
+        }
       }
     },
-    [dragging, svgRef],
+    [dragging, svgRef, state.doc, selectMultiple],
   );
 
-  const handlePointerUp = useCallback(() => {
-    if (!dragging) return;
-    setDragging(false);
+  const handlePointerUp = useCallback(
+    (e: PointerEvent) => {
+      if (!dragging || e.pointerId !== pointerId.current) return;
+      setDragging(false);
+      pointerId.current = null;
 
-    if (hasMoved.current && marquee) {
-      const ids = collectIntersecting(state.doc.children, marquee);
-      if (ids.length > 0) {
-        selectMultiple(ids);
-      } else {
-        selectNode(null);
+      if (hasMoved.current && marquee) {
+        const ids = collectIntersecting(state.doc.children, marquee);
+        if (ids.length > 0) {
+          selectMultiple(ids);
+        } else {
+          selectNode(null);
+        }
       }
-    }
-    setMarquee(null);
-  }, [dragging, marquee, state.doc, selectMultiple, selectNode]);
+      setMarquee(null);
+    },
+    [dragging, marquee, state.doc, selectMultiple, selectNode],
+  );
 
   useEffect(() => {
-    window.addEventListener('pointerdown', handlePointerDown, true);
+    window.addEventListener('pointerdown', handlePointerDown);
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
     return () => {
-      window.removeEventListener('pointerdown', handlePointerDown, true);
+      window.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
     };
