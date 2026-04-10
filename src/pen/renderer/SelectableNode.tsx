@@ -32,7 +32,24 @@ export function SelectableNode({ node, children }: Props) {
 
   const handleClick = (e: React.MouseEvent) => {
     if (isDragging.current || isResizing.current) return;
+    // Cmd+Click or double-click: select deepest child (don't stop propagation upward,
+    // but let the deepest handler win by checking in capture vs bubble)
+    if (e.metaKey || e.ctrlKey) {
+      // Cmd+Click: select this specific node, let deeper children override
+      // Don't stopPropagation - deepest child wins
+      e.preventDefault();
+      selectNode(node.id);
+      return;
+    }
+    // Normal click: select this node, stop propagation so parent doesn't override
     e.stopPropagation();
+    selectNode(node.id);
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    // Double-click: dive into children - select this node without stopPropagation
+    // so the deepest child's double-click wins
+    e.preventDefault();
     selectNode(node.id);
   };
 
@@ -123,6 +140,7 @@ export function SelectableNode({ node, children }: Props) {
   return (
     <g
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
