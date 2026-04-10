@@ -11,6 +11,7 @@ import { AutoIdDialog } from './AutoIdDialog';
 import { CommandPalette, type Command } from './CommandPalette';
 import { NodeTree } from './NodeTree';
 import { VimTextObjects } from './VimTextObjects';
+import { ZoomToSelected } from './ZoomToSelected';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -145,31 +146,35 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
     applyHistoryEntry(history[newIdx]);
   }, [historyIndex, history, applyHistoryEntry]);
 
+  // Zoom camera to an arbitrary rect in SVG coords
+  const zoomToRect = useCallback(
+    (rect: { x: number; y: number; width: number; height: number }) => {
+      const padX = rect.width * FRAME_PADDING_RATIO;
+      const padY = rect.height * FRAME_PADDING_RATIO;
+      const el = containerRef.current;
+      const aspect = el ? el.clientWidth / el.clientHeight : 16 / 9;
+      const fitWidth = rect.width + padX * 2;
+      const fitHeight = rect.height + padY * 2;
+      const fitByWidth = fitWidth;
+      const fitByHeight = fitHeight * aspect;
+      const svgWidth = Math.max(fitByWidth, fitByHeight);
+      setCamera({
+        cx: rect.x + rect.width / 2,
+        cy: rect.y + rect.height / 2,
+        svgWidth: clampSvgWidth(svgWidth),
+      });
+    },
+    [],
+  );
+
   // Zoom to a specific frame
   const zoomToFrame = useCallback(
     (frame: FrameEntry) => {
       pushHistory(frame.id);
       setActiveFrameId(frame.id);
-
-      const padX = frame.width * FRAME_PADDING_RATIO;
-      const padY = frame.height * FRAME_PADDING_RATIO;
-      const el = containerRef.current;
-      const aspect = el ? el.clientWidth / el.clientHeight : 16 / 9;
-
-      // Fit the frame (with padding) into the viewport
-      const fitWidth = frame.width + padX * 2;
-      const fitHeight = frame.height + padY * 2;
-      const fitByWidth = fitWidth;
-      const fitByHeight = fitHeight * aspect;
-      const svgWidth = Math.max(fitByWidth, fitByHeight);
-
-      setCamera({
-        cx: frame.x + frame.width / 2,
-        cy: frame.y + frame.height / 2,
-        svgWidth: clampSvgWidth(svgWidth),
-      });
+      zoomToRect(frame);
     },
-    [pushHistory],
+    [pushHistory, zoomToRect],
   );
 
   function clampSvgWidth(w: number) {
@@ -404,6 +409,12 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
           navigateVim(e.key, count);
           return;
         }
+        // f to focus/zoom on selected node
+        if (e.key === 'f') {
+          e.preventDefault();
+          window.dispatchEvent(new Event('pencil-zoom-to-selected'));
+          return;
+        }
         // / to open search (vim-style)
         if (e.key === '/') {
           e.preventDefault();
@@ -575,6 +586,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
           onClose={() => setShowCommandPalette(false)}
         />
       )}
+      <ZoomToSelected onZoomTo={zoomToRect} />
       <VimTextObjects vimMode={vimMode} />
       {vimMode && (
         <div className="viewer__vim-badge">VIM</div>
