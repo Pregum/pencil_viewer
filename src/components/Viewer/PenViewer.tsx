@@ -14,6 +14,7 @@ import { VimTextObjects } from './VimTextObjects';
 import { ZoomToSelected } from './ZoomToSelected';
 import { HintLabels } from './HintLabels';
 import { NudgeHandler } from './NudgeHandler';
+import { MarqueeSelect } from './MarqueeSelect';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -82,6 +83,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
   const frames = useMemo(() => collectFrames(doc.children), [doc]);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
   // Camera in SVG coordinate space
   const [camera, setCamera] = useState<Camera>(() => ({
@@ -619,6 +621,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
         style={{ cursor }}
       >
         <svg
+          ref={svgRef}
           className="viewer__svg"
           viewBox={`${currentVb.x} ${currentVb.y} ${currentVb.width} ${currentVb.height}`}
           preserveAspectRatio="xMidYMid meet"
@@ -643,6 +646,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
             ) : null,
           )}
           <HintLabels vimMode={vimMode} svgScale={scale} cameraCx={camera.cx} cameraCy={camera.cy} viewBox={currentVb} />
+          <MarqueeSelect viewBox={currentVb} svgRef={svgRef} />
         </svg>
       </div>
 
