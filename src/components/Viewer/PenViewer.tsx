@@ -9,6 +9,7 @@ import { ShortcutsDialog } from './ShortcutsDialog';
 import { FrameSearch } from './FrameSearch';
 import { EditorProvider } from '../../pen/state/EditorContext';
 import { PropertyPanel } from './PropertyPanel';
+import { ExportButton } from './ExportButton';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -422,6 +423,8 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
         )}
 
         <span style={{ flex: 1 }} />
+        <ExportButton />
+        <span className="viewer__separator" />
         <button
           type="button"
           className="viewer__zoom-btn"

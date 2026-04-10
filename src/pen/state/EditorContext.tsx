@@ -77,6 +77,7 @@ interface EditorContextValue {
   selectNode: (nodeId: string | null) => void;
   updateNode: (nodeId: string, patch: Partial<PenNode>) => void;
   selectedNode: PenNode | null;
+  exportPen: () => void;
 }
 
 const EditorCtx = createContext<EditorContextValue | null>(null);
@@ -107,9 +108,20 @@ export function EditorProvider({
     [state.doc, state.selectedNodeId],
   );
 
+  const exportPen = useCallback(() => {
+    const json = JSON.stringify(state.doc, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'exported.pen';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [state.doc]);
+
   const value = useMemo(
-    () => ({ state, selectNode, updateNode, selectedNode }),
-    [state, selectNode, updateNode, selectedNode],
+    () => ({ state, selectNode, updateNode, selectedNode, exportPen }),
+    [state, selectNode, updateNode, selectedNode, exportPen],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;
