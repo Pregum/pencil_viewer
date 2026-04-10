@@ -1,19 +1,11 @@
 /**
  * プロパティパネル: 選択ノードの情報を表示・編集する。
+ * 値を編集するとリアルタイムで SVG に反映される。
  */
 
+import { useCallback } from 'react';
 import { useEditor } from '../../pen/state/EditorContext';
-
-/** ノードが属するフレーム名を取得（パンくず風） */
-function formatNodePath(node: { name?: string; id: string; type: string }): string {
-  return node.name ?? node.id;
-}
-
-function formatSize(v: unknown): string {
-  if (typeof v === 'number') return `${Math.round(v * 100) / 100}`;
-  if (typeof v === 'string') return v;
-  return '-';
-}
+import type { PenNode } from '../../pen/types';
 
 function formatColor(fill: unknown): string | null {
   if (typeof fill === 'string') return fill;
@@ -27,8 +19,64 @@ function formatColor(fill: unknown): string | null {
   return null;
 }
 
+function EditableField({
+  label,
+  value,
+  onChange,
+  type = 'text',
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: 'text' | 'number' | 'color';
+}) {
+  return (
+    <div className="prop-panel__field">
+      <label>{label}</label>
+      <input
+        className="prop-panel__input"
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
+function NumberField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="prop-panel__field-inline">
+      <label>{label}</label>
+      <input
+        className="prop-panel__input prop-panel__input--num"
+        type="number"
+        value={Math.round(value * 100) / 100}
+        onChange={(e) => {
+          const n = parseFloat(e.target.value);
+          if (!isNaN(n)) onChange(n);
+        }}
+      />
+    </div>
+  );
+}
+
 export function PropertyPanel() {
-  const { selectedNode, selectNode } = useEditor();
+  const { selectedNode, selectNode, updateNode } = useEditor();
+
+  const patch = useCallback(
+    (p: Partial<PenNode>) => {
+      if (selectedNode) updateNode(selectedNode.id, p);
+    },
+    [selectedNode, updateNode],
+  );
 
   if (!selectedNode) {
     return (
@@ -42,100 +90,161 @@ export function PropertyPanel() {
   const fillColor = formatColor((n as { fill?: unknown }).fill);
   const strokeFill = (n as { stroke?: { fill?: unknown } }).stroke?.fill;
   const strokeColor = formatColor(strokeFill);
-  const cornerRadius = (n as { cornerRadius?: unknown }).cornerRadius;
-  const opacity = (n as { opacity?: number }).opacity;
+  const opacity = (n as { opacity?: number }).opacity ?? 1;
   const fontFamily = (n as { fontFamily?: string }).fontFamily;
   const fontSize = (n as { fontSize?: number }).fontSize;
   const content = (n as { content?: string }).content;
+  const width = (n as { width?: unknown }).width;
+  const height = (n as { height?: unknown }).height;
 
   return (
     <div className="prop-panel">
       <div className="prop-panel__header">
         <span className="prop-panel__type">{n.type}</span>
-        <span className="prop-panel__name">{formatNodePath(n)}</span>
+        <span className="prop-panel__name">{n.name ?? n.id}</span>
         <button
           className="prop-panel__close"
           onClick={() => selectNode(null)}
-          title="Deselect"
+          title="Deselect (Esc)"
         >
           &times;
         </button>
       </div>
 
+      {/* Position & Size */}
       <div className="prop-panel__section">
         <div className="prop-panel__title">Position & Size</div>
-        <div className="prop-panel__grid">
-          <label>X</label><span>{Math.round(n.x ?? 0)}</span>
-          <label>Y</label><span>{Math.round(n.y ?? 0)}</span>
-          <label>W</label><span>{formatSize((n as { width?: unknown }).width)}</span>
-          <label>H</label><span>{formatSize((n as { height?: unknown }).height)}</span>
+        <div className="prop-panel__pos-grid">
+          <NumberField label="X" value={n.x ?? 0} onChange={(v) => patch({ x: v } as Partial<PenNode>)} />
+          <NumberField label="Y" value={n.y ?? 0} onChange={(v) => patch({ y: v } as Partial<PenNode>)} />
+          {typeof width === 'number' && (
+            <NumberField label="W" value={width} onChange={(v) => patch({ width: v } as Partial<PenNode>)} />
+          )}
+          {typeof width === 'string' && (
+            <div className="prop-panel__field-inline">
+              <label>W</label>
+              <span className="prop-panel__readonly">{width}</span>
+            </div>
+          )}
+          {typeof height === 'number' && (
+            <NumberField label="H" value={height} onChange={(v) => patch({ height: v } as Partial<PenNode>)} />
+          )}
+          {typeof height === 'string' && (
+            <div className="prop-panel__field-inline">
+              <label>H</label>
+              <span className="prop-panel__readonly">{height}</span>
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Fill */}
       {fillColor && (
         <div className="prop-panel__section">
           <div className="prop-panel__title">Fill</div>
           <div className="prop-panel__color-row">
             {fillColor.startsWith('#') && (
-              <span
-                className="prop-panel__swatch"
-                style={{ background: fillColor }}
+              <input
+                type="color"
+                className="prop-panel__color-input"
+                value={fillColor.slice(0, 7)}
+                onChange={(e) => patch({ fill: e.target.value } as Partial<PenNode>)}
               />
             )}
-            <span>{fillColor}</span>
+            <span className="prop-panel__color-label">{fillColor}</span>
           </div>
         </div>
       )}
 
-      {strokeColor && (
+      {/* Stroke */}
+      {strokeColor && strokeColor !== '(gradient)' && strokeColor !== '(image)' && (
         <div className="prop-panel__section">
           <div className="prop-panel__title">Stroke</div>
           <div className="prop-panel__color-row">
             {strokeColor.startsWith('#') && (
-              <span
-                className="prop-panel__swatch"
-                style={{ background: strokeColor }}
+              <input
+                type="color"
+                className="prop-panel__color-input"
+                value={strokeColor.slice(0, 7)}
+                onChange={(e) => {
+                  const current = (n as { stroke?: object }).stroke ?? {};
+                  patch({ stroke: { ...current, fill: e.target.value } } as Partial<PenNode>);
+                }}
               />
             )}
-            <span>{strokeColor}</span>
+            <span className="prop-panel__color-label">{strokeColor}</span>
           </div>
         </div>
       )}
 
-      {cornerRadius != null && (
-        <div className="prop-panel__section">
-          <div className="prop-panel__title">Corner Radius</div>
-          <span>{JSON.stringify(cornerRadius)}</span>
+      {/* Opacity */}
+      <div className="prop-panel__section">
+        <div className="prop-panel__title">Opacity</div>
+        <div className="prop-panel__opacity-row">
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={opacity}
+            className="prop-panel__slider"
+            onChange={(e) => patch({ opacity: parseFloat(e.target.value) } as Partial<PenNode>)}
+          />
+          <span className="prop-panel__opacity-val">{Math.round(opacity * 100)}%</span>
         </div>
-      )}
+      </div>
 
-      {opacity != null && opacity !== 1 && (
-        <div className="prop-panel__section">
-          <div className="prop-panel__title">Opacity</div>
-          <span>{Math.round(opacity * 100)}%</span>
-        </div>
-      )}
-
-      {fontFamily && (
+      {/* Font */}
+      {fontFamily && fontSize != null && (
         <div className="prop-panel__section">
           <div className="prop-panel__title">Font</div>
-          <span>{fontFamily} {fontSize}px</span>
+          <EditableField
+            label="Family"
+            value={fontFamily}
+            onChange={(v) => patch({ fontFamily: v } as Partial<PenNode>)}
+          />
+          <NumberField
+            label="Size"
+            value={fontSize}
+            onChange={(v) => patch({ fontSize: v } as Partial<PenNode>)}
+          />
         </div>
       )}
 
+      {/* Content */}
       {content != null && (
         <div className="prop-panel__section">
           <div className="prop-panel__title">Content</div>
-          <div className="prop-panel__content">{content}</div>
+          <textarea
+            className="prop-panel__textarea"
+            value={content}
+            rows={Math.min(8, content.split('\n').length + 1)}
+            onChange={(e) => patch({ content: e.target.value } as Partial<PenNode>)}
+          />
         </div>
       )}
 
+      {/* Layout (frame only) */}
       {n.type === 'frame' && (
         <div className="prop-panel__section">
           <div className="prop-panel__title">Layout</div>
-          <span>{(n as { layout?: string }).layout ?? 'horizontal'}</span>
+          <select
+            className="prop-panel__select"
+            value={(n as { layout?: string }).layout ?? 'horizontal'}
+            onChange={(e) => patch({ layout: e.target.value } as Partial<PenNode>)}
+          >
+            <option value="horizontal">Horizontal</option>
+            <option value="vertical">Vertical</option>
+            <option value="none">None</option>
+          </select>
         </div>
       )}
+
+      {/* Node ID (read-only) */}
+      <div className="prop-panel__section">
+        <div className="prop-panel__title">Node ID</div>
+        <span className="prop-panel__readonly prop-panel__mono">{n.id}</span>
+      </div>
     </div>
   );
 }
