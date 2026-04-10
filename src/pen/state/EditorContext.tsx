@@ -7,6 +7,8 @@ import type { PenDocument, PenNode } from '../types';
 
 export interface EditorState {
   doc: PenDocument;
+  /** レイアウト計算前の元 doc（エクスポート用） */
+  rawDoc: PenDocument;
   selectedNodeId: string | null;
   /** マルチ選択（vim visual mode 等） */
   selectedNodeIds: Set<string>;
@@ -81,12 +83,14 @@ const EditorCtx = createContext<EditorContextValue | null>(null);
 
 export function EditorProvider({
   doc,
+  rawDoc,
   children,
 }: {
   doc: PenDocument;
+  rawDoc?: PenDocument;
   children: React.ReactNode;
 }) {
-  const [state, setState] = useState<EditorState>({ doc, selectedNodeId: null, selectedNodeIds: new Set(), insertMode: false });
+  const [state, setState] = useState<EditorState>({ doc, rawDoc: rawDoc ?? doc, selectedNodeId: null, selectedNodeIds: new Set(), insertMode: false });
 
   // Undo/Redo stacks store doc snapshots
   const undoStack = useRef<PenDocument[]>([]);
@@ -119,7 +123,11 @@ export function EditorProvider({
     (nodeId: string, patch: Partial<PenNode>) => {
       setState((s) => {
         pushUndo(s.doc);
-        return { ...s, doc: updateNodeInDoc(s.doc, nodeId, patch) };
+        return {
+          ...s,
+          doc: updateNodeInDoc(s.doc, nodeId, patch),
+          rawDoc: updateNodeInDoc(s.rawDoc, nodeId, patch),
+        };
       });
     },
     [pushUndo],
@@ -128,7 +136,11 @@ export function EditorProvider({
   /** ドラッグ中など、undo に積まずに更新 */
   const updateNodeSilent = useCallback(
     (nodeId: string, patch: Partial<PenNode>) => {
-      setState((s) => ({ ...s, doc: updateNodeInDoc(s.doc, nodeId, patch) }));
+      setState((s) => ({
+        ...s,
+        doc: updateNodeInDoc(s.doc, nodeId, patch),
+        rawDoc: updateNodeInDoc(s.rawDoc, nodeId, patch),
+      }));
     },
     [],
   );
@@ -160,6 +172,7 @@ export function EditorProvider({
         return {
           ...s,
           doc: { ...s.doc, children: removeRecursive(s.doc.children) },
+          rawDoc: { ...s.rawDoc, children: removeRecursive(s.rawDoc.children) },
           selectedNodeId: s.selectedNodeId === nodeId ? null : s.selectedNodeId,
         };
       });
@@ -236,7 +249,8 @@ export function EditorProvider({
   );
 
   const exportPen = useCallback((fileName?: string) => {
-    const json = JSON.stringify(state.doc, null, 2);
+    // rawDoc を使用（レイアウト計算前の元データ + 編集差分）
+    const json = JSON.stringify(state.rawDoc, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -244,7 +258,7 @@ export function EditorProvider({
     a.download = fileName ?? 'exported.pen';
     a.click();
     URL.revokeObjectURL(url);
-  }, [state.doc]);
+  }, [state.rawDoc]);
 
   const canUndo = undoStack.current.length > 0;
   const canRedo = redoStack.current.length > 0;

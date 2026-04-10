@@ -78,7 +78,7 @@ function VimBadge() {
   );
 }
 
-export function PenViewer({ doc }: { doc: PenDocument }) {
+export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocument }) {
   const baseVb = computeViewBox(doc);
   const frames = useMemo(() => collectFrames(doc.children), [doc]);
 
@@ -524,7 +524,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
   const cursor = isSpaceHeld.current || isPanning.current ? 'grab' : 'default';
 
   return (
-    <EditorProvider doc={doc}>
+    <EditorProvider doc={doc} rawDoc={rawDoc}>
     <div className="viewer">
       <div className="viewer__toolbar">
         <button

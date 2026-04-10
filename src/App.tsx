@@ -72,7 +72,7 @@ export function App() {
           />
         )}
 
-        {state.status === 'ready' && <PenViewer doc={state.doc} />}
+        {state.status === 'ready' && <PenViewer doc={state.doc} rawDoc={state.rawDoc} />}
       </main>
     </div>
   );

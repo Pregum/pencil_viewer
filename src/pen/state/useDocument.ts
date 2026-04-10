@@ -25,12 +25,12 @@ export interface LoadError {
 export type DocState =
   | { status: 'idle' }
   | { status: 'loading'; source: Source }
-  | { status: 'ready'; source: Source; doc: PenDocument }
+  | { status: 'ready'; source: Source; doc: PenDocument; rawDoc: PenDocument }
   | { status: 'error'; source?: Source; error: LoadError };
 
 type Action =
   | { type: 'LOAD_START'; source: Source }
-  | { type: 'LOAD_SUCCESS'; source: Source; doc: PenDocument }
+  | { type: 'LOAD_SUCCESS'; source: Source; doc: PenDocument; rawDoc: PenDocument }
   | { type: 'LOAD_FAILURE'; source?: Source; error: LoadError }
   | { type: 'RESET' };
 
@@ -39,7 +39,7 @@ function reducer(state: DocState, action: Action): DocState {
     case 'LOAD_START':
       return { status: 'loading', source: action.source };
     case 'LOAD_SUCCESS':
-      return { status: 'ready', source: action.source, doc: action.doc };
+      return { status: 'ready', source: action.source, doc: action.doc, rawDoc: action.rawDoc };
     case 'LOAD_FAILURE':
       return { status: 'error', source: action.source, error: action.error };
     case 'RESET':
@@ -63,9 +63,10 @@ export function useDocument(): {
     if (result.ok) {
       // parse → variable 置換 → layout の順でパイプライン
       const substituted = substituteVariables(result.doc);
+      const rawDoc = substituted; // レイアウト前の状態を保持（エクスポート用）
       const laidOut = layoutDocument(substituted);
       loadDocumentFonts(laidOut);
-      dispatch({ type: 'LOAD_SUCCESS', source, doc: laidOut });
+      dispatch({ type: 'LOAD_SUCCESS', source, doc: laidOut, rawDoc });
     } else {
       dispatch({
         type: 'LOAD_FAILURE',
