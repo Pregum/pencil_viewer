@@ -8,6 +8,7 @@ import { EditorProvider } from '../../pen/state/EditorContext';
 import { PropertyPanel } from './PropertyPanel';
 import { ExportButton } from './ExportButton';
 import { AutoIdDialog } from './AutoIdDialog';
+import { CommandPalette, type Command } from './CommandPalette';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -90,6 +91,8 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showFrameSearch, setShowFrameSearch] = useState(false);
   const [showAutoId, setShowAutoId] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [vimMode, setVimMode] = useState(false);
 
   // Compute the actual viewBox from camera
   const getViewBox = useCallback((): ViewBox => {
@@ -359,7 +362,10 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
       } else if (mod && e.key === ']') {
         e.preventDefault();
         navigateForward();
-      } else if (mod && e.key === 'p') {
+      } else if (mod && e.shiftKey && e.key === 'p') {
+        e.preventDefault();
+        setShowCommandPalette((v) => !v);
+      } else if (mod && !e.shiftKey && e.key === 'p') {
         e.preventDefault();
         setShowFrameSearch((v) => !v);
       } else if (mod && e.key === 'i') {
@@ -551,6 +557,24 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
       )}
       <PropertyPanel />
       {showAutoId && <AutoIdDialog onClose={() => setShowAutoId(false)} />}
+      {showCommandPalette && (
+        <CommandPalette
+          commands={[
+            { id: 'vim-toggle', label: `Vim Mode: ${vimMode ? 'ON → OFF' : 'OFF → ON'}`, action: () => setVimMode((v) => !v) },
+            { id: 'frame-search', label: 'Search Frames', shortcut: 'Cmd+P', action: () => setShowFrameSearch(true) },
+            { id: 'auto-id', label: 'Auto ID / Rename Frames', shortcut: 'Cmd+I', action: () => setShowAutoId(true) },
+            { id: 'fit-view', label: 'Fit to View', shortcut: 'Cmd+0', action: resetView },
+            { id: 'zoom-100', label: 'Zoom to 100%', shortcut: 'Cmd+1', action: zoomTo100 },
+            { id: 'shortcuts', label: 'Show Keyboard Shortcuts', shortcut: 'Cmd+/', action: () => setShowShortcuts(true) },
+            { id: 'export', label: 'Export .pen', shortcut: 'Cmd+S', action: () => {} },
+            { id: 'save-as', label: 'Save As...', shortcut: 'Cmd+Shift+S', action: () => {} },
+          ] satisfies Command[]}
+          onClose={() => setShowCommandPalette(false)}
+        />
+      )}
+      {vimMode && (
+        <div className="viewer__vim-badge">VIM</div>
+      )}
     </div>
     </EditorProvider>
   );

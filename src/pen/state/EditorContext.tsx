@@ -58,6 +58,11 @@ interface EditorContextValue {
   selectNode: (nodeId: string | null) => void;
   updateNode: (nodeId: string, patch: Partial<PenNode>) => void;
   selectedNode: PenNode | null;
+  /** Undo 履歴に積まずにノード更新（ドラッグ中の中間更新用） */
+  updateNodeSilent: (nodeId: string, patch: Partial<PenNode>) => void;
+  /** Undo 用: 現在の doc を明示的に undo スタックに積む */
+  pushUndoCheckpoint: () => void;
+  deleteNode: (nodeId: string) => void;
   exportPen: (fileName?: string) => void;
   undo: () => void;
   redo: () => void;
@@ -100,6 +105,48 @@ export function EditorProvider({
     [pushUndo],
   );
 
+  /** ドラッグ中など、undo に積まずに更新 */
+  const updateNodeSilent = useCallback(
+    (nodeId: string, patch: Partial<PenNode>) => {
+      setState((s) => ({ ...s, doc: updateNodeInDoc(s.doc, nodeId, patch) }));
+    },
+    [],
+  );
+
+  /** 手動で undo チェックポイントを作成（ドラッグ開始時に呼ぶ） */
+  const pushUndoCheckpoint = useCallback(() => {
+    setState((s) => {
+      pushUndo(s.doc);
+      return s;
+    });
+  }, [pushUndo]);
+
+  const deleteNode = useCallback(
+    (nodeId: string) => {
+      setState((s) => {
+        pushUndo(s.doc);
+        const removeRecursive = (nodes: PenNode[]): PenNode[] =>
+          nodes
+            .filter((n) => n.id !== nodeId)
+            .map((n) => {
+              if ('children' in n && Array.isArray((n as { children?: PenNode[] }).children)) {
+                return {
+                  ...(n as object),
+                  children: removeRecursive((n as { children: PenNode[] }).children),
+                } as PenNode;
+              }
+              return n;
+            });
+        return {
+          ...s,
+          doc: { ...s.doc, children: removeRecursive(s.doc.children) },
+          selectedNodeId: s.selectedNodeId === nodeId ? null : s.selectedNodeId,
+        };
+      });
+    },
+    [pushUndo],
+  );
+
   const undo = useCallback(() => {
     if (undoStack.current.length === 0) return;
     setState((s) => {
@@ -131,10 +178,22 @@ export function EditorProvider({
         e.preventDefault();
         redo();
       }
+      // Backspace/Delete: delete selected node (only when not in input)
+      const tag = (e.target as HTMLElement).tagName;
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      if (!isInput && (e.key === 'Backspace' || e.key === 'Delete')) {
+        setState((s) => {
+          if (s.selectedNodeId) {
+            e.preventDefault();
+            deleteNode(s.selectedNodeId);
+          }
+          return s;
+        });
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo]);
+  }, [undo, redo, deleteNode]);
 
   const selectedNode = useMemo(
     () =>
@@ -157,8 +216,8 @@ export function EditorProvider({
   const canRedo = redoStack.current.length > 0;
 
   const value = useMemo(
-    () => ({ state, selectNode, updateNode, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
-    [state, selectNode, updateNode, selectedNode, exportPen, undo, redo, canUndo, canRedo],
+    () => ({ state, selectNode, updateNode, updateNodeSilent, pushUndoCheckpoint, deleteNode, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
+    [state, selectNode, updateNode, updateNodeSilent, pushUndoCheckpoint, deleteNode, selectedNode, exportPen, undo, redo, canUndo, canRedo],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;

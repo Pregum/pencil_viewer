@@ -14,7 +14,7 @@ interface Props {
 const HANDLE_SIZE = 8;
 
 export function SelectableNode({ node, children }: Props) {
-  const { state, selectNode, updateNode } = useEditor();
+  const { state, selectNode, updateNodeSilent, pushUndoCheckpoint } = useEditor();
   const isSelected = state.selectedNodeId === node.id;
   const isDragging = useRef(false);
   const isResizing = useRef<string | null>(null);
@@ -66,6 +66,9 @@ export function SelectableNode({ node, children }: Props) {
       e.stopPropagation();
       e.preventDefault();
 
+      // Undo チェックポイント: ドラッグ開始時に1回だけ
+      pushUndoCheckpoint();
+
       if (handle) {
         isResizing.current = handle;
       } else {
@@ -75,7 +78,7 @@ export function SelectableNode({ node, children }: Props) {
       nodeStart.current = { x, y, w: width, h: height };
       (e.target as SVGElement).setPointerCapture(e.pointerId);
     },
-    [isSelected, x, y, width, height],
+    [isSelected, x, y, width, height, pushUndoCheckpoint],
   );
 
   const handlePointerMove = useCallback(
@@ -89,7 +92,7 @@ export function SelectableNode({ node, children }: Props) {
       const { dx, dy } = screenToSvgDelta(rawDx, rawDy, svg);
 
       if (isDragging.current) {
-        updateNode(node.id, {
+        updateNodeSilent(node.id, {
           x: Math.round(nodeStart.current.x + dx),
           y: Math.round(nodeStart.current.y + dy),
         } as Partial<PenNode>);
@@ -111,7 +114,7 @@ export function SelectableNode({ node, children }: Props) {
           newY = nodeStart.current.y + dy;
         }
 
-        updateNode(node.id, {
+        updateNodeSilent(node.id, {
           x: Math.round(newX),
           y: Math.round(newY),
           width: Math.round(newW),
@@ -119,7 +122,7 @@ export function SelectableNode({ node, children }: Props) {
         } as Partial<PenNode>);
       }
     },
-    [node.id, updateNode, screenToSvgDelta],
+    [node.id, updateNodeSilent, screenToSvgDelta],
   );
 
   const handlePointerUp = useCallback(() => {
