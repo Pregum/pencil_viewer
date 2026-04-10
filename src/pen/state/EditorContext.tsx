@@ -200,10 +200,16 @@ export function EditorProvider({
       }
       const tag = (e.target as HTMLElement).tagName;
       const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-      // Escape: exit insert mode first, then deselect
+      // Escape: exit insert mode + blur input, then deselect
       if (e.key === 'Escape') {
         setState((s) => {
-          if (s.insertMode) return { ...s, insertMode: false };
+          if (s.insertMode) {
+            // Blur the active input/textarea to return to normal mode
+            if (document.activeElement instanceof HTMLElement) {
+              document.activeElement.blur();
+            }
+            return { ...s, insertMode: false };
+          }
           if (!isInput && s.selectedNodeId) return { ...s, selectedNodeId: null };
           return s;
         });
