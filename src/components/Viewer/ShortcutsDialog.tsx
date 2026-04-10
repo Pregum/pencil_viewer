@@ -12,6 +12,8 @@ const SHORTCUTS = [
   { keys: 'Cmd + [', desc: 'Back (previous view)' },
   { keys: 'Cmd + ]', desc: 'Forward' },
   { keys: 'Cmd + P', desc: 'Quick frame search' },
+  { keys: 'Cmd + Z', desc: 'Undo' },
+  { keys: 'Cmd + Shift + Z', desc: 'Redo' },
   { keys: 'Cmd + I', desc: 'Auto ID / Rename frames' },
   { keys: 'Cmd + S', desc: 'Export .pen file' },
   { keys: 'Cmd + Shift + S', desc: 'Save As (rename)' },

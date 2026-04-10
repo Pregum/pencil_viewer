@@ -1,34 +1,13 @@
 /**
- * エディタ状態管理: 選択ノード、ドキュメント編集を一元管理する Context。
+ * エディタ状態管理: 選択ノード、Undo/Redo、ドキュメント編集を一元管理する Context。
  */
 
-import { createContext, useCallback, useContext, useMemo, useReducer } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { PenDocument, PenNode } from '../types';
 
 export interface EditorState {
   doc: PenDocument;
   selectedNodeId: string | null;
-}
-
-type EditorAction =
-  | { type: 'SELECT_NODE'; nodeId: string | null }
-  | { type: 'UPDATE_NODE'; nodeId: string; patch: Partial<PenNode> }
-  | { type: 'SET_DOC'; doc: PenDocument };
-
-function reducer(state: EditorState, action: EditorAction): EditorState {
-  switch (action.type) {
-    case 'SELECT_NODE':
-      return { ...state, selectedNodeId: action.nodeId };
-    case 'UPDATE_NODE':
-      return {
-        ...state,
-        doc: updateNodeInDoc(state.doc, action.nodeId, action.patch),
-      };
-    case 'SET_DOC':
-      return { doc: action.doc, selectedNodeId: null };
-    default:
-      return state;
-  }
 }
 
 /** ドキュメントツリー内のノードを再帰的に更新 */
@@ -72,12 +51,18 @@ function findNode(nodes: PenNode[], id: string): PenNode | null {
   return null;
 }
 
+const MAX_UNDO = 100;
+
 interface EditorContextValue {
   state: EditorState;
   selectNode: (nodeId: string | null) => void;
   updateNode: (nodeId: string, patch: Partial<PenNode>) => void;
   selectedNode: PenNode | null;
   exportPen: (fileName?: string) => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 const EditorCtx = createContext<EditorContextValue | null>(null);
@@ -89,18 +74,67 @@ export function EditorProvider({
   doc: PenDocument;
   children: React.ReactNode;
 }) {
-  const [state, dispatch] = useReducer(reducer, { doc, selectedNodeId: null });
+  const [state, setState] = useState<EditorState>({ doc, selectedNodeId: null });
+
+  // Undo/Redo stacks store doc snapshots
+  const undoStack = useRef<PenDocument[]>([]);
+  const redoStack = useRef<PenDocument[]>([]);
+
+  const pushUndo = useCallback((prevDoc: PenDocument) => {
+    undoStack.current = [...undoStack.current.slice(-(MAX_UNDO - 1)), prevDoc];
+    redoStack.current = []; // new edit clears redo
+  }, []);
 
   const selectNode = useCallback(
-    (nodeId: string | null) => dispatch({ type: 'SELECT_NODE', nodeId }),
+    (nodeId: string | null) => setState((s) => ({ ...s, selectedNodeId: nodeId })),
     [],
   );
 
   const updateNode = useCallback(
-    (nodeId: string, patch: Partial<PenNode>) =>
-      dispatch({ type: 'UPDATE_NODE', nodeId, patch }),
-    [],
+    (nodeId: string, patch: Partial<PenNode>) => {
+      setState((s) => {
+        pushUndo(s.doc);
+        return { ...s, doc: updateNodeInDoc(s.doc, nodeId, patch) };
+      });
+    },
+    [pushUndo],
   );
+
+  const undo = useCallback(() => {
+    if (undoStack.current.length === 0) return;
+    setState((s) => {
+      redoStack.current = [...redoStack.current, s.doc];
+      const prevDoc = undoStack.current[undoStack.current.length - 1];
+      undoStack.current = undoStack.current.slice(0, -1);
+      return { ...s, doc: prevDoc };
+    });
+  }, []);
+
+  const redo = useCallback(() => {
+    if (redoStack.current.length === 0) return;
+    setState((s) => {
+      undoStack.current = [...undoStack.current, s.doc];
+      const nextDoc = redoStack.current[redoStack.current.length - 1];
+      redoStack.current = redoStack.current.slice(0, -1);
+      return { ...s, doc: nextDoc };
+    });
+  }, []);
+
+  // Keyboard shortcuts: Cmd+Z / Cmd+Shift+Z
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && !e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        undo();
+      } else if (mod && e.shiftKey && e.key === 'z') {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [undo, redo]);
 
   const selectedNode = useMemo(
     () =>
@@ -119,9 +153,12 @@ export function EditorProvider({
     URL.revokeObjectURL(url);
   }, [state.doc]);
 
+  const canUndo = undoStack.current.length > 0;
+  const canRedo = redoStack.current.length > 0;
+
   const value = useMemo(
-    () => ({ state, selectNode, updateNode, selectedNode, exportPen }),
-    [state, selectNode, updateNode, selectedNode, exportPen],
+    () => ({ state, selectNode, updateNode, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
+    [state, selectNode, updateNode, selectedNode, exportPen, undo, redo, canUndo, canRedo],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;

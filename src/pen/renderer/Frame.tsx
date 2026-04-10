@@ -28,7 +28,11 @@ export function Frame({ node }: { node: FrameNode }) {
 
   const bgFill = resolveFill(node.fill, ctx);
   const filter = resolveFilter(ctx);
-  const rx = typeof node.cornerRadius === 'number' ? node.cornerRadius : undefined;
+  // cornerRadius をクランプ（Pencil: min(r, w/2, h/2) で pill 形状を実現）
+  const rawRx = typeof node.cornerRadius === 'number' ? node.cornerRadius : undefined;
+  const rx = rawRx != null && width != null && height != null
+    ? Math.min(rawRx, (width) / 2, (height) / 2)
+    : rawRx;
 
   // 部分ボーダー判定
   const partial = resolvePartialStroke(node.stroke);

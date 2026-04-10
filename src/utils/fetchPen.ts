@@ -4,7 +4,8 @@
 function validateUrl(url: string): URL {
   let parsed: URL;
   try {
-    parsed = new URL(url);
+    // 相対パス(/path/to/file.pen)は現在のオリジンで解決
+    parsed = new URL(url, window.location.origin);
   } catch {
     throw new Error(`無効な URL です: ${url}`);
   }

@@ -10,9 +10,10 @@ import {
 export function Rectangle({ node }: { node: RectangleNode }) {
   const registry = usePaintRegistry() ?? undefined;
   const ctx = { nodeId: node.id, registry };
-  const rx = typeof node.cornerRadius === 'number' ? node.cornerRadius : undefined;
   const width = typeof node.width === 'number' ? node.width : 0;
   const height = typeof node.height === 'number' ? node.height : 0;
+  const rawRx = typeof node.cornerRadius === 'number' ? node.cornerRadius : undefined;
+  const rx = rawRx != null ? Math.min(rawRx, width / 2, height / 2) : rawRx;
   return (
     <rect
       x={node.x ?? 0}
