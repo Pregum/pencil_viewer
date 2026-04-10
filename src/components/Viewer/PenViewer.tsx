@@ -328,11 +328,9 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
     (direction: 'h' | 'j' | 'k' | 'l', count: number) => {
       if (frames.length === 0) return;
 
-      // Sort frames by position for directional navigation
       const sortedByX = [...frames].sort((a, b) => a.x - b.x || a.y - b.y);
       const sortedByY = [...frames].sort((a, b) => a.y - b.y || a.x - b.x);
 
-      // Find current frame index
       const currentId = activeFrameId;
       let sorted: FrameEntry[];
       let step: number;
@@ -350,9 +348,31 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
       const startIdx = currentIdx >= 0 ? currentIdx : (step > 0 ? -1 : sorted.length);
       const targetIdx = Math.max(0, Math.min(sorted.length - 1, startIdx + step));
       const target = sorted[targetIdx];
-      if (target) zoomToFrame(target);
+      if (!target) return;
+
+      // 少し引いたビュー: ターゲットの前後3フレーム分のバウンディングボックスを表示
+      const contextRange = 3;
+      const lo = Math.max(0, targetIdx - contextRange);
+      const hi = Math.min(sorted.length - 1, targetIdx + contextRange);
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (let i = lo; i <= hi; i++) {
+        const f = sorted[i];
+        minX = Math.min(minX, f.x);
+        minY = Math.min(minY, f.y);
+        maxX = Math.max(maxX, f.x + f.width);
+        maxY = Math.max(maxY, f.y + f.height);
+      }
+      const pad = 60;
+      pushHistory(target.id);
+      setActiveFrameId(target.id);
+      zoomToRect({
+        x: minX - pad,
+        y: minY - pad,
+        width: maxX - minX + pad * 2,
+        height: maxY - minY + pad * 2,
+      });
     },
-    [frames, activeFrameId, zoomToFrame],
+    [frames, activeFrameId, pushHistory, zoomToRect],
   );
 
   // Keyboard shortcuts
