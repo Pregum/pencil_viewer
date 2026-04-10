@@ -445,6 +445,21 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
           vimTimeout.current = setTimeout(() => { vimGPending.current = false; vimCount.current = ''; }, 1500);
           return;
         }
+        // Shift + H/J/K/L: camera half-page scroll
+        if (e.key === 'H' || e.key === 'J' || e.key === 'K' || e.key === 'L') {
+          e.preventDefault();
+          const dir = e.key.toLowerCase();
+          const halfW = camera.svgWidth / 2;
+          const el = containerRef.current;
+          const aspect = el ? el.clientWidth / el.clientHeight : 16 / 9;
+          const halfH = (camera.svgWidth / aspect) / 2;
+          setCamera((prev) => ({
+            ...prev,
+            cx: prev.cx + (dir === 'l' ? halfW : dir === 'h' ? -halfW : 0),
+            cy: prev.cy + (dir === 'j' ? halfH : dir === 'k' ? -halfH : 0),
+          }));
+          return;
+        }
         if (e.key === 'h' || e.key === 'j' || e.key === 'k' || e.key === 'l') {
           e.preventDefault();
           const count = Math.max(1, parseInt(vimCount.current) || 1);
@@ -454,9 +469,17 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
             // g + h/j/k/l: frame jump
             vimGPending.current = false;
             navigateVim(e.key, count);
-          } else {
-            // h/j/k/l: nudge selected node by pixels
+          } else if (document.querySelector('.node-tree__item--selected')) {
+            // Node selected: nudge node by pixels
             nudgeSelected(e.key, count);
+          } else {
+            // No selection: pan camera
+            const step = camera.svgWidth * 0.05 * count; // 5% of view per press
+            setCamera((prev) => ({
+              ...prev,
+              cx: prev.cx + (e.key === 'l' ? step : e.key === 'h' ? -step : 0),
+              cy: prev.cy + (e.key === 'j' ? step : e.key === 'k' ? -step : 0),
+            }));
           }
           return;
         }
