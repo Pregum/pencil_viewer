@@ -67,13 +67,18 @@ export function Text({ node }: { node: TextNode }) {
 
   // fixed-width text with wrapping: use foreignObject for word wrap
   if (isFixedWidth && widthForAlign > 0) {
-    const resolvedHeight = typeof node.height === 'number' ? node.height : undefined;
+    // height: レイアウト計算済みなら使う。未定なら十分な高さを確保
+    const resolvedHeight = typeof node.height === 'number' && node.height > 0
+      ? node.height
+      : undefined;
+    // フォールバック: 大きめに取って overflow:hidden で制御しない(fit_content)
+    const fallbackHeight = Math.max(fontSize * lineHeightRatio * lines.length * 5, 200);
     return (
       <foreignObject
         x={x}
         y={y}
         width={widthForAlign}
-        height={resolvedHeight ?? fontSize * lineHeightRatio * lines.length * 3}
+        height={resolvedHeight ?? fallbackHeight}
         filter={filterVal}
       >
         <div
@@ -89,7 +94,7 @@ export function Text({ node }: { node: TextNode }) {
             letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
-            overflow: 'hidden',
+            overflow: 'visible',
             margin: 0,
             padding: 0,
             textDecoration: [

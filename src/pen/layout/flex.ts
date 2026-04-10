@@ -353,8 +353,30 @@ function intrinsicSize(node: PenNode): { w: number; h: number } {
   };
 }
 
-const TEXT_CHAR_WIDTH_RATIO = 0.55;
+/** ラテン文字の平均文字幅比率 */
+const LATIN_CHAR_WIDTH_RATIO = 0.55;
+/** CJK (日本語/中国語/韓国語) 文字は全角なので fontSize とほぼ同じ幅 */
+const CJK_CHAR_WIDTH_RATIO = 1.0;
 const TEXT_LINE_HEIGHT_RATIO = 1.2;
+
+/** 文字列中の CJK 文字の割合に基づいて平均文字幅比率を推定 */
+function estimateCharWidthRatio(text: string): number {
+  if (text.length === 0) return LATIN_CHAR_WIDTH_RATIO;
+  // CJK Unified Ideographs, Hiragana, Katakana, Fullwidth forms
+  let cjkCount = 0;
+  for (let i = 0; i < Math.min(text.length, 200); i++) {
+    const code = text.charCodeAt(i);
+    if (
+      (code >= 0x3000 && code <= 0x9fff) || // CJK, Hiragana, Katakana
+      (code >= 0xf900 && code <= 0xfaff) || // CJK Compatibility
+      (code >= 0xff00 && code <= 0xffef)    // Fullwidth
+    ) {
+      cjkCount++;
+    }
+  }
+  const ratio = cjkCount / Math.min(text.length, 200);
+  return LATIN_CHAR_WIDTH_RATIO * (1 - ratio) + CJK_CHAR_WIDTH_RATIO * ratio;
+}
 
 function measureText(
   node: TextNode,
@@ -362,26 +384,40 @@ function measureText(
   rawH: SizeValue | undefined,
 ): { w: number; h: number } {
   const fontSize = node.fontSize ?? 14;
-  // Pencil の `lineHeight` は font size に対する **倍率**(ratio)。
-  // 例: lineHeight=1.5 + fontSize=20 → 30px。未指定時は 1.2 で代用。
-  // 公式仕様: "A multiplier that gets applied to the font size to determine spacing between lines."
   const lineHeightPx = (node.lineHeight ?? TEXT_LINE_HEIGHT_RATIO) * fontSize;
   const lines = normalizeTextLines(node.content);
+  const fullText = node.content ?? '';
+  const charWidthRatio = estimateCharWidthRatio(fullText);
 
   // 幅: textGrowth が固定幅の場合は確定値、それ以外は文字数 * 平均文字幅
   let w: number;
   if (typeof rawW === 'number') {
     w = rawW;
   } else {
-    const charWidth = fontSize * TEXT_CHAR_WIDTH_RATIO;
+    const charWidth = fontSize * charWidthRatio;
     const longest = lines.reduce((max, l) => Math.max(max, l.length), 0);
     w = longest * charWidth;
   }
 
-  // 高さ: 確定値があれば優先、なければ行数 * 行高
-  const measuredH = typeof rawH === 'number' ? rawH : lines.length * lineHeightPx;
+  // 高さ: 確定値があれば優先
+  if (typeof rawH === 'number') {
+    return { w: Math.max(1, w), h: rawH };
+  }
 
-  // fontSize=0 や空コンテンツでも layout が壊れないように最小 1px を確保
+  // textGrowth: "fixed-width" の場合、テキスト折り返しを考慮して行数を再計算
+  const isFixedWidth =
+    node.textGrowth === 'fixed-width' || node.textGrowth === 'fixed-width-height';
+  if (isFixedWidth && typeof rawW === 'number' && rawW > 0) {
+    const charWidth = fontSize * charWidthRatio;
+    const charsPerLine = Math.max(1, Math.floor(rawW / charWidth));
+    let totalLines = 0;
+    for (const line of lines) {
+      totalLines += Math.max(1, Math.ceil(line.length / charsPerLine));
+    }
+    return { w: Math.max(1, w), h: Math.max(1, totalLines * lineHeightPx) };
+  }
+
+  const measuredH = lines.length * lineHeightPx;
   return { w: Math.max(1, w), h: Math.max(1, measuredH) };
 }
 
