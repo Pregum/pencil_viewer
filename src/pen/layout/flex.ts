@@ -73,9 +73,21 @@ function layoutContainer(node: FrameNode | GroupNode, ctx: LayoutContext): PenNo
     return { ...(node as object), width, height, children } as PenNode;
   }
 
-  // flex layout
-  const children = flexChildren({
-    rawChildren,
+  // layoutPosition: "absolute" の子は flex flow から外して、自分の x/y
+  // のまま親の座標系に絶対配置する(Pencil 拡張プロパティ)。
+  const flowChildren: PenNode[] = [];
+  const absoluteChildren: PenNode[] = [];
+  for (const c of rawChildren) {
+    if ((c as { layoutPosition?: string }).layoutPosition === 'absolute') {
+      absoluteChildren.push(c);
+    } else {
+      flowChildren.push(c);
+    }
+  }
+
+  // flex layout(flow 内の子のみ)
+  const flowLaidOut = flexChildren({
+    rawChildren: flowChildren,
     layout,
     gap,
     padding,
@@ -85,7 +97,21 @@ function layoutContainer(node: FrameNode | GroupNode, ctx: LayoutContext): PenNo
     containerHeight: height,
   });
 
-  return { ...(node as object), width, height, children } as PenNode;
+  // absolute な子を layout: none と同じパスで処理
+  const absoluteLaidOut = absoluteChildren.map((c) =>
+    layoutNode(c, {
+      availableWidth: width,
+      availableHeight: height,
+      parentLayout: 'none',
+    }),
+  );
+
+  return {
+    ...(node as object),
+    width,
+    height,
+    children: [...flowLaidOut, ...absoluteLaidOut],
+  } as PenNode;
 }
 
 function resolveLeafSize(node: PenNode, ctx: LayoutContext): PenNode {
@@ -253,16 +279,25 @@ function intrinsicSize(node: PenNode): { w: number; h: number } {
     const fixedH = typeof rawH === 'number' ? rawH : undefined;
     if (fixedW != null && fixedH != null) return { w: fixedW, h: fixedH };
 
-    const children = node.children ?? [];
-    if (children.length === 0) return { w: fixedW ?? 0, h: fixedH ?? 0 };
+    const allChildren = node.children ?? [];
+    if (allChildren.length === 0) return { w: fixedW ?? 0, h: fixedH ?? 0 };
 
     // Pencil 公式仕様: Frames default to horizontal, groups default to none.
     const { layout, gap, padding } = resolveFlexProps(node);
 
+    // layoutPosition: "absolute" の子は flow に参加しないので、intrinsic 計算
+    // からも除外する。layout: none の場合は従来通り authored x/y で bbox を取る。
+    const flowChildren =
+      layout === 'none'
+        ? allChildren
+        : allChildren.filter(
+            (c) => (c as { layoutPosition?: string }).layoutPosition !== 'absolute',
+          );
+
     if (layout === 'none') {
       let maxW = 0;
       let maxH = 0;
-      for (const c of children) {
+      for (const c of flowChildren) {
         const s = intrinsicSize(c);
         const cx = typeof (c as { x?: number }).x === 'number' ? ((c as { x: number }).x) : 0;
         const cy = typeof (c as { y?: number }).y === 'number' ? ((c as { y: number }).y) : 0;
@@ -275,7 +310,7 @@ function intrinsicSize(node: PenNode): { w: number; h: number } {
     // flex: main 方向は合計 + gap + padding、cross 方向は max + padding
     let mainTotal = 0;
     let crossMax = 0;
-    for (const c of children) {
+    for (const c of flowChildren) {
       const s = intrinsicSize(c);
       if (layout === 'horizontal') {
         mainTotal += s.w;
@@ -285,7 +320,7 @@ function intrinsicSize(node: PenNode): { w: number; h: number } {
         crossMax = Math.max(crossMax, s.w);
       }
     }
-    const mainGap = children.length > 1 ? gap * (children.length - 1) : 0;
+    const mainGap = flowChildren.length > 1 ? gap * (flowChildren.length - 1) : 0;
 
     if (layout === 'horizontal') {
       return {
