@@ -39,6 +39,9 @@ const KNOWN_TYPES = new Set([
   'icon_font',
 ]);
 
+/** ビューアーで非表示にするノードタイプ(開発者メモ等) */
+const HIDDEN_TYPES = new Set(['context', 'note', 'connection']);
+
 export function parsePen(input: unknown): ParseResult {
   const result = zPenDocument.safeParse(input);
   if (!result.success) {
@@ -61,7 +64,7 @@ export function parsePen(input: unknown): ParseResult {
   // zod は unknown で通しているので、ノードを UnsupportedNode に振り分けて
   // 型を確定させる
   const raw = result.data as { version: string; children: unknown[] };
-  const children = raw.children.map(normalizeNode);
+  const children = raw.children.map(normalizeNode).filter((n): n is PenNode => n != null);
 
   return {
     ok: true,
@@ -101,6 +104,10 @@ function normalizeNode(raw: unknown): PenNode {
   if (!type) {
     return makeUnsupported(raw, '<missing-type>');
   }
+  // 非表示ノードはスキップ(null を返して親で除外)
+  if (HIDDEN_TYPES.has(type)) {
+    return null as unknown as PenNode; // filtered out by caller
+  }
   if (!KNOWN_TYPES.has(type)) {
     return makeUnsupported(raw, type);
   }
@@ -108,7 +115,7 @@ function normalizeNode(raw: unknown): PenNode {
   // frame / group は子ノードを再帰的に normalize
   if (type === 'frame' || type === 'group') {
     const children = Array.isArray(obj.children)
-      ? (obj.children as unknown[]).map(normalizeNode)
+      ? (obj.children as unknown[]).map(normalizeNode).filter((n): n is PenNode => n != null)
       : undefined;
     return { ...(obj as unknown as FrameNode | GroupNode), children } as PenNode;
   }

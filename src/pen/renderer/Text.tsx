@@ -61,18 +61,75 @@ export function Text({ node }: { node: TextNode }) {
     }
   }
 
+  const resolvedFill = fill === 'none' ? '#111827' : fill;
+  const filterVal = resolveFilter(ctx);
+  const letterSpacing = node.letterSpacing ?? 0;
+
+  // fixed-width text with wrapping: use foreignObject for word wrap
+  if (isFixedWidth && widthForAlign > 0) {
+    const resolvedHeight = typeof node.height === 'number' ? node.height : undefined;
+    return (
+      <foreignObject
+        x={x}
+        y={y}
+        width={widthForAlign}
+        height={resolvedHeight ?? fontSize * lineHeightRatio * lines.length * 3}
+        filter={filterVal}
+      >
+        <div
+          // @ts-expect-error xmlns is valid for foreignObject children
+          xmlns="http://www.w3.org/1999/xhtml"
+          style={{
+            fontSize: `${fontSize}px`,
+            fontFamily,
+            fontWeight,
+            color: resolvedFill,
+            lineHeight: lineHeightRatio,
+            textAlign: node.textAlign ?? 'left',
+            letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            overflow: 'hidden',
+            margin: 0,
+            padding: 0,
+            textDecoration: [
+              node.underline ? 'underline' : '',
+              node.strikethrough ? 'line-through' : '',
+            ]
+              .filter(Boolean)
+              .join(' ') || undefined,
+            fontStyle: node.fontStyle ?? undefined,
+          }}
+        >
+          {node.content ?? ''}
+        </div>
+      </foreignObject>
+    );
+  }
+
+  // auto / fit-content text: simple SVG text
   return (
     <text
       x={renderX}
       y={y}
-      fill={fill === 'none' ? '#111827' : fill}
+      fill={resolvedFill}
       fontSize={fontSize}
       fontFamily={fontFamily}
       fontWeight={fontWeight}
       dominantBaseline="text-before-edge"
       textAnchor={textAnchor}
-      filter={resolveFilter(ctx)}
-      style={{ whiteSpace: 'pre' }}
+      letterSpacing={letterSpacing || undefined}
+      filter={filterVal}
+      style={{
+        whiteSpace: 'pre',
+        textDecoration: [
+          node.underline ? 'underline' : '',
+          node.strikethrough ? 'line-through' : '',
+        ]
+          .filter(Boolean)
+          .join(' ') || undefined,
+        fontStyle: node.fontStyle ?? undefined,
+      }}
     >
       {lines.map((line, i) => (
         <tspan key={i} x={renderX} dy={i === 0 ? 0 : fontSize * lineHeightRatio}>
