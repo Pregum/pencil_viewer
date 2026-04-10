@@ -593,6 +593,22 @@ html,
   color: var(--color-text);
 }
 
+.frame-search__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.frame-search__dist {
+  font-size: 10px;
+  color: var(--color-text-subtle);
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--color-canvas);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
 .frame-search__meta {
   font-size: 11px;
   color: var(--color-text-subtle);

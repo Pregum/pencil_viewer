@@ -474,6 +474,8 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
         <FrameSearch
           frames={frames}
           activeFrameId={activeFrameId}
+          cameraCx={camera.cx}
+          cameraCy={camera.cy}
           onSelect={zoomToFrame}
           onClose={() => setShowFrameSearch(false)}
         />

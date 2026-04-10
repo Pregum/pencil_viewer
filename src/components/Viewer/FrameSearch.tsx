@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface FrameEntry {
   id: string;
@@ -12,19 +12,37 @@ interface FrameEntry {
 interface Props {
   frames: FrameEntry[];
   activeFrameId: string | null;
+  cameraCx: number;
+  cameraCy: number;
   onSelect: (frame: FrameEntry) => void;
   onClose: () => void;
 }
 
-export function FrameSearch({ frames, activeFrameId, onSelect, onClose }: Props) {
+function frameCenterDist(f: FrameEntry, cx: number, cy: number): number {
+  const fx = f.x + f.width / 2;
+  const fy = f.y + f.height / 2;
+  return Math.sqrt((fx - cx) ** 2 + (fy - cy) ** 2);
+}
+
+function formatDist(d: number): string {
+  if (d < 1000) return `${Math.round(d)}`;
+  return `${(d / 1000).toFixed(1)}k`;
+}
+
+export function FrameSearch({ frames, activeFrameId, cameraCx, cameraCy, onSelect, onClose }: Props) {
   const [query, setQuery] = useState('');
   const [selectedIdx, setSelectedIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const filtered = frames.filter((f) =>
-    f.name.toLowerCase().includes(query.toLowerCase()),
-  );
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase();
+    const matched = frames.filter((f) => f.name.toLowerCase().includes(q));
+    // Sort by distance from current camera center
+    return matched.sort(
+      (a, b) => frameCenterDist(a, cameraCx, cameraCy) - frameCenterDist(b, cameraCx, cameraCy),
+    );
+  }, [frames, query, cameraCx, cameraCy]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -34,7 +52,6 @@ export function FrameSearch({ frames, activeFrameId, onSelect, onClose }: Props)
     setSelectedIdx(0);
   }, [query]);
 
-  // Scroll selected item into view
   useEffect(() => {
     const list = listRef.current;
     if (!list) return;
@@ -83,25 +100,31 @@ export function FrameSearch({ frames, activeFrameId, onSelect, onClose }: Props)
           {filtered.length === 0 && (
             <div className="frame-search__empty">No frames found</div>
           )}
-          {filtered.map((f, i) => (
-            <div
-              key={f.id}
-              className={`frame-search__item ${i === selectedIdx ? 'frame-search__item--active' : ''} ${f.id === activeFrameId ? 'frame-search__item--current' : ''}`}
-              onMouseEnter={() => setSelectedIdx(i)}
-              onClick={() => {
-                onSelect(f);
-                onClose();
-              }}
-            >
-              <span className="frame-search__name">
-                {f.id === activeFrameId && <span className="frame-search__current-dot" />}
-                {f.name}
-              </span>
-              <span className="frame-search__meta">
-                {Math.round(f.width)} x {Math.round(f.height)}
-              </span>
-            </div>
-          ))}
+          {filtered.map((f, i) => {
+            const dist = frameCenterDist(f, cameraCx, cameraCy);
+            return (
+              <div
+                key={f.id}
+                className={`frame-search__item ${i === selectedIdx ? 'frame-search__item--active' : ''} ${f.id === activeFrameId ? 'frame-search__item--current' : ''}`}
+                onMouseEnter={() => setSelectedIdx(i)}
+                onClick={() => {
+                  onSelect(f);
+                  onClose();
+                }}
+              >
+                <span className="frame-search__name">
+                  {f.id === activeFrameId && <span className="frame-search__current-dot" />}
+                  {f.name}
+                </span>
+                <span className="frame-search__right">
+                  <span className="frame-search__dist">{formatDist(dist)}</span>
+                  <span className="frame-search__meta">
+                    {Math.round(f.width)} x {Math.round(f.height)}
+                  </span>
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

@@ -1,27 +1,69 @@
 /**
  * icon_font レンダラ。
  *
- * Pencil は複数の icon font を許可している:
- *   - Material Symbols Outlined / Rounded / Sharp
- *   - lucide / feather / phosphor
+ * 対応フォントファミリー:
+ *   - lucide: lucide パッケージの SVG パスデータを使って描画
+ *   - Material Symbols Outlined / Rounded / Sharp: リガチャフォントで描画
  *
- * MVP: Material Symbols 系のみ @font-face 経由で本物のアイコンとして描画する。
- * それ以外(lucide など)はフォントとして配信されていないので、プレースホルダ
- * として iconFontName を小さいラベルで表示する。
- *
- * Material Symbols はリガチャで描画するので、`content` に iconFontName を
- * そのまま入れれば対応するグリフが表示される。
+ * lucide の iconFontName は kebab-case (例: "arrow-left")。
+ * lucide パッケージは PascalCase (例: "ArrowLeft") でエクスポートしている。
  */
 
 import type { IconFontNode } from '../types';
 import { usePaintRegistry } from '../paint/PaintContext';
 import { resolveFill, resolveFilter } from './paint';
+import { icons as lucideIcons } from 'lucide';
 
 const MATERIAL_FAMILIES: Record<string, string> = {
   'Material Symbols Outlined': 'Material Symbols Outlined',
   'Material Symbols Rounded': 'Material Symbols Rounded',
   'Material Symbols Sharp': 'Material Symbols Sharp',
 };
+
+/** kebab-case / snake_case → PascalCase */
+function toPascalCase(name: string): string {
+  return name.replace(/(^|[-_ ])([a-z0-9])/g, (_, __, c: string) => c.toUpperCase());
+}
+
+/** lucide の IconNode 配列を SVG 子要素に変換 */
+function renderLucideElements(
+  iconData: [string, Record<string, string>][],
+): React.ReactNode[] {
+  return iconData.map(([tag, attrs], i) => {
+    // SVG element attributes
+    const props: Record<string, unknown> = { key: i };
+    for (const [k, v] of Object.entries(attrs)) {
+      // Convert kebab-case attrs to camelCase for React
+      const reactKey = k.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+      props[reactKey] = v;
+    }
+
+    switch (tag) {
+      case 'path':
+        return <path {...props} />;
+      case 'circle':
+        return <circle {...props} />;
+      case 'rect':
+        return <rect {...props} />;
+      case 'line':
+        return <line {...props} />;
+      case 'polyline':
+        return <polyline {...props} />;
+      case 'polygon':
+        return <polygon {...props} />;
+      case 'ellipse':
+        return <ellipse {...props} />;
+      default:
+        return null;
+    }
+  });
+}
+
+function getLucideIcon(name: string): [string, Record<string, string>][] | null {
+  const key = toPascalCase(name);
+  const entry = (lucideIcons as Record<string, [string, Record<string, string>][]>)[key];
+  return entry ?? null;
+}
 
 export function IconFont({ node }: { node: IconFontNode }) {
   const registry = usePaintRegistry() ?? undefined;
@@ -35,14 +77,16 @@ export function IconFont({ node }: { node: IconFontNode }) {
   const family = node.iconFontFamily ?? 'Material Symbols Outlined';
   const fill = resolveFill(node.fill, ctx);
   const filter = resolveFilter(ctx);
+  const resolvedFill = fill === 'none' ? '#111827' : fill;
 
+  // Material Symbols: リガチャ描画
   const isMaterial = family in MATERIAL_FAMILIES;
   if (isMaterial && name) {
     return (
       <text
         x={x + width / 2}
         y={y + height / 2}
-        fill={fill === 'none' ? '#111827' : fill}
+        fill={resolvedFill}
         fontFamily={MATERIAL_FAMILIES[family]}
         fontSize={size}
         fontWeight={node.weight ?? 400}
@@ -50,7 +94,6 @@ export function IconFont({ node }: { node: IconFontNode }) {
         textAnchor="middle"
         filter={filter}
         style={{
-          // Material Symbols はリガチャ描画
           fontVariationSettings: `'FILL' 0, 'wght' ${node.weight ?? 400}`,
         }}
       >
@@ -59,7 +102,31 @@ export function IconFont({ node }: { node: IconFontNode }) {
     );
   }
 
-  // 未対応フォント: プレースホルダ(破線矩形 + ラベル)
+  // Lucide: SVG パスで描画
+  if (family === 'lucide') {
+    const iconData = getLucideIcon(name);
+    if (iconData) {
+      // lucide icons are designed on a 24x24 viewBox
+      const scale = size / 24;
+      const offsetX = x + (width - size) / 2;
+      const offsetY = y + (height - size) / 2;
+      return (
+        <g
+          transform={`translate(${offsetX} ${offsetY}) scale(${scale})`}
+          fill="none"
+          stroke={resolvedFill}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          filter={filter}
+        >
+          {renderLucideElements(iconData)}
+        </g>
+      );
+    }
+  }
+
+  // 未対応フォント / 見つからないアイコン: プレースホルダ
   return (
     <g transform={`translate(${x} ${y})`} filter={filter}>
       <rect

@@ -12,6 +12,15 @@ export default defineConfig(({ mode, command }) => {
   return {
     plugins: [react()],
     base: env.VITE_BASE ?? defaultBase,
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            lucide: ['lucide'],
+          },
+        },
+      },
+    },
     test: {
       environment: 'jsdom',
       globals: true,
