@@ -34,7 +34,8 @@ html,
 .app {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .header {
@@ -70,6 +71,8 @@ html,
   justify-content: center;
   padding: 48px;
   background: var(--color-canvas);
+  overflow: hidden;
+  min-height: 0;
 }
 
 .muted {
@@ -404,7 +407,6 @@ html,
 .viewer__svg {
   width: 100%;
   height: 100%;
-  will-change: transform;
 }
 
 .viewer__frame-nav {
@@ -595,6 +597,20 @@ html,
   font-size: 11px;
   color: var(--color-text-subtle);
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.frame-search__item--current {
+  border-left: 3px solid var(--color-accent);
+}
+
+.frame-search__current-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: var(--color-accent);
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
 }
 
 .frame-search__empty {

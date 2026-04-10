@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PenDocument, PenNode } from '../../pen/types';
 import { PenNodeView } from '../../pen/renderer/PenNode';
-import { computeViewBox } from '../../pen/renderer/viewBox';
+import { computeViewBox, type ViewBox } from '../../pen/renderer/viewBox';
 import { buildPaintRegistry } from '../../pen/paint/registry';
 import { Defs } from '../../pen/paint/Defs';
 import { PaintRegistryProvider } from '../../pen/paint/PaintContext';
@@ -11,14 +11,10 @@ import { FrameSearch } from './FrameSearch';
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
 const ZOOM_SENSITIVITY = 0.002;
-const FRAME_PADDING = 60; // px padding when zooming to a frame
-
-function clampScale(s: number) {
-  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
-}
+const FRAME_PADDING_RATIO = 0.1; // 10% padding around frame when zooming to it
 
 /** Collect all frame/group nodes with absolute bounds */
-interface FrameEntry {
+export interface FrameEntry {
   id: string;
   name: string;
   x: number;
@@ -48,120 +44,141 @@ function collectFrames(nodes: PenNode[]): FrameEntry[] {
   return result;
 }
 
-interface ViewState {
-  scale: number;
-  tx: number;
-  ty: number;
-  frameId: string | null;
+/**
+ * Camera state: we track a "camera" viewBox in SVG coordinate space.
+ * The SVG viewBox is set to this camera, so the browser re-renders
+ * the vector art at full resolution at any zoom level.
+ */
+interface Camera {
+  cx: number; // center x in SVG coords
+  cy: number; // center y in SVG coords
+  /** How many SVG units fit in the viewport width */
+  svgWidth: number;
+}
+
+interface HistoryEntry {
+  camera: Camera;
+  activeFrameId: string | null;
 }
 
 export function PenViewer({ doc }: { doc: PenDocument }) {
-  const vb = computeViewBox(doc);
+  const baseVb = computeViewBox(doc);
   const registry = useMemo(() => buildPaintRegistry(doc), [doc]);
   const frames = useMemo(() => collectFrames(doc.children), [doc]);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
-  const [translate, setTranslate] = useState({ x: 0, y: 0 });
+
+  // Camera in SVG coordinate space
+  const [camera, setCamera] = useState<Camera>(() => ({
+    cx: baseVb.x + baseVb.width / 2,
+    cy: baseVb.y + baseVb.height / 2,
+    svgWidth: baseVb.width,
+  }));
+
   const isPanning = useRef(false);
   const isSpaceHeld = useRef(false);
   const panStart = useRef({ x: 0, y: 0 });
-  const translateStart = useRef({ x: 0, y: 0 });
+  const cameraStart = useRef<Camera>(camera);
+
+  // Active frame highlight
+  const [activeFrameId, setActiveFrameId] = useState<string | null>(null);
 
   // Navigation history
-  const [history, setHistory] = useState<ViewState[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showFrameSearch, setShowFrameSearch] = useState(false);
 
-  // Push current view to history
+  // Compute the actual viewBox from camera
+  const getViewBox = useCallback((): ViewBox => {
+    const el = containerRef.current;
+    const aspect = el ? el.clientWidth / el.clientHeight : 16 / 9;
+    const svgHeight = camera.svgWidth / aspect;
+    return {
+      x: camera.cx - camera.svgWidth / 2,
+      y: camera.cy - svgHeight / 2,
+      width: camera.svgWidth,
+      height: svgHeight,
+    };
+  }, [camera]);
+
+  const currentVb = getViewBox();
+  const scale = baseVb.width / camera.svgWidth;
+  const zoomPercent = Math.round(scale * 100);
+
+  // Push current state to history
   const pushHistory = useCallback(
     (frameId: string | null) => {
-      const entry: ViewState = { scale, tx: translate.x, ty: translate.y, frameId };
-      setHistory((prev) => {
-        const truncated = prev.slice(0, historyIndex + 1);
-        return [...truncated, entry];
-      });
+      const entry: HistoryEntry = { camera: { ...camera }, activeFrameId: frameId };
+      setHistory((prev) => [...prev.slice(0, historyIndex + 1), entry]);
       setHistoryIndex((prev) => prev + 1);
     },
-    [scale, translate, historyIndex],
+    [camera, historyIndex],
   );
 
-  const applyViewState = useCallback((vs: ViewState) => {
-    setScale(vs.scale);
-    setTranslate({ x: vs.tx, y: vs.ty });
+  const applyHistoryEntry = useCallback((entry: HistoryEntry) => {
+    setCamera(entry.camera);
+    setActiveFrameId(entry.activeFrameId);
   }, []);
 
   const navigateBack = useCallback(() => {
     if (historyIndex <= 0) return;
-    // Save current state if we're at the end
     if (historyIndex === history.length - 1) {
-      setHistory((prev) => [
-        ...prev,
-        { scale, tx: translate.x, ty: translate.y, frameId: null },
-      ]);
+      setHistory((prev) => [...prev, { camera: { ...camera }, activeFrameId }]);
     }
     const newIdx = historyIndex - 1;
     setHistoryIndex(newIdx);
-    applyViewState(history[newIdx]);
-  }, [historyIndex, history, scale, translate, applyViewState]);
+    applyHistoryEntry(history[newIdx]);
+  }, [historyIndex, history, camera, activeFrameId, applyHistoryEntry]);
 
   const navigateForward = useCallback(() => {
     if (historyIndex >= history.length - 1) return;
     const newIdx = historyIndex + 1;
     setHistoryIndex(newIdx);
-    applyViewState(history[newIdx]);
-  }, [historyIndex, history, applyViewState]);
+    applyHistoryEntry(history[newIdx]);
+  }, [historyIndex, history, applyHistoryEntry]);
 
   // Zoom to a specific frame
   const zoomToFrame = useCallback(
     (frame: FrameEntry) => {
-      const el = containerRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-
-      // Save current view before navigating
       pushHistory(frame.id);
+      setActiveFrameId(frame.id);
 
-      // Calculate scale to fit the frame with padding
-      const scaleX = (rect.width - FRAME_PADDING * 2) / frame.width;
-      const scaleY = (rect.height - FRAME_PADDING * 2) / frame.height;
-      const newScale = clampScale(Math.min(scaleX, scaleY));
+      const padX = frame.width * FRAME_PADDING_RATIO;
+      const padY = frame.height * FRAME_PADDING_RATIO;
+      const el = containerRef.current;
+      const aspect = el ? el.clientWidth / el.clientHeight : 16 / 9;
 
-      // SVG coordinate → screen coordinate needs viewBox mapping
-      // SVG viewBox maps vb to the full container size at scale=1
-      const svgScaleX = rect.width / vb.width;
-      const svgScaleY = rect.height / vb.height;
-      const svgScale = Math.min(svgScaleX, svgScaleY);
+      // Fit the frame (with padding) into the viewport
+      const fitWidth = frame.width + padX * 2;
+      const fitHeight = frame.height + padY * 2;
+      const fitByWidth = fitWidth;
+      const fitByHeight = fitHeight * aspect;
+      const svgWidth = Math.max(fitByWidth, fitByHeight);
 
-      // Frame position in "unscaled SVG pixel" coordinates
-      const frameSvgX = (frame.x - vb.x) * svgScale;
-      const frameSvgY = (frame.y - vb.y) * svgScale;
-      const frameSvgW = frame.width * svgScale;
-      const frameSvgH = frame.height * svgScale;
-
-      // Center the frame
-      const tx = rect.width / 2 - (frameSvgX + frameSvgW / 2) * newScale;
-      const ty = rect.height / 2 - (frameSvgY + frameSvgH / 2) * newScale;
-
-      setScale(newScale);
-      setTranslate({ x: tx, y: ty });
+      setCamera({
+        cx: frame.x + frame.width / 2,
+        cy: frame.y + frame.height / 2,
+        svgWidth: clampSvgWidth(svgWidth),
+      });
     },
-    [pushHistory, vb],
+    [pushHistory],
   );
 
-  // Space key for hand tool (Figma style)
+  function clampSvgWidth(w: number) {
+    const minW = baseVb.width / MAX_SCALE;
+    const maxW = baseVb.width / MIN_SCALE;
+    return Math.min(maxW, Math.max(minW, w));
+  }
+
+  // Space key for hand tool
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !e.repeat) {
-        isSpaceHeld.current = true;
-      }
+      if (e.code === 'Space' && !e.repeat) isSpaceHeld.current = true;
     };
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        isSpaceHeld.current = false;
-      }
+      if (e.code === 'Space') isSpaceHeld.current = false;
     };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
@@ -171,34 +188,60 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
     };
   }, []);
 
-  // Ctrl+wheel zoom (pinch-to-zoom on trackpad also fires ctrlKey)
-  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    if (e.ctrlKey || e.metaKey) {
+  // Prevent page scroll — attach native listener with passive:false
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const rect = containerRef.current!.getBoundingClientRect();
-      const cursorX = e.clientX - rect.left;
-      const cursorY = e.clientY - rect.top;
+      e.stopPropagation();
 
-      const delta = -e.deltaY * ZOOM_SENSITIVITY;
-      setScale((prev) => {
-        const next = clampScale(prev * (1 + delta));
-        const ratio = next / prev;
-        setTranslate((t) => ({
-          x: cursorX - ratio * (cursorX - t.x),
-          y: cursorY - ratio * (cursorY - t.y),
+      const rect = el.getBoundingClientRect();
+
+      if (e.ctrlKey || e.metaKey) {
+        // Zoom: adjust svgWidth (inverse of scale)
+        const delta = -e.deltaY * ZOOM_SENSITIVITY;
+        const factor = 1 / (1 + delta); // smaller svgWidth = zoomed in
+
+        // Cursor position as fraction of viewport
+        const fx = (e.clientX - rect.left) / rect.width;
+        const fy = (e.clientY - rect.top) / rect.height;
+
+        setCamera((prev) => {
+          const aspect = rect.width / rect.height;
+          const oldH = prev.svgWidth / aspect;
+          const newW = clampSvgWidth(prev.svgWidth * factor);
+          const newH = newW / aspect;
+
+          // Keep the point under cursor fixed
+          const oldLeft = prev.cx - prev.svgWidth / 2;
+          const oldTop = prev.cy - oldH / 2;
+          const cursorSvgX = oldLeft + fx * prev.svgWidth;
+          const cursorSvgY = oldTop + fy * oldH;
+          const newLeft = cursorSvgX - fx * newW;
+          const newTop = cursorSvgY - fy * newH;
+
+          return {
+            cx: newLeft + newW / 2,
+            cy: newTop + newH / 2,
+            svgWidth: newW,
+          };
+        });
+      } else {
+        // Pan: convert pixel delta to SVG units
+        const pixelsPerSvgUnit = rect.width / camera.svgWidth;
+        setCamera((prev) => ({
+          ...prev,
+          cx: prev.cx + e.deltaX / pixelsPerSvgUnit,
+          cy: prev.cy + e.deltaY / pixelsPerSvgUnit,
         }));
-        return next;
-      });
-      return;
-    }
+      }
+    };
 
-    // plain wheel / two-finger scroll = pan
-    e.preventDefault();
-    setTranslate((t) => ({
-      x: t.x - e.deltaX,
-      y: t.y - e.deltaY,
-    }));
-  }, []);
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [camera.svgWidth]);
 
   // Pan: space+drag, middle-button drag, or alt+drag
   const handlePointerDown = useCallback(
@@ -211,96 +254,93 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
 
       isPanning.current = true;
       panStart.current = { x: e.clientX, y: e.clientY };
-      translateStart.current = { ...translate };
+      cameraStart.current = { ...camera };
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
       e.preventDefault();
     },
-    [translate],
+    [camera],
   );
 
-  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isPanning.current) return;
-    setTranslate({
-      x: translateStart.current.x + (e.clientX - panStart.current.x),
-      y: translateStart.current.y + (e.clientY - panStart.current.y),
-    });
-  }, []);
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!isPanning.current) return;
+      const el = containerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const pixelsPerSvgUnit = rect.width / cameraStart.current.svgWidth;
+      const dx = (e.clientX - panStart.current.x) / pixelsPerSvgUnit;
+      const dy = (e.clientY - panStart.current.y) / pixelsPerSvgUnit;
+      setCamera({
+        ...cameraStart.current,
+        cx: cameraStart.current.cx - dx,
+        cy: cameraStart.current.cy - dy,
+      });
+    },
+    [],
+  );
 
   const handlePointerUp = useCallback(() => {
     isPanning.current = false;
   }, []);
 
   // Zoom to center helper
-  const zoomTo = useCallback((newScale: number) => {
-    const el = containerRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const cx = rect.width / 2;
-    const cy = rect.height / 2;
-    setScale((prev) => {
-      const clamped = clampScale(newScale);
-      const ratio = clamped / prev;
-      setTranslate((t) => ({
-        x: cx - ratio * (cx - t.x),
-        y: cy - ratio * (cy - t.y),
-      }));
-      return clamped;
-    });
+  const zoomByFactor = useCallback((factor: number) => {
+    setCamera((prev) => ({
+      ...prev,
+      svgWidth: clampSvgWidth(prev.svgWidth / factor),
+    }));
   }, []);
 
   const resetView = useCallback(() => {
-    setScale(1);
-    setTranslate({ x: 0, y: 0 });
-  }, []);
+    setCamera({
+      cx: baseVb.x + baseVb.width / 2,
+      cy: baseVb.y + baseVb.height / 2,
+      svgWidth: baseVb.width,
+    });
+    setActiveFrameId(null);
+  }, [baseVb]);
+
+  const zoomTo100 = useCallback(() => {
+    setCamera((prev) => ({
+      ...prev,
+      svgWidth: baseVb.width,
+    }));
+  }, [baseVb]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
-
-      // Cmd+[ : navigate back
       if (mod && e.key === '[') {
         e.preventDefault();
         navigateBack();
-        return;
-      }
-      // Cmd+] : navigate forward
-      if (mod && e.key === ']') {
+      } else if (mod && e.key === ']') {
         e.preventDefault();
         navigateForward();
-        return;
-      }
-      // Cmd+P : frame search
-      if (mod && e.key === 'p') {
+      } else if (mod && e.key === 'p') {
         e.preventDefault();
         setShowFrameSearch((v) => !v);
-        return;
-      }
-      // Cmd+/ : show shortcuts
-      if (mod && e.key === '/') {
+      } else if (mod && e.key === '/') {
         e.preventDefault();
         setShowShortcuts((v) => !v);
-        return;
-      }
-      if (mod && e.key === '0') {
+      } else if (mod && e.key === '0') {
         e.preventDefault();
         resetView();
       } else if (mod && e.key === '1') {
         e.preventDefault();
-        zoomTo(1);
+        zoomTo100();
       } else if (mod && (e.key === '=' || e.key === '+')) {
         e.preventDefault();
-        zoomTo(scale * 1.25);
+        zoomByFactor(1.25);
       } else if (mod && e.key === '-') {
         e.preventDefault();
-        zoomTo(scale / 1.25);
+        zoomByFactor(1 / 1.25);
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [scale, zoomTo, resetView, navigateBack, navigateForward]);
+  }, [zoomByFactor, resetView, zoomTo100, navigateBack, navigateForward]);
 
-  const zoomPercent = Math.round(scale * 100);
   const cursor = isSpaceHeld.current || isPanning.current ? 'grab' : 'default';
 
   return (
@@ -310,7 +350,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
           type="button"
           className="viewer__zoom-btn"
           title="Zoom out (Cmd+-)"
-          onClick={() => zoomTo(scale / 1.25)}
+          onClick={() => zoomByFactor(1 / 1.25)}
         >
           -
         </button>
@@ -321,7 +361,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
           type="button"
           className="viewer__zoom-btn"
           title="Zoom in (Cmd++)"
-          onClick={() => zoomTo(scale * 1.25)}
+          onClick={() => zoomByFactor(1.25)}
         >
           +
         </button>
@@ -359,7 +399,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
               </button>
               <select
                 className="viewer__frame-select"
-                value=""
+                value={activeFrameId ?? ''}
                 onChange={(e) => {
                   const frame = frames.find((f) => f.id === e.target.value);
                   if (frame) zoomToFrame(frame);
@@ -391,7 +431,6 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
       <div
         ref={containerRef}
         className="viewer__canvas"
-        onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -400,18 +439,32 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
       >
         <svg
           className="viewer__svg"
-          viewBox={`${vb.x} ${vb.y} ${vb.width} ${vb.height}`}
+          viewBox={`${currentVb.x} ${currentVb.y} ${currentVb.width} ${currentVb.height}`}
           preserveAspectRatio="xMidYMid meet"
-          style={{
-            transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
-            transformOrigin: '0 0',
-          }}
         >
           <Defs registry={registry} />
           <PaintRegistryProvider value={registry}>
             {doc.children.map((node) => (
               <PenNodeView key={node.id} node={node} />
             ))}
+            {/* Active frame highlight */}
+            {activeFrameId && frames.map((f) =>
+              f.id === activeFrameId ? (
+                <rect
+                  key={`highlight-${f.id}`}
+                  x={f.x}
+                  y={f.y}
+                  width={f.width}
+                  height={f.height}
+                  fill="none"
+                  stroke="#7c3aed"
+                  strokeWidth={2 / scale}
+                  strokeDasharray={`${6 / scale} ${4 / scale}`}
+                  rx={4 / scale}
+                  pointerEvents="none"
+                />
+              ) : null,
+            )}
           </PaintRegistryProvider>
         </svg>
       </div>
@@ -420,6 +473,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
       {showFrameSearch && (
         <FrameSearch
           frames={frames}
+          activeFrameId={activeFrameId}
           onSelect={zoomToFrame}
           onClose={() => setShowFrameSearch(false)}
         />

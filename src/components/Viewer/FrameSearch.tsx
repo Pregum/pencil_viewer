@@ -11,11 +11,12 @@ interface FrameEntry {
 
 interface Props {
   frames: FrameEntry[];
+  activeFrameId: string | null;
   onSelect: (frame: FrameEntry) => void;
   onClose: () => void;
 }
 
-export function FrameSearch({ frames, onSelect, onClose }: Props) {
+export function FrameSearch({ frames, activeFrameId, onSelect, onClose }: Props) {
   const [query, setQuery] = useState('');
   const [selectedIdx, setSelectedIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -85,14 +86,17 @@ export function FrameSearch({ frames, onSelect, onClose }: Props) {
           {filtered.map((f, i) => (
             <div
               key={f.id}
-              className={`frame-search__item ${i === selectedIdx ? 'frame-search__item--active' : ''}`}
+              className={`frame-search__item ${i === selectedIdx ? 'frame-search__item--active' : ''} ${f.id === activeFrameId ? 'frame-search__item--current' : ''}`}
               onMouseEnter={() => setSelectedIdx(i)}
               onClick={() => {
                 onSelect(f);
                 onClose();
               }}
             >
-              <span className="frame-search__name">{f.name}</span>
+              <span className="frame-search__name">
+                {f.id === activeFrameId && <span className="frame-search__current-dot" />}
+                {f.name}
+              </span>
               <span className="frame-search__meta">
                 {Math.round(f.width)} x {Math.round(f.height)}
               </span>
