@@ -575,7 +575,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
               />
             ) : null,
           )}
-          <HintLabels vimMode={vimMode} svgScale={scale} />
+          <HintLabels vimMode={vimMode} svgScale={scale} cameraCx={camera.cx} cameraCy={camera.cy} viewBox={currentVb} />
         </svg>
       </div>
 
