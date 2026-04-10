@@ -10,6 +10,8 @@ export interface EditorState {
   selectedNodeId: string | null;
   /** マルチ選択（vim visual mode 等） */
   selectedNodeIds: Set<string>;
+  /** vim insert mode（テキスト編集中） */
+  insertMode: boolean;
 }
 
 /** ドキュメントツリー内のノードを再帰的に更新 */
@@ -61,6 +63,8 @@ interface EditorContextValue {
   updateNode: (nodeId: string, patch: Partial<PenNode>) => void;
   selectedNode: PenNode | null;
   selectMultiple: (nodeIds: string[]) => void;
+  enterInsertMode: () => void;
+  exitInsertMode: () => void;
   /** Undo 履歴に積まずにノード更新（ドラッグ中の中間更新用） */
   updateNodeSilent: (nodeId: string, patch: Partial<PenNode>) => void;
   /** Undo 用: 現在の doc を明示的に undo スタックに積む */
@@ -82,7 +86,7 @@ export function EditorProvider({
   doc: PenDocument;
   children: React.ReactNode;
 }) {
-  const [state, setState] = useState<EditorState>({ doc, selectedNodeId: null, selectedNodeIds: new Set() });
+  const [state, setState] = useState<EditorState>({ doc, selectedNodeId: null, selectedNodeIds: new Set(), insertMode: false });
 
   // Undo/Redo stacks store doc snapshots
   const undoStack = useRef<PenDocument[]>([]);
@@ -102,6 +106,14 @@ export function EditorProvider({
     (nodeIds: string[]) => setState((s) => ({ ...s, selectedNodeIds: new Set(nodeIds), selectedNodeId: nodeIds[0] ?? null })),
     [],
   );
+
+  const enterInsertMode = useCallback(() => {
+    setState((s) => ({ ...s, insertMode: true }));
+  }, []);
+
+  const exitInsertMode = useCallback(() => {
+    setState((s) => ({ ...s, insertMode: false }));
+  }, []);
 
   const updateNode = useCallback(
     (nodeId: string, patch: Partial<PenNode>) => {
@@ -188,9 +200,13 @@ export function EditorProvider({
       }
       const tag = (e.target as HTMLElement).tagName;
       const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-      // Escape: deselect node (when no modal is open)
-      if (!isInput && e.key === 'Escape') {
-        setState((s) => (s.selectedNodeId ? { ...s, selectedNodeId: null } : s));
+      // Escape: exit insert mode first, then deselect
+      if (e.key === 'Escape') {
+        setState((s) => {
+          if (s.insertMode) return { ...s, insertMode: false };
+          if (!isInput && s.selectedNodeId) return { ...s, selectedNodeId: null };
+          return s;
+        });
       }
       // Backspace/Delete: delete selected node (only when not in input)
       if (!isInput && (e.key === 'Backspace' || e.key === 'Delete')) {
@@ -228,8 +244,8 @@ export function EditorProvider({
   const canRedo = redoStack.current.length > 0;
 
   const value = useMemo(
-    () => ({ state, selectNode, selectMultiple, updateNode, updateNodeSilent, pushUndoCheckpoint, deleteNode, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
-    [state, selectNode, selectMultiple, updateNode, updateNodeSilent, pushUndoCheckpoint, deleteNode, selectedNode, exportPen, undo, redo, canUndo, canRedo],
+    () => ({ state, selectNode, selectMultiple, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, pushUndoCheckpoint, deleteNode, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
+    [state, selectNode, selectMultiple, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, pushUndoCheckpoint, deleteNode, selectedNode, exportPen, undo, redo, canUndo, canRedo],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;

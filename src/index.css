@@ -1032,6 +1032,12 @@ html,
   color: var(--color-text);
 }
 
+.viewer__vim-badge--insert {
+  color: #f97316;
+  background: #431407;
+  border-color: #9a3412;
+}
+
 .viewer__vim-badge {
   position: absolute;
   bottom: 12px;

@@ -4,7 +4,7 @@ import { computeViewBox, type ViewBox } from '../../pen/renderer/viewBox';
 import { CanvasContent } from './CanvasContent';
 import { ShortcutsDialog } from './ShortcutsDialog';
 import { FrameSearch } from './FrameSearch';
-import { EditorProvider } from '../../pen/state/EditorContext';
+import { EditorProvider, useEditor as useEditorInternal } from '../../pen/state/EditorContext';
 import { PropertyPanel } from './PropertyPanel';
 import { ExportButton } from './ExportButton';
 import { AutoIdDialog } from './AutoIdDialog';
@@ -66,6 +66,15 @@ interface Camera {
 interface HistoryEntry {
   camera: Camera;
   activeFrameId: string | null;
+}
+
+function VimBadge() {
+  const { state } = useEditorInternal();
+  return (
+    <div className={`viewer__vim-badge ${state.insertMode ? 'viewer__vim-badge--insert' : ''}`}>
+      {state.insertMode ? '-- INSERT --' : '-- NORMAL --'}
+    </div>
+  );
 }
 
 export function PenViewer({ doc }: { doc: PenDocument }) {
@@ -451,6 +460,12 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
           }
           return;
         }
+        // i / I (Shift+i): enter insert mode on editable node
+        if (e.key === 'i' || e.key === 'I') {
+          e.preventDefault();
+          window.dispatchEvent(new Event('pencil-enter-insert'));
+          return;
+        }
         // F (Shift+f) to zoom-focus on selected node
         if (e.key === 'F') {
           e.preventDefault();
@@ -640,9 +655,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
       <NudgeHandler />
       <ZoomToSelected onZoomTo={zoomToRect} />
       <VimTextObjects vimMode={vimMode} />
-      {vimMode && (
-        <div className="viewer__vim-badge">VIM</div>
-      )}
+      {vimMode && <VimBadge />}
     </div>
     </EditorProvider>
   );

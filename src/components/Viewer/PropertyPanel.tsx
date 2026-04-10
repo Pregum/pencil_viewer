@@ -3,7 +3,7 @@
  * 値を編集するとリアルタイムで SVG に反映される。
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useEditor } from '../../pen/state/EditorContext';
 import type { PenNode } from '../../pen/types';
 
@@ -69,7 +69,9 @@ function NumberField({
 }
 
 export function PropertyPanel() {
-  const { selectedNode, selectNode, updateNode } = useEditor();
+  const { selectedNode, selectNode, updateNode, state, enterInsertMode, exitInsertMode } = useEditor();
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   const patch = useCallback(
     (p: Partial<PenNode>) => {
@@ -77,6 +79,32 @@ export function PropertyPanel() {
     },
     [selectedNode, updateNode],
   );
+
+  // i / I key: enter insert mode and focus the first editable field
+  useEffect(() => {
+    const handler = () => {
+      if (!selectedNode) return;
+      const hasContent = (selectedNode as { content?: string }).content != null;
+      enterInsertMode();
+      // Focus the appropriate input after render
+      requestAnimationFrame(() => {
+        if (hasContent && contentRef.current) {
+          contentRef.current.focus();
+          contentRef.current.select();
+        } else if (nameInputRef.current) {
+          nameInputRef.current.focus();
+          nameInputRef.current.select();
+        }
+      });
+    };
+    window.addEventListener('pencil-enter-insert', handler);
+    return () => window.removeEventListener('pencil-enter-insert', handler);
+  }, [selectedNode, enterInsertMode]);
+
+  // Exit insert mode when textarea/input loses focus
+  const handleBlur = useCallback(() => {
+    if (state.insertMode) exitInsertMode();
+  }, [state.insertMode, exitInsertMode]);
 
   if (!selectedNode) {
     return (
@@ -216,10 +244,12 @@ export function PropertyPanel() {
         <div className="prop-panel__section">
           <div className="prop-panel__title">Content</div>
           <textarea
+            ref={contentRef}
             className="prop-panel__textarea"
             value={content}
             rows={Math.min(8, content.split('\n').length + 1)}
             onChange={(e) => patch({ content: e.target.value } as Partial<PenNode>)}
+            onBlur={handleBlur}
           />
         </div>
       )}
