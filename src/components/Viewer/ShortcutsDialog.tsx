@@ -13,6 +13,8 @@ const SHORTCUTS = [
   { keys: 'Cmd + ]', desc: 'Forward' },
   { keys: 'h / j / k / l', desc: 'Navigate frames (left/down/up/right)' },
   { keys: '[N] + h/j/k/l', desc: 'Jump N frames (e.g. 3l = right 3)' },
+  { keys: 'f', desc: 'Hint labels (vim mode: jump to child)' },
+  { keys: 'F', desc: 'Zoom-focus on selected node' },
   { keys: '/', desc: 'Quick frame search' },
   { keys: 'Cmd + P', desc: 'Quick frame search' },
   { keys: 'Cmd + Z', desc: 'Undo' },

@@ -410,6 +410,12 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
           navigateVim(e.key, count);
           return;
         }
+        // F (Shift+f) to zoom-focus on selected node
+        if (e.key === 'F') {
+          e.preventDefault();
+          window.dispatchEvent(new Event('pencil-zoom-to-selected'));
+          return;
+        }
         // / to open search (vim-style)
         if (e.key === '/') {
           e.preventDefault();
