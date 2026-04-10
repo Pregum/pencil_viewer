@@ -63,10 +63,10 @@ export function FrameSearch({ frames, activeFrameId, cameraCx, cameraCy, onSelec
     if (e.key === 'Escape') {
       e.preventDefault();
       onClose();
-    } else if (e.key === 'ArrowDown') {
+    } else if (e.key === 'ArrowDown' || (e.ctrlKey && e.key === 'n')) {
       e.preventDefault();
       setSelectedIdx((i) => Math.min(i + 1, filtered.length - 1));
-    } else if (e.key === 'ArrowUp') {
+    } else if (e.key === 'ArrowUp' || (e.ctrlKey && e.key === 'p')) {
       e.preventDefault();
       setSelectedIdx((i) => Math.max(i - 1, 0));
     } else if (e.key === 'Enter') {
