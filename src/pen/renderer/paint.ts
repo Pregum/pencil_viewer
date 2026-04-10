@@ -57,6 +57,29 @@ export function resolveStrokeWidth(stroke: Stroke | undefined): number {
   return Math.max(t.top ?? 0, t.right ?? 0, t.bottom ?? 0, t.left ?? 0);
 }
 
+/** stroke.thickness がオブジェクトかどうか */
+export function hasPartialStroke(stroke: Stroke | undefined): boolean {
+  return (
+    stroke != null &&
+    stroke.thickness != null &&
+    typeof stroke.thickness !== 'number'
+  );
+}
+
+/** 部分ボーダーの各辺の太さを返す */
+export function resolvePartialStroke(
+  stroke: Stroke | undefined,
+): { top: number; right: number; bottom: number; left: number } | null {
+  if (!stroke || stroke.thickness == null || typeof stroke.thickness === 'number') return null;
+  const t = stroke.thickness;
+  return {
+    top: t.top ?? 0,
+    right: t.right ?? 0,
+    bottom: t.bottom ?? 0,
+    left: t.left ?? 0,
+  };
+}
+
 function pickSingle(fill: Fills | undefined): Fill | undefined {
   if (fill == null) return undefined;
   if (Array.isArray(fill)) return fill[0];
