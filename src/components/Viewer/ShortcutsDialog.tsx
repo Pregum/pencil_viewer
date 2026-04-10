@@ -12,6 +12,7 @@ const SHORTCUTS = [
   { keys: 'Cmd + [', desc: 'Back (previous view)' },
   { keys: 'Cmd + ]', desc: 'Forward' },
   { keys: 'Cmd + P', desc: 'Quick frame search' },
+  { keys: 'Cmd + I', desc: 'Auto ID / Rename frames' },
   { keys: 'Cmd + S', desc: 'Export .pen file' },
   { keys: 'Cmd + /', desc: 'Show this dialog' },
   { keys: 'Esc', desc: 'Close dialog / Deselect' },

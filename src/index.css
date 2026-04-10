@@ -901,3 +901,73 @@ html,
   color: var(--color-text);
   cursor: pointer;
 }
+
+/* --- Auto ID Dialog --- */
+.auto-id__settings {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.auto-id__row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.auto-id__row label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.auto-id__preview-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.auto-id__preview {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+.auto-id__group {
+  border-bottom: 1px solid var(--color-border);
+}
+.auto-id__group:last-child {
+  border-bottom: none;
+}
+.auto-id__group-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-text-subtle);
+  padding: 6px 12px 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.auto-id__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  font-size: 12px;
+}
+.auto-id__old {
+  color: var(--color-text-muted);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.auto-id__arrow {
+  color: var(--color-text-subtle);
+  flex-shrink: 0;
+}
+.auto-id__new {
+  font-weight: 600;
+  color: var(--color-accent);
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  flex-shrink: 0;
+}

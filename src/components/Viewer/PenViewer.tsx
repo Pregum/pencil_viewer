@@ -10,6 +10,7 @@ import { FrameSearch } from './FrameSearch';
 import { EditorProvider } from '../../pen/state/EditorContext';
 import { PropertyPanel } from './PropertyPanel';
 import { ExportButton } from './ExportButton';
+import { AutoIdDialog } from './AutoIdDialog';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -92,6 +93,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
 
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showFrameSearch, setShowFrameSearch] = useState(false);
+  const [showAutoId, setShowAutoId] = useState(false);
 
   // Compute the actual viewBox from camera
   const getViewBox = useCallback((): ViewBox => {
@@ -323,6 +325,9 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
       } else if (mod && e.key === 'p') {
         e.preventDefault();
         setShowFrameSearch((v) => !v);
+      } else if (mod && e.key === 'i') {
+        e.preventDefault();
+        setShowAutoId((v) => !v);
       } else if (mod && e.key === '/') {
         e.preventDefault();
         setShowShortcuts((v) => !v);
@@ -487,6 +492,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
         />
       )}
       <PropertyPanel />
+      {showAutoId && <AutoIdDialog onClose={() => setShowAutoId(false)} />}
     </div>
     </EditorProvider>
   );
