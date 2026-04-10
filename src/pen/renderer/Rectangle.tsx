@@ -1,7 +1,15 @@
 import type { RectangleNode } from '../types';
-import { resolveSolidFill, resolveStrokeColor, resolveStrokeWidth } from './paint';
+import { usePaintRegistry } from '../paint/PaintContext';
+import {
+  resolveFill,
+  resolveStroke,
+  resolveFilter,
+  resolveStrokeWidth,
+} from './paint';
 
 export function Rectangle({ node }: { node: RectangleNode }) {
+  const registry = usePaintRegistry() ?? undefined;
+  const ctx = { nodeId: node.id, registry };
   const rx = typeof node.cornerRadius === 'number' ? node.cornerRadius : undefined;
   const width = typeof node.width === 'number' ? node.width : 0;
   const height = typeof node.height === 'number' ? node.height : 0;
@@ -13,9 +21,10 @@ export function Rectangle({ node }: { node: RectangleNode }) {
       height={height}
       rx={rx}
       ry={rx}
-      fill={resolveSolidFill(node.fill)}
-      stroke={resolveStrokeColor(node.stroke)}
+      fill={resolveFill(node.fill, ctx)}
+      stroke={resolveStroke(node.stroke, ctx)}
       strokeWidth={resolveStrokeWidth(node.stroke)}
+      filter={resolveFilter(ctx)}
     />
   );
 }

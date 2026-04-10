@@ -1,18 +1,21 @@
 /**
- * Frame レンダラ(Step 5: レイアウト計算なし版)
- *
- * - MVP では Pencil の flexbox 風 layout は未対応(Step 6 で layout/flex.ts を追加)
- * - `layout: "none"` のフレームはこのまま正しく描画される
- * - layout が "horizontal" / "vertical" のフレームは子の x/y が無視される仕様だが、
- *   ここでは絶対座標モードとして子をそのまま描く。見た目が崩れるフレームが出るのは
- *   layout 実装までの一時的な妥協
+ * Frame レンダラ。layout 計算は layout/flex.ts 側で済んでいる前提。
+ * ここでは: 背景 fill の描画、clipPath、子の再帰描画を担う。
  */
 
 import type { FrameNode } from '../types';
-import { resolveSolidFill, resolveStrokeColor, resolveStrokeWidth } from './paint';
+import { usePaintRegistry } from '../paint/PaintContext';
+import {
+  resolveFill,
+  resolveStroke,
+  resolveStrokeWidth,
+  resolveFilter,
+} from './paint';
 import { PenNodeView } from './PenNode';
 
 export function Frame({ node }: { node: FrameNode }) {
+  const registry = usePaintRegistry() ?? undefined;
+  const ctx = { nodeId: node.id, registry };
   const x = node.x ?? 0;
   const y = node.y ?? 0;
   const width = typeof node.width === 'number' ? node.width : undefined;
@@ -21,13 +24,19 @@ export function Frame({ node }: { node: FrameNode }) {
   const clipId = node.clip ? `clip-${node.id}` : undefined;
   const transform = x === 0 && y === 0 ? undefined : `translate(${x} ${y})`;
 
-  const bgFill = resolveSolidFill(node.fill);
-  const strokeColor = resolveStrokeColor(node.stroke);
+  const bgFill = resolveFill(node.fill, ctx);
+  const strokeColor = resolveStroke(node.stroke, ctx);
   const strokeWidth = resolveStrokeWidth(node.stroke);
+  const filter = resolveFilter(ctx);
   const rx = typeof node.cornerRadius === 'number' ? node.cornerRadius : undefined;
 
   return (
-    <g transform={transform} opacity={opacity} clipPath={clipId ? `url(#${clipId})` : undefined}>
+    <g
+      transform={transform}
+      opacity={opacity}
+      clipPath={clipId ? `url(#${clipId})` : undefined}
+      filter={filter}
+    >
       {clipId && width != null && height != null && (
         <defs>
           <clipPath id={clipId}>
@@ -35,7 +44,6 @@ export function Frame({ node }: { node: FrameNode }) {
           </clipPath>
         </defs>
       )}
-      {/* 背景 */}
       {width != null && height != null && bgFill !== 'none' && (
         <rect
           x={0}
@@ -49,7 +57,6 @@ export function Frame({ node }: { node: FrameNode }) {
           strokeWidth={strokeWidth}
         />
       )}
-      {/* 子 */}
       {node.children?.map((child) => <PenNodeView key={child.id} node={child} />)}
     </g>
   );

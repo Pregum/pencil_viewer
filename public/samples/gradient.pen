@@ -1,0 +1,102 @@
+{
+  "version": "2.10",
+  "children": [
+    {
+      "type": "rectangle",
+      "id": "bg",
+      "x": 0,
+      "y": 0,
+      "width": 600,
+      "height": 400,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "rotation": 135,
+        "colors": [
+          { "color": "#F3E8FF", "position": 0 },
+          { "color": "#FFFFFF", "position": 1 }
+        ]
+      }
+    },
+    {
+      "type": "rectangle",
+      "id": "card1",
+      "x": 48,
+      "y": 60,
+      "width": 220,
+      "height": 140,
+      "cornerRadius": 16,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "rotation": 180,
+        "colors": [
+          { "color": "#7C3AED", "position": 0 },
+          { "color": "#EC4899", "position": 1 }
+        ]
+      },
+      "effect": [
+        { "type": "shadow", "offset": { "x": 0, "y": 8 }, "blur": 16, "color": "#7C3AED40" }
+      ]
+    },
+    {
+      "type": "ellipse",
+      "id": "orb",
+      "x": 320,
+      "y": 60,
+      "width": 220,
+      "height": 220,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "radial",
+        "center": { "x": 0.4, "y": 0.4 },
+        "colors": [
+          { "color": "#FDE68A", "position": 0 },
+          { "color": "#F59E0B", "position": 1 }
+        ]
+      },
+      "effect": [
+        { "type": "shadow", "offset": { "x": 0, "y": 12 }, "blur": 24, "color": "#F59E0B40" }
+      ]
+    },
+    {
+      "type": "text",
+      "id": "title",
+      "x": 48,
+      "y": 230,
+      "content": "Gradient & Shadow",
+      "fontSize": 28,
+      "fontWeight": "700",
+      "fill": "#111827"
+    },
+    {
+      "type": "text",
+      "id": "sub",
+      "x": 48,
+      "y": 272,
+      "content": "linearGradient / radialGradient / feDropShadow まで動作",
+      "fontSize": 13,
+      "fill": "#6B7280"
+    },
+    {
+      "type": "rectangle",
+      "id": "blurry",
+      "x": 48,
+      "y": 310,
+      "width": 220,
+      "height": 60,
+      "cornerRadius": 12,
+      "fill": "#10B981",
+      "effect": [{ "type": "blur", "radius": 4 }]
+    },
+    {
+      "type": "text",
+      "id": "blurlabel",
+      "x": 280,
+      "y": 328,
+      "content": "← blur radius 4",
+      "fontSize": 14,
+      "fill": "#6B7280"
+    }
+  ]
+}

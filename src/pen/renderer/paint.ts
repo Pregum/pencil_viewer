@@ -1,17 +1,43 @@
 /**
- * MVP 向けの最小 paint ヘルパ。
- * - fill/stroke のソリッド色を SVG の属性値に変換するだけ
- * - グラデーション/画像/エフェクトは Step 6 で拡張予定(ここでは未対応)
+ * fill / stroke を SVG 属性値に変換する resolver。
+ * PaintRegistry が提供されていれば、gradient / image は `url(#id)` 参照に
+ * 置き換える。レジストリがない場合はソリッド色にフォールバック。
  */
 
 import type { Fill, Fills, Stroke } from '../types';
+import type { PaintRegistry } from '../paint/registry';
+
+export interface PaintContext {
+  nodeId: string;
+  registry?: PaintRegistry;
+}
+
+export function resolveFill(fill: Fills | undefined, ctx: PaintContext): string {
+  const refId = ctx.registry?.fillMap.get(ctx.nodeId);
+  if (refId) return `url(#${refId})`;
+  return resolveSolidFill(fill);
+}
+
+export function resolveStroke(stroke: Stroke | undefined, ctx: PaintContext): string {
+  const refId = ctx.registry?.strokeMap.get(ctx.nodeId);
+  if (refId) return `url(#${refId})`;
+  return resolveStrokeColor(stroke);
+}
+
+export function resolveFilter(ctx: PaintContext): string | undefined {
+  const id = ctx.registry?.filterMap.get(ctx.nodeId);
+  return id ? `url(#${id})` : undefined;
+}
+
+// ------------------------------------------------------------------
+// Solid color fallbacks (registry 非対応時、およびレガシー呼び出し用)
+// ------------------------------------------------------------------
 
 export function resolveSolidFill(fill: Fills | undefined): string {
   const single = pickSingle(fill);
   if (!single) return 'none';
   if (typeof single === 'string') return single;
   if (single.type === 'color') return single.color;
-  // gradient/image は MVP では未対応 → フォールバックで最初の色か透明
   if (single.type === 'gradient') {
     const first = single.colors?.[0]?.color;
     return first ?? 'none';
@@ -27,7 +53,6 @@ export function resolveStrokeColor(stroke: Stroke | undefined): string {
 export function resolveStrokeWidth(stroke: Stroke | undefined): number {
   if (!stroke || stroke.thickness == null) return 0;
   if (typeof stroke.thickness === 'number') return stroke.thickness;
-  // 辺ごとの指定は MVP では max 値を採用(SVG は均一しかサポートしないため)
   const t = stroke.thickness;
   return Math.max(t.top ?? 0, t.right ?? 0, t.bottom ?? 0, t.left ?? 0);
 }

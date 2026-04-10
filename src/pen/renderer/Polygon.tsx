@@ -1,7 +1,15 @@
 import type { PolygonNode } from '../types';
-import { resolveSolidFill, resolveStrokeColor, resolveStrokeWidth } from './paint';
+import { usePaintRegistry } from '../paint/PaintContext';
+import {
+  resolveFill,
+  resolveStroke,
+  resolveFilter,
+  resolveStrokeWidth,
+} from './paint';
 
 export function Polygon({ node }: { node: PolygonNode }) {
+  const registry = usePaintRegistry() ?? undefined;
+  const ctx = { nodeId: node.id, registry };
   const width = typeof node.width === 'number' ? node.width : 0;
   const height = typeof node.height === 'number' ? node.height : 0;
   const sides = node.polygonCount ?? 3;
@@ -10,7 +18,6 @@ export function Polygon({ node }: { node: PolygonNode }) {
   const rx = width / 2;
   const ry = height / 2;
 
-  // 正多角形の頂点(-90度 start = 上向き)
   const points: string[] = [];
   for (let i = 0; i < sides; i++) {
     const angle = -Math.PI / 2 + (2 * Math.PI * i) / sides;
@@ -22,9 +29,10 @@ export function Polygon({ node }: { node: PolygonNode }) {
   return (
     <polygon
       points={points.join(' ')}
-      fill={resolveSolidFill(node.fill)}
-      stroke={resolveStrokeColor(node.stroke)}
+      fill={resolveFill(node.fill, ctx)}
+      stroke={resolveStroke(node.stroke, ctx)}
       strokeWidth={resolveStrokeWidth(node.stroke)}
+      filter={resolveFilter(ctx)}
     />
   );
 }
