@@ -16,6 +16,7 @@ import { Path } from './Path';
 import { Text } from './Text';
 import { Frame } from './Frame';
 import { Group } from './Group';
+import { IconFont } from './IconFont';
 import { Unsupported } from './Unsupported';
 
 export function PenNodeView({ node }: { node: PenNode }) {
@@ -37,21 +38,7 @@ export function PenNodeView({ node }: { node: PenNode }) {
     case 'group':
       return <Group node={node} />;
     case 'icon_font':
-      // 実装は Step 6 で Material Symbols を @font-face 読み込み後に対応
-      return (
-        <Unsupported
-          node={{
-            type: 'unsupported',
-            id: node.id,
-            x: node.x ?? 0,
-            y: node.y ?? 0,
-            width: typeof node.width === 'number' ? node.width : 24,
-            height: typeof node.height === 'number' ? node.height : 24,
-            originalType: `icon_font:${node.iconFontName ?? '?'}`,
-            raw: node,
-          }}
-        />
-      );
+      return <IconFont node={node} />;
     case 'unsupported':
       return <Unsupported node={node} />;
     default:
