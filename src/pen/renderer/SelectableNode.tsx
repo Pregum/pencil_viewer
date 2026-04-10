@@ -33,24 +33,9 @@ export function SelectableNode({ node, children }: Props) {
 
   const handleClick = (e: React.MouseEvent) => {
     if (isDragging.current || isResizing.current) return;
-    // Cmd+Click or double-click: select deepest child (don't stop propagation upward,
-    // but let the deepest handler win by checking in capture vs bubble)
-    if (e.metaKey || e.ctrlKey) {
-      // Cmd+Click: select this specific node, let deeper children override
-      // Don't stopPropagation - deepest child wins
-      e.preventDefault();
-      selectNode(node.id);
-      return;
-    }
-    // Normal click: select this node, stop propagation so parent doesn't override
+    // Inner-first: stopPropagation so the deepest (innermost) node wins.
+    // SVG bubble order: innermost → outermost. We stop at the first handler.
     e.stopPropagation();
-    selectNode(node.id);
-  };
-
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    // Double-click: dive into children - select this node without stopPropagation
-    // so the deepest child's double-click wins
-    e.preventDefault();
     selectNode(node.id);
   };
 
@@ -144,7 +129,7 @@ export function SelectableNode({ node, children }: Props) {
   return (
     <g
       onClick={handleClick}
-      onDoubleClick={handleDoubleClick}
+      onPointerDown={isSelected ? (e) => handlePointerDown(e) : undefined}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
@@ -167,7 +152,7 @@ export function SelectableNode({ node, children }: Props) {
           pointerEvents="none"
         />
       )}
-      {/* Selection outline + drag area */}
+      {/* Selection outline (pointerEvents=none so children stay clickable) */}
       {isSelected && width > 0 && height > 0 && (
         <>
           <rect
@@ -175,13 +160,11 @@ export function SelectableNode({ node, children }: Props) {
             y={y - 1}
             width={width + 2}
             height={height + 2}
-            fill="transparent"
+            fill="none"
             stroke="#4F46E5"
             strokeWidth={2}
             rx={2}
-            pointerEvents="all"
-            style={{ cursor: 'move' }}
-            onPointerDown={(e) => handlePointerDown(e)}
+            pointerEvents="none"
           />
           {/* Resize handles */}
           {handles.map((h) => (
