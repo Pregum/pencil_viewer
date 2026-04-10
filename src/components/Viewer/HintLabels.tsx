@@ -98,7 +98,7 @@ interface Props {
   viewBox: ViewRect;
 }
 
-export function HintLabels({ vimMode, svgScale, cameraCx, cameraCy, viewBox }: Props) {
+export function HintLabels({ vimMode, cameraCx, cameraCy, viewBox }: Props) {
   const { state, selectNode } = useEditor();
   const [active, setActive] = useState(false);
   const [mode, setMode] = useState<'f' | 't'>('f');
@@ -169,8 +169,12 @@ export function HintLabels({ vimMode, svgScale, cameraCx, cameraCy, viewBox }: P
 
   if (!active || targets.length === 0) return null;
 
-  // 画面上で常に14pxに見えるサイズ（SVG座標系に変換）
-  const labelSize = 14 / svgScale;
+  // 画面上で常に14pxに見えるサイズ
+  // viewBox.width がSVG上の表示幅。画面のピクセル幅は不明だが、
+  // 一般的なビューポートを1200pxと仮定して比率を算出
+  const approxScreenPx = 1200;
+  const svgUnitsPerPx = viewBox.width / approxScreenPx;
+  const labelSize = 14 * svgUnitsPerPx;
   const padX = labelSize * 0.6;
   const padY = labelSize * 0.3;
   const bgH = labelSize + padY * 2;
@@ -214,10 +218,10 @@ export function HintLabels({ vimMode, svgScale, cameraCx, cameraCy, viewBox }: P
       ))}
       {/* Mode indicator */}
       <text
-        x={viewBox.x + 10 / svgScale}
-        y={viewBox.y + 20 / svgScale}
+        x={viewBox.x + 10 * svgUnitsPerPx}
+        y={viewBox.y + 20 * svgUnitsPerPx}
         fill={mode === 'f' ? '#fbbf24' : '#86efac'}
-        fontSize={13 / svgScale}
+        fontSize={13 * svgUnitsPerPx}
         fontWeight="700"
         fontFamily="JetBrains Mono, monospace"
       >
