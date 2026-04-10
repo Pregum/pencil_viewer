@@ -178,9 +178,13 @@ export function EditorProvider({
         e.preventDefault();
         redo();
       }
-      // Backspace/Delete: delete selected node (only when not in input)
       const tag = (e.target as HTMLElement).tagName;
       const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      // Escape: deselect node (when no modal is open)
+      if (!isInput && e.key === 'Escape') {
+        setState((s) => (s.selectedNodeId ? { ...s, selectedNodeId: null } : s));
+      }
+      // Backspace/Delete: delete selected node (only when not in input)
       if (!isInput && (e.key === 'Backspace' || e.key === 'Delete')) {
         setState((s) => {
           if (s.selectedNodeId) {
