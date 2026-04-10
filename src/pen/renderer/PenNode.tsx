@@ -1,10 +1,6 @@
 /**
  * ノード種別で dispatch する共通エントリ。
- *
- * Step 5 までで対応: rectangle / ellipse / line / polygon / path / text /
- * frame (layout 計算なし) / group / icon_font 一部
- *
- * 未対応 type は `Unsupported` でプレースホルダ表示(全体描画は停止しない)。
+ * SelectableNode でラップしてクリック選択を有効化する。
  */
 
 import type { PenNode } from '../types';
@@ -18,8 +14,9 @@ import { Frame } from './Frame';
 import { Group } from './Group';
 import { IconFont } from './IconFont';
 import { Unsupported } from './Unsupported';
+import { SelectableNode } from './SelectableNode';
 
-export function PenNodeView({ node }: { node: PenNode }) {
+function renderNode(node: PenNode) {
   switch (node.type) {
     case 'rectangle':
       return <Rectangle node={node} />;
@@ -42,8 +39,15 @@ export function PenNodeView({ node }: { node: PenNode }) {
     case 'unsupported':
       return <Unsupported node={node} />;
     default:
-      // ここに来るのは型の網羅漏れ。型エラーを出すため never に代入
       node satisfies never;
       return null;
   }
+}
+
+export function PenNodeView({ node }: { node: PenNode }) {
+  return (
+    <SelectableNode node={node}>
+      {renderNode(node)}
+    </SelectableNode>
+  );
 }

@@ -7,6 +7,8 @@ import { Defs } from '../../pen/paint/Defs';
 import { PaintRegistryProvider } from '../../pen/paint/PaintContext';
 import { ShortcutsDialog } from './ShortcutsDialog';
 import { FrameSearch } from './FrameSearch';
+import { EditorProvider } from '../../pen/state/EditorContext';
+import { PropertyPanel } from './PropertyPanel';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -344,6 +346,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
   const cursor = isSpaceHeld.current || isPanning.current ? 'grab' : 'default';
 
   return (
+    <EditorProvider doc={doc}>
     <div className="viewer">
       <div className="viewer__toolbar">
         <button
@@ -480,6 +483,8 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
           onClose={() => setShowFrameSearch(false)}
         />
       )}
+      <PropertyPanel />
     </div>
+    </EditorProvider>
   );
 }
