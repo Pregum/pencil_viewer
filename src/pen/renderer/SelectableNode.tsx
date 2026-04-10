@@ -16,6 +16,7 @@ const HANDLE_SIZE = 8;
 export function SelectableNode({ node, children }: Props) {
   const { state, selectNode, updateNodeSilent, pushUndoCheckpoint } = useEditor();
   const isSelected = state.selectedNodeId === node.id;
+  const isMultiSelected = state.selectedNodeIds.has(node.id);
   const isDragging = useRef(false);
   const isResizing = useRef<string | null>(null);
   const dragStart = useRef({ x: 0, y: 0 });
@@ -151,6 +152,21 @@ export function SelectableNode({ node, children }: Props) {
     >
       {children}
 
+      {/* Multi-selection highlight */}
+      {!isSelected && isMultiSelected && width > 0 && height > 0 && (
+        <rect
+          x={x - 1}
+          y={y - 1}
+          width={width + 2}
+          height={height + 2}
+          fill="rgba(79, 70, 229, 0.05)"
+          stroke="#818CF8"
+          strokeWidth={1.5}
+          strokeDasharray="4 3"
+          rx={2}
+          pointerEvents="none"
+        />
+      )}
       {/* Selection outline + drag area */}
       {isSelected && width > 0 && height > 0 && (
         <>

@@ -10,6 +10,7 @@ import { ExportButton } from './ExportButton';
 import { AutoIdDialog } from './AutoIdDialog';
 import { CommandPalette, type Command } from './CommandPalette';
 import { NodeTree } from './NodeTree';
+import { VimTextObjects } from './VimTextObjects';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -313,7 +314,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
   }, [baseVb]);
 
   // Vim-like frame navigation: [count]h/j/k/l
-  // h=left, l=right (sorted by X), j=down, k=up (sorted by Y)
+  // Text objects (vim mode only): vif, vaf, vir, vic
   const vimCount = useRef('');
   const vimTimeout = useRef<ReturnType<typeof setTimeout>>();
 
@@ -574,6 +575,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
           onClose={() => setShowCommandPalette(false)}
         />
       )}
+      <VimTextObjects vimMode={vimMode} />
       {vimMode && (
         <div className="viewer__vim-badge">VIM</div>
       )}

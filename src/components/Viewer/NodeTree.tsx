@@ -29,15 +29,18 @@ function NodeItem({
   node,
   depth,
   selectedId,
+  selectedIds,
   onSelect,
 }: {
   node: PenNode;
   depth: number;
   selectedId: string | null;
+  selectedIds: Set<string>;
   onSelect: (id: string) => void;
 }) {
   const [expanded, setExpanded] = useState(depth < 1);
   const isSelected = selectedId === node.id;
+  const isMulti = selectedIds.has(node.id);
   const children = hasChildren(node) ? node.children : [];
   const hasKids = children.length > 0;
   const name = (node as { name?: string }).name ?? node.id;
@@ -54,7 +57,7 @@ function NodeItem({
   return (
     <div>
       <div
-        className={`node-tree__item ${isSelected ? 'node-tree__item--selected' : ''}`}
+        className={`node-tree__item ${isSelected ? 'node-tree__item--selected' : ''} ${isMulti && !isSelected ? 'node-tree__item--multi' : ''}`}
         style={{ paddingLeft: 8 + depth * 16 }}
         onClick={() => onSelect(node.id)}
       >
@@ -79,6 +82,7 @@ function NodeItem({
             node={child}
             depth={depth + 1}
             selectedId={selectedId}
+            selectedIds={selectedIds}
             onSelect={onSelect}
           />
         ))}
@@ -91,7 +95,12 @@ export function NodeTree() {
 
   return (
     <div className="node-tree">
-      <div className="node-tree__header">Layers</div>
+      <div className="node-tree__header">
+        Layers
+        {state.selectedNodeIds.size > 0 && (
+          <span className="node-tree__count">{state.selectedNodeIds.size} selected</span>
+        )}
+      </div>
       <div className="node-tree__list">
         {state.doc.children.map((node) => (
           <NodeItem
@@ -99,6 +108,7 @@ export function NodeTree() {
             node={node}
             depth={0}
             selectedId={state.selectedNodeId}
+            selectedIds={state.selectedNodeIds}
             onSelect={selectNode}
           />
         ))}

@@ -950,6 +950,16 @@ html,
 .node-tree__item--selected {
   background: var(--color-accent-soft);
 }
+.node-tree__item--multi {
+  background: #eef2ff;
+}
+
+.node-tree__count {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--color-accent);
+}
 
 .node-tree__toggle {
   width: 14px;

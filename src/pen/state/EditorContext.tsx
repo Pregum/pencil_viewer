@@ -8,6 +8,8 @@ import type { PenDocument, PenNode } from '../types';
 export interface EditorState {
   doc: PenDocument;
   selectedNodeId: string | null;
+  /** マルチ選択（vim visual mode 等） */
+  selectedNodeIds: Set<string>;
 }
 
 /** ドキュメントツリー内のノードを再帰的に更新 */
@@ -58,6 +60,7 @@ interface EditorContextValue {
   selectNode: (nodeId: string | null) => void;
   updateNode: (nodeId: string, patch: Partial<PenNode>) => void;
   selectedNode: PenNode | null;
+  selectMultiple: (nodeIds: string[]) => void;
   /** Undo 履歴に積まずにノード更新（ドラッグ中の中間更新用） */
   updateNodeSilent: (nodeId: string, patch: Partial<PenNode>) => void;
   /** Undo 用: 現在の doc を明示的に undo スタックに積む */
@@ -79,7 +82,7 @@ export function EditorProvider({
   doc: PenDocument;
   children: React.ReactNode;
 }) {
-  const [state, setState] = useState<EditorState>({ doc, selectedNodeId: null });
+  const [state, setState] = useState<EditorState>({ doc, selectedNodeId: null, selectedNodeIds: new Set() });
 
   // Undo/Redo stacks store doc snapshots
   const undoStack = useRef<PenDocument[]>([]);
@@ -91,7 +94,12 @@ export function EditorProvider({
   }, []);
 
   const selectNode = useCallback(
-    (nodeId: string | null) => setState((s) => ({ ...s, selectedNodeId: nodeId })),
+    (nodeId: string | null) => setState((s) => ({ ...s, selectedNodeId: nodeId, selectedNodeIds: new Set() })),
+    [],
+  );
+
+  const selectMultiple = useCallback(
+    (nodeIds: string[]) => setState((s) => ({ ...s, selectedNodeIds: new Set(nodeIds), selectedNodeId: nodeIds[0] ?? null })),
     [],
   );
 
@@ -220,8 +228,8 @@ export function EditorProvider({
   const canRedo = redoStack.current.length > 0;
 
   const value = useMemo(
-    () => ({ state, selectNode, updateNode, updateNodeSilent, pushUndoCheckpoint, deleteNode, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
-    [state, selectNode, updateNode, updateNodeSilent, pushUndoCheckpoint, deleteNode, selectedNode, exportPen, undo, redo, canUndo, canRedo],
+    () => ({ state, selectNode, selectMultiple, updateNode, updateNodeSilent, pushUndoCheckpoint, deleteNode, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
+    [state, selectNode, selectMultiple, updateNode, updateNodeSilent, pushUndoCheckpoint, deleteNode, selectedNode, exportPen, undo, redo, canUndo, canRedo],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;
