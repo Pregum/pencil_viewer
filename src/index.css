@@ -902,6 +902,100 @@ html,
   cursor: pointer;
 }
 
+/* --- Node Tree (Left Sidebar) --- */
+.node-tree {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 240px;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  overflow-y: auto;
+  z-index: 10;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.node-tree__header {
+  padding: 10px 14px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-subtle);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.node-tree__list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.node-tree__item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  padding-right: 8px;
+}
+.node-tree__item:hover {
+  background: var(--color-canvas);
+}
+.node-tree__item--selected {
+  background: var(--color-accent-soft);
+}
+
+.node-tree__toggle {
+  width: 14px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 10px;
+  color: var(--color-text-subtle);
+  cursor: pointer;
+}
+.node-tree__toggle-spacer {
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.node-tree__type {
+  font-size: 9px;
+  font-weight: 700;
+  width: 20px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  flex-shrink: 0;
+  background: var(--color-canvas);
+  color: var(--color-text-muted);
+}
+.node-tree__type--frame {
+  background: #dbeafe;
+  color: #2563eb;
+}
+.node-tree__type--group {
+  background: #fef3c7;
+  color: #d97706;
+}
+.node-tree__type--text {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.node-tree__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text);
+}
+
 .viewer__vim-badge {
   position: absolute;
   bottom: 12px;

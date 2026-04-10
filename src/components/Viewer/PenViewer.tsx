@@ -9,6 +9,7 @@ import { PropertyPanel } from './PropertyPanel';
 import { ExportButton } from './ExportButton';
 import { AutoIdDialog } from './AutoIdDialog';
 import { CommandPalette, type Command } from './CommandPalette';
+import { NodeTree } from './NodeTree';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -555,6 +556,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
           onClose={() => setShowFrameSearch(false)}
         />
       )}
+      <NodeTree />
       <PropertyPanel />
       {showAutoId && <AutoIdDialog onClose={() => setShowAutoId(false)} />}
       {showCommandPalette && (
