@@ -13,6 +13,7 @@ import { Text } from './Text';
 import { Frame } from './Frame';
 import { Group } from './Group';
 import { IconFont } from './IconFont';
+import { Image } from './Image';
 import { Unsupported } from './Unsupported';
 import { SelectableNode } from './SelectableNode';
 
@@ -36,6 +37,8 @@ function renderNode(node: PenNode) {
       return <Group node={node} />;
     case 'icon_font':
       return <IconFont node={node} />;
+    case 'image':
+      return <Image node={node} />;
     case 'unsupported':
       return <Unsupported node={node} />;
     default:

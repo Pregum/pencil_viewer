@@ -14,6 +14,7 @@ const SHORTCUTS = [
   { keys: 'Cmd + P', desc: 'Quick frame search' },
   { keys: 'Cmd + I', desc: 'Auto ID / Rename frames' },
   { keys: 'Cmd + S', desc: 'Export .pen file' },
+  { keys: 'Cmd + Shift + S', desc: 'Save As (rename)' },
   { keys: 'Cmd + /', desc: 'Show this dialog' },
   { keys: 'Esc', desc: 'Close dialog / Deselect' },
 ];

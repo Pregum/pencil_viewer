@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PenDocument, PenNode } from '../../pen/types';
-import { PenNodeView } from '../../pen/renderer/PenNode';
 import { computeViewBox, type ViewBox } from '../../pen/renderer/viewBox';
-import { buildPaintRegistry } from '../../pen/paint/registry';
-import { Defs } from '../../pen/paint/Defs';
-import { PaintRegistryProvider } from '../../pen/paint/PaintContext';
+import { CanvasContent } from './CanvasContent';
 import { ShortcutsDialog } from './ShortcutsDialog';
 import { FrameSearch } from './FrameSearch';
 import { EditorProvider } from '../../pen/state/EditorContext';
@@ -67,7 +64,6 @@ interface HistoryEntry {
 
 export function PenViewer({ doc }: { doc: PenDocument }) {
   const baseVb = computeViewBox(doc);
-  const registry = useMemo(() => buildPaintRegistry(doc), [doc]);
   const frames = useMemo(() => collectFrames(doc.children), [doc]);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -453,30 +449,25 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
           viewBox={`${currentVb.x} ${currentVb.y} ${currentVb.width} ${currentVb.height}`}
           preserveAspectRatio="xMidYMid meet"
         >
-          <Defs registry={registry} />
-          <PaintRegistryProvider value={registry}>
-            {doc.children.map((node) => (
-              <PenNodeView key={node.id} node={node} />
-            ))}
-            {/* Active frame highlight */}
-            {activeFrameId && frames.map((f) =>
-              f.id === activeFrameId ? (
-                <rect
-                  key={`highlight-${f.id}`}
-                  x={f.x}
-                  y={f.y}
-                  width={f.width}
-                  height={f.height}
-                  fill="none"
-                  stroke="#7c3aed"
-                  strokeWidth={2 / scale}
-                  strokeDasharray={`${6 / scale} ${4 / scale}`}
-                  rx={4 / scale}
-                  pointerEvents="none"
-                />
-              ) : null,
-            )}
-          </PaintRegistryProvider>
+          <CanvasContent />
+          {/* Active frame highlight */}
+          {activeFrameId && frames.map((f) =>
+            f.id === activeFrameId ? (
+              <rect
+                key={`highlight-${f.id}`}
+                x={f.x}
+                y={f.y}
+                width={f.width}
+                height={f.height}
+                fill="none"
+                stroke="#7c3aed"
+                strokeWidth={2 / scale}
+                strokeDasharray={`${6 / scale} ${4 / scale}`}
+                rx={4 / scale}
+                pointerEvents="none"
+              />
+            ) : null,
+          )}
         </svg>
       </div>
 

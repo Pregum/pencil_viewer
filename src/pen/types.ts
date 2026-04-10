@@ -199,6 +199,13 @@ export interface IconFontNode extends NodeBase, Size {
   effect?: Effects;
 }
 
+export interface ImageNode extends GraphicsBase {
+  type: 'image';
+  url?: string;
+  cornerRadius?: number | [number, number, number, number];
+  clip?: boolean;
+}
+
 /**
  * 未対応ノード。parser は未知の `type` をこの型で通す(描画時はプレースホルダ)。
  */
@@ -220,6 +227,7 @@ export type PenNode =
   | FrameNode
   | GroupNode
   | IconFontNode
+  | ImageNode
   | UnsupportedNode;
 
 export interface PenDocument {

@@ -37,6 +37,7 @@ const KNOWN_TYPES = new Set([
   'frame',
   'group',
   'icon_font',
+  'image',
 ]);
 
 /** ビューアーで非表示にするノードタイプ(開発者メモ等) */
