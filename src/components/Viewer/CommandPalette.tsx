@@ -33,9 +33,16 @@ export function CommandPalette({ commands, onClose }: Props) {
     inputRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { e.preventDefault(); onClose(); }
+      // Block Cmd+P from opening frame search while command palette is open
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && (e.key === 'p' || e.key === 'n')) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // Use capture phase to intercept before PenViewer's listener
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [onClose]);
 
   useEffect(() => {
@@ -53,11 +60,15 @@ export function CommandPalette({ commands, onClose }: Props) {
     if (e.key === 'Escape') {
       e.preventDefault();
       onClose();
-    } else if (e.key === 'ArrowDown' || (e.ctrlKey && e.key === 'n')) {
+    } else if (e.key === 'ArrowDown' || ((e.ctrlKey || e.metaKey) && e.key === 'n')) {
       e.preventDefault();
+      e.stopPropagation();
+      e.nativeEvent.stopImmediatePropagation();
       setSelectedIdx((i) => Math.min(i + 1, filtered.length - 1));
-    } else if (e.key === 'ArrowUp' || (e.ctrlKey && e.key === 'p')) {
+    } else if (e.key === 'ArrowUp' || ((e.ctrlKey || e.metaKey) && e.key === 'p')) {
       e.preventDefault();
+      e.stopPropagation();
+      e.nativeEvent.stopImmediatePropagation();
       setSelectedIdx((i) => Math.max(i - 1, 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
