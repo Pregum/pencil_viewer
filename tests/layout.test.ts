@@ -217,6 +217,157 @@ describe('layoutDocument', () => {
     });
   });
 
+  describe('text intrinsic size', () => {
+    it('estimates text width and height when not explicitly set', () => {
+      const doc = makeDoc([
+        frame({
+          id: 'f1',
+          layout: 'vertical',
+          width: 400,
+          height: 200,
+          gap: 8,
+          children: [
+            { type: 'text', id: 't1', content: 'Hello', fontSize: 20 } as PenNode,
+            { type: 'text', id: 't2', content: 'World', fontSize: 20 } as PenNode,
+          ],
+        }),
+      ]);
+      const f1 = layoutDocument(doc).children[0] as FrameNode;
+      const [t1, t2] = f1.children!;
+      // 0-size であってはならない(文字数 × fontSize × 0.55 程度に近い値)
+      expect(typeof t1.width === 'number' && t1.width > 0).toBe(true);
+      expect(typeof t1.height === 'number' && t1.height > 0).toBe(true);
+      // 2 つのテキストは別々の y に配置される(縦に積まれる)
+      expect(t1.y).toBe(0);
+      expect(t2.y).toBeGreaterThan(0);
+    });
+
+    it('respects explicit width on fixed-width text', () => {
+      const doc = makeDoc([
+        frame({
+          id: 'f1',
+          layout: 'vertical',
+          width: 400,
+          height: 200,
+          children: [
+            {
+              type: 'text',
+              id: 't1',
+              content: 'Hello',
+              fontSize: 20,
+              width: 250,
+              textGrowth: 'fixed-width',
+            } as PenNode,
+          ],
+        }),
+      ]);
+      const f1 = layoutDocument(doc).children[0] as FrameNode;
+      const [t1] = f1.children!;
+      expect(t1.width).toBe(250);
+    });
+
+    it('handles empty string content without producing 0-size box', () => {
+      const doc = makeDoc([
+        frame({
+          id: 'f1',
+          layout: 'vertical',
+          width: 400,
+          height: 200,
+          children: [{ type: 'text', id: 't1', content: '', fontSize: 16 } as PenNode],
+        }),
+      ]);
+      const f1 = layoutDocument(doc).children[0] as FrameNode;
+      const [t1] = f1.children!;
+      expect(typeof t1.width === 'number' && t1.width >= 1).toBe(true);
+      expect(typeof t1.height === 'number' && t1.height >= 1).toBe(true);
+    });
+
+    it('multi-line content increases the measured height', () => {
+      const doc = makeDoc([
+        frame({
+          id: 'f1',
+          layout: 'vertical',
+          width: 400,
+          height: 200,
+          children: [
+            { type: 'text', id: 'one', content: 'one line', fontSize: 16 } as PenNode,
+            { type: 'text', id: 'three', content: 'a\nb\nc', fontSize: 16 } as PenNode,
+          ],
+        }),
+      ]);
+      const f1 = layoutDocument(doc).children[0] as FrameNode;
+      const [one, three] = f1.children!;
+      const oneH = typeof one.height === 'number' ? one.height : 0;
+      const threeH = typeof three.height === 'number' ? three.height : 0;
+      expect(threeH).toBeGreaterThan(oneH * 2);
+    });
+
+    it('fontSize 0 still yields a >= 1px box (no zero-size regression)', () => {
+      const doc = makeDoc([
+        frame({
+          id: 'f1',
+          layout: 'vertical',
+          width: 400,
+          height: 200,
+          children: [{ type: 'text', id: 't1', content: 'hello', fontSize: 0 } as PenNode],
+        }),
+      ]);
+      const f1 = layoutDocument(doc).children[0] as FrameNode;
+      const [t1] = f1.children!;
+      expect(typeof t1.height === 'number' && t1.height >= 1).toBe(true);
+      expect(typeof t1.width === 'number' && t1.width >= 1).toBe(true);
+    });
+
+    it('fixed-width-height text honors both explicit dimensions', () => {
+      const doc = makeDoc([
+        frame({
+          id: 'f1',
+          layout: 'vertical',
+          width: 400,
+          height: 200,
+          children: [
+            {
+              type: 'text',
+              id: 't1',
+              content: 'hello world ' + 'x'.repeat(200),
+              fontSize: 14,
+              width: 100,
+              height: 40,
+              textGrowth: 'fixed-width-height',
+            } as PenNode,
+          ],
+        }),
+      ]);
+      const f1 = layoutDocument(doc).children[0] as FrameNode;
+      const [t1] = f1.children!;
+      expect(t1.width).toBe(100);
+      expect(t1.height).toBe(40);
+    });
+
+    it('icon_font defaults to 24x24 when size is not set', () => {
+      const doc = makeDoc([
+        frame({
+          id: 'f1',
+          layout: 'vertical',
+          width: 400,
+          height: 200,
+          children: [
+            {
+              type: 'icon_font',
+              id: 'i1',
+              iconFontFamily: 'Material Symbols Outlined',
+              iconFontName: 'home',
+            } as PenNode,
+          ],
+        }),
+      ]);
+      const f1 = layoutDocument(doc).children[0] as FrameNode;
+      const [i1] = f1.children!;
+      expect(i1.width).toBe(24);
+      expect(i1.height).toBe(24);
+    });
+  });
+
   describe('nested layouts', () => {
     it('recursively lays out nested flex frames', () => {
       const doc = makeDoc([

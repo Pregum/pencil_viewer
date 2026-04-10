@@ -17,8 +17,10 @@
 import type {
   FrameNode,
   GroupNode,
+  IconFontNode,
   PenNode,
   SizeValue,
+  TextNode,
 } from '../types';
 
 type Padding = { top: number; right: number; bottom: number; left: number };
@@ -300,10 +302,76 @@ function intrinsicSize(node: PenNode): { w: number; h: number } {
     };
   }
 
-  // leaf
+  // text leaf: 内容と font サイズから幅と高さを推定する。
+  // フォントメトリクスは brotli/canvas 等が無いので、proportional フォントの
+  // 平均文字幅 ≒ fontSize * 0.55 + 行高 ≒ fontSize * 1.2 で近似する。
+  if (node.type === 'text') {
+    return measureText(node, rawW, rawH);
+  }
+
+  // icon_font leaf: width/height が未指定なら 24x24 に既定(material 系の標準)
+  if (node.type === 'icon_font') {
+    return measureIcon(node, rawW, rawH);
+  }
+
+  // その他 leaf
   return {
     w: typeof rawW === 'number' ? rawW : 0,
     h: typeof rawH === 'number' ? rawH : 0,
+  };
+}
+
+const TEXT_CHAR_WIDTH_RATIO = 0.55;
+const TEXT_LINE_HEIGHT_RATIO = 1.2;
+
+function measureText(
+  node: TextNode,
+  rawW: SizeValue | undefined,
+  rawH: SizeValue | undefined,
+): { w: number; h: number } {
+  const fontSize = node.fontSize ?? 14;
+  // Pencil の `lineHeight` は font size に対する **倍率**(ratio)。
+  // 例: lineHeight=1.5 + fontSize=20 → 30px。未指定時は 1.2 で代用。
+  // 公式仕様: "A multiplier that gets applied to the font size to determine spacing between lines."
+  const lineHeightPx = (node.lineHeight ?? TEXT_LINE_HEIGHT_RATIO) * fontSize;
+  const lines = normalizeTextLines(node.content);
+
+  // 幅: textGrowth が固定幅の場合は確定値、それ以外は文字数 * 平均文字幅
+  let w: number;
+  if (typeof rawW === 'number') {
+    w = rawW;
+  } else {
+    const charWidth = fontSize * TEXT_CHAR_WIDTH_RATIO;
+    const longest = lines.reduce((max, l) => Math.max(max, l.length), 0);
+    w = longest * charWidth;
+  }
+
+  // 高さ: 確定値があれば優先、なければ行数 * 行高
+  const measuredH = typeof rawH === 'number' ? rawH : lines.length * lineHeightPx;
+
+  // fontSize=0 や空コンテンツでも layout が壊れないように最小 1px を確保
+  return { w: Math.max(1, w), h: Math.max(1, measuredH) };
+}
+
+/**
+ * テキストノードの content を行配列に正規化する。
+ * - undefined/null/非文字列(将来の rich text TextStyle[])は空文字列扱い
+ * - 空文字列でも 1 行として扱う(高さの計算に使う)
+ */
+export function normalizeTextLines(content: unknown): string[] {
+  if (typeof content !== 'string' || content.length === 0) return [''];
+  return content.split('\n');
+}
+
+function measureIcon(
+  _node: IconFontNode,
+  rawW: SizeValue | undefined,
+  rawH: SizeValue | undefined,
+): { w: number; h: number } {
+  const fallback = 24;
+  return {
+    w: typeof rawW === 'number' ? rawW : fallback,
+    h: typeof rawH === 'number' ? rawH : fallback,
   };
 }
 
