@@ -174,6 +174,15 @@ export interface GroupNode extends NodeBase {
   height?: SizeValue;
   opacity?: number;
   effect?: Effects;
+  /**
+   * Pencil 仕様: groups default to `none` (未指定時は絶対配置)。
+   * frame と同じ Layout プロパティを共有する。
+   */
+  layout?: 'none' | 'vertical' | 'horizontal';
+  gap?: number;
+  padding?: number | [number, number] | [number, number, number, number];
+  justifyContent?: 'start' | 'center' | 'end' | 'space_between' | 'space_around';
+  alignItems?: 'start' | 'center' | 'end';
 }
 
 export interface IconFontNode extends NodeBase, Size {

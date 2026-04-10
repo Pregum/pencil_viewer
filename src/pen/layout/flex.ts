@@ -56,11 +56,9 @@ function layoutContainer(node: FrameNode | GroupNode, ctx: LayoutContext): PenNo
     ctx.parentLayout === 'vertical' ? 'main' : 'cross',
   );
 
-  const layout = node.type === 'frame' ? node.layout ?? 'none' : 'none';
-  const gap = node.type === 'frame' ? node.gap ?? 0 : 0;
-  const padding = resolvePadding(node.type === 'frame' ? node.padding : undefined);
-  const justify = node.type === 'frame' ? node.justifyContent ?? 'start' : 'start';
-  const align = node.type === 'frame' ? node.alignItems ?? 'start' : 'start';
+  // Pencil 公式仕様: "Frames default to horizontal, groups default to none."
+  // frame/group いずれも Layout を mixin するので、同じ resolver で読む。
+  const { layout, gap, padding, justify, align } = resolveFlexProps(node);
 
   const rawChildren = node.children ?? [];
 
@@ -258,9 +256,8 @@ function intrinsicSize(node: PenNode): { w: number; h: number } {
     const children = node.children ?? [];
     if (children.length === 0) return { w: fixedW ?? 0, h: fixedH ?? 0 };
 
-    const layout = node.type === 'frame' ? node.layout ?? 'none' : 'none';
-    const gap = node.type === 'frame' ? node.gap ?? 0 : 0;
-    const padding = resolvePadding(node.type === 'frame' ? node.padding : undefined);
+    // Pencil 公式仕様: Frames default to horizontal, groups default to none.
+    const { layout, gap, padding } = resolveFlexProps(node);
 
     if (layout === 'none') {
       let maxW = 0;
@@ -398,6 +395,34 @@ function isFill(v: SizeValue | undefined): boolean {
 }
 function isFit(v: SizeValue | undefined): boolean {
   return typeof v === 'string' && v.startsWith('fit_content');
+}
+
+/**
+ * コンテナ(frame / group)の flex プロパティをまとめて解決する。
+ *
+ * Pencil 仕様では:
+ *   - frame のデフォルトは `horizontal`(`layout` 省略時)
+ *   - group のデフォルトは `none`(`layout` 省略時)
+ *
+ * レイアウト値が明示的に設定されていればそれを使う。
+ * gap / padding / justifyContent / alignItems は frame/group 共通で、
+ * 未指定時はそれぞれ 0 / 無し / 'start' / 'start' にフォールバックする。
+ */
+function resolveFlexProps(node: FrameNode | GroupNode): {
+  layout: 'none' | 'horizontal' | 'vertical';
+  gap: number;
+  padding: Padding;
+  justify: 'start' | 'center' | 'end' | 'space_between' | 'space_around';
+  align: 'start' | 'center' | 'end';
+} {
+  const defaultLayout = node.type === 'frame' ? 'horizontal' : 'none';
+  return {
+    layout: node.layout ?? defaultLayout,
+    gap: node.gap ?? 0,
+    padding: resolvePadding(node.padding),
+    justify: node.justifyContent ?? 'start',
+    align: node.alignItems ?? 'start',
+  };
 }
 
 function resolvePadding(

@@ -368,6 +368,101 @@ describe('layoutDocument', () => {
     });
   });
 
+  describe('default layout fallback', () => {
+    it('frame without an explicit layout field defaults to horizontal (Pencil spec)', () => {
+      // Pencil's schema says: "Frames default to horizontal, groups default to none."
+      // Pre-fix, this test would have failed because the implementation defaulted
+      // to "none", leaving children at their authored (0, 0).
+      const f1: FrameNode = {
+        type: 'frame',
+        id: 'f1',
+        width: 400,
+        height: 100,
+        gap: 10,
+        children: [rect('r1', 100, 40), rect('r2', 80, 40)],
+      };
+      delete (f1 as { layout?: string }).layout;
+      const out = (layoutDocument(makeDoc([f1])).children[0] as FrameNode).children!;
+      const [r1, r2] = out;
+      expect(r1.x).toBe(0);
+      expect(r2.x).toBe(110); // 100 + gap 10, i.e. laid out horizontally
+    });
+
+    it('frame with justifyContent=center but no layout centers its children (regression)', () => {
+      // Regression: a button frame (qasg0 in museum_journey) with
+      // justifyContent=center + alignItems=center but no explicit layout was
+      // being treated as layout="none", leaving the label text at x=0.
+      const btn: FrameNode = {
+        type: 'frame',
+        id: 'btn',
+        width: 320,
+        height: 48,
+        justifyContent: 'center',
+        alignItems: 'center',
+        children: [
+          { type: 'text', id: 'label', content: 'Login', fontSize: 14 } as PenNode,
+        ],
+      };
+      delete (btn as { layout?: string }).layout;
+      const laidOut = layoutDocument(makeDoc([btn])).children[0] as FrameNode;
+      const [label] = laidOut.children!;
+      // Estimated width of "Login" ≈ 5 * 14 * 0.55 = 38.5.
+      // Center position ≈ (320 - 38.5) / 2 ≈ 140.75.
+      // Must be a number clearly inside the centered band, not x=0 (left edge)
+      // nor x=320 (right edge).
+      expect(typeof label.x).toBe('number');
+      expect(label.x as number).toBeGreaterThan(100);
+      expect(label.x as number).toBeLessThan(180);
+    });
+
+    it('group with an explicit layout=horizontal honors gap and centering', () => {
+      // GroupNode now carries the same Layout mixin as FrameNode. Verify that
+      // opting into flex on a group actually lays children out (previously the
+      // layoutContainer hardcoded group gap/justify/align to 0/'start').
+      const doc = makeDoc([
+        {
+          type: 'group',
+          id: 'g',
+          width: 300,
+          height: 50,
+          layout: 'horizontal',
+          gap: 10,
+          justifyContent: 'center',
+          children: [
+            { type: 'rectangle', id: 'r1', width: 40, height: 40 } as PenNode,
+            { type: 'rectangle', id: 'r2', width: 40, height: 40 } as PenNode,
+          ],
+        } as PenNode,
+      ]);
+      const g = layoutDocument(doc).children[0] as { children: PenNode[] };
+      const [r1, r2] = g.children;
+      // total main = 40 + 10 + 40 = 90. center start = (300 - 90) / 2 = 105.
+      expect(r1.x).toBe(105);
+      expect(r2.x).toBe(155); // 105 + 40 + 10
+    });
+
+    it('group without an explicit layout field still defaults to none', () => {
+      // Pencil spec: groups default to `none` even when the same spec applies
+      // to frames being horizontal.
+      const doc = makeDoc([
+        {
+          type: 'group',
+          id: 'g',
+          children: [
+            { type: 'rectangle', id: 'r1', x: 10, y: 20, width: 30, height: 30 } as PenNode,
+            { type: 'rectangle', id: 'r2', x: 100, y: 50, width: 30, height: 30 } as PenNode,
+          ],
+        } as PenNode,
+      ]);
+      const g = layoutDocument(doc).children[0] as { children: PenNode[] };
+      const [r1, r2] = g.children;
+      expect(r1.x).toBe(10);
+      expect(r1.y).toBe(20);
+      expect(r2.x).toBe(100);
+      expect(r2.y).toBe(50);
+    });
+  });
+
   describe('nested layouts', () => {
     it('recursively lays out nested flex frames', () => {
       const doc = makeDoc([
