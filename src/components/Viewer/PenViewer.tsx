@@ -12,6 +12,7 @@ import { CommandPalette, type Command } from './CommandPalette';
 import { NodeTree } from './NodeTree';
 import { VimTextObjects } from './VimTextObjects';
 import { ZoomToSelected } from './ZoomToSelected';
+import { HintLabels } from './HintLabels';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -409,12 +410,6 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
           navigateVim(e.key, count);
           return;
         }
-        // f to focus/zoom on selected node
-        if (e.key === 'f') {
-          e.preventDefault();
-          window.dispatchEvent(new Event('pencil-zoom-to-selected'));
-          return;
-        }
         // / to open search (vim-style)
         if (e.key === '/') {
           e.preventDefault();
@@ -554,6 +549,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
               />
             ) : null,
           )}
+          <HintLabels vimMode={vimMode} svgScale={scale} />
         </svg>
       </div>
 
