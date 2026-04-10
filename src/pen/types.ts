@@ -103,6 +103,11 @@ interface NodeBase extends Position {
   enabled?: boolean;
   flipX?: boolean;
   flipY?: boolean;
+  /**
+   * Pencil 拡張: `"absolute"` のとき、親が flex レイアウトでもこの子は
+   * flex flow から外れ、自分の `x`/`y` がそのまま使われる。
+   */
+  layoutPosition?: 'absolute';
 }
 
 interface GraphicsBase extends NodeBase, Size {

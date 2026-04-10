@@ -463,6 +463,83 @@ describe('layoutDocument', () => {
     });
   });
 
+  describe('layoutPosition: absolute', () => {
+    it('excludes absolute children from a fit_content parent sizing', () => {
+      // Regression: intrinsicSize must also skip absolute children, otherwise
+      // a fit_content vertical parent inflates its height by the absolute
+      // child's (intrinsic or authored) size.
+      const doc = makeDoc([
+        {
+          type: 'frame',
+          id: 'fitParent',
+          layout: 'vertical',
+          width: 'fit_content',
+          height: 'fit_content',
+          gap: 0,
+          padding: 0,
+          children: [
+            rect('a', 50, 100),
+            rect('b', 50, 60),
+            {
+              type: 'rectangle',
+              id: 'floating',
+              x: 0,
+              y: 500, // would inflate fit_content height if counted in flow
+              width: 50,
+              height: 200,
+              layoutPosition: 'absolute',
+            } as unknown as PenNode,
+          ],
+        } as unknown as PenNode,
+      ]);
+      const parent = layoutDocument(doc).children[0] as FrameNode;
+      // height should be 100 + 60 = 160 (flow only, not 700)
+      expect(parent.height).toBe(160);
+    });
+
+    it('keeps absolute children out of the flex flow', () => {
+      // Regression: a floating bottom tab bar inside a layout:vertical
+      // container should honor its own x/y, not be stacked with the other
+      // children. Flow siblings should lay out as if the absolute child
+      // was not there.
+      const doc = makeDoc([
+        frame({
+          id: 'screen',
+          layout: 'vertical',
+          width: 375,
+          height: 812,
+          gap: 0,
+          children: [
+            rect('header', 375, 64),
+            rect('body', 375, 500),
+            {
+              type: 'frame',
+              id: 'tabbar',
+              x: 0,
+              y: 728,
+              width: 375,
+              height: 62,
+              layout: 'horizontal',
+              layoutPosition: 'absolute',
+              children: [],
+            } as unknown as PenNode,
+          ],
+        }),
+      ]);
+      const screen = layoutDocument(doc).children[0] as FrameNode;
+      const kids = screen.children!;
+      const header = kids.find((c) => c.id === 'header')!;
+      const body = kids.find((c) => c.id === 'body')!;
+      const tabbar = kids.find((c) => c.id === 'tabbar')!;
+      // header + body stack as if tabbar did not exist
+      expect(header.y).toBe(0);
+      expect(body.y).toBe(64);
+      // tabbar keeps its authored absolute position
+      expect(tabbar.x).toBe(0);
+      expect(tabbar.y).toBe(728);
+    });
+  });
+
   describe('nested layouts', () => {
     it('recursively lays out nested flex frames', () => {
       const doc = makeDoc([

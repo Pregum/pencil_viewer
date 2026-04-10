@@ -5,6 +5,7 @@
 
 import { useCallback, useReducer } from 'react';
 import { parsePenText, type ParseError } from '../parser';
+import { substituteVariables } from '../variables';
 import { layoutDocument } from '../layout';
 import type { PenDocument } from '../types';
 import { readFileAsText } from '../../utils/readFile';
@@ -59,7 +60,9 @@ export function useDocument(): {
   const loadText = useCallback(async (source: Source, text: string) => {
     const result = parsePenText(text);
     if (result.ok) {
-      const laidOut = layoutDocument(result.doc);
+      // parse → variable 置換 → layout の順でパイプライン
+      const substituted = substituteVariables(result.doc);
+      const laidOut = layoutDocument(substituted);
       dispatch({ type: 'LOAD_SUCCESS', source, doc: laidOut });
     } else {
       dispatch({
