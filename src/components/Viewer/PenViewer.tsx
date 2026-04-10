@@ -13,6 +13,7 @@ import { NodeTree } from './NodeTree';
 import { VimTextObjects } from './VimTextObjects';
 import { ZoomToSelected } from './ZoomToSelected';
 import { HintLabels } from './HintLabels';
+import { NudgeHandler } from './NudgeHandler';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -322,7 +323,12 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
   // Vim-like frame navigation: [count]h/j/k/l
   // Text objects (vim mode only): vif, vaf, vir, vic
   const vimCount = useRef('');
+  const vimGPending = useRef(false);
   const vimTimeout = useRef<ReturnType<typeof setTimeout>>();
+
+  const nudgeSelected = useCallback((direction: string, count: number) => {
+    window.dispatchEvent(new CustomEvent('pencil-nudge', { detail: { direction, count } }));
+  }, []);
 
   const navigateVim = useCallback(
     (direction: 'h' | 'j' | 'k' | 'l', count: number) => {
@@ -414,12 +420,20 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
       } else if (mod && e.key === '-') {
         e.preventDefault();
         zoomByFactor(1 / 1.25);
-      } else if (!mod && !isInput) {
-        // Vim-style: [count]h/j/k/l navigation
+      } else if (!mod && !isInput && vimMode) {
+        // Vim-style keybindings (vim mode only)
+        // Number prefix: accumulate digits
         if (/^[0-9]$/.test(e.key)) {
           vimCount.current += e.key;
           clearTimeout(vimTimeout.current);
-          vimTimeout.current = setTimeout(() => { vimCount.current = ''; }, 1500);
+          vimTimeout.current = setTimeout(() => { vimCount.current = ''; vimGPending.current = false; }, 1500);
+          return;
+        }
+        // g prefix: next h/j/k/l will do frame jump
+        if (e.key === 'g' && !vimGPending.current) {
+          vimGPending.current = true;
+          clearTimeout(vimTimeout.current);
+          vimTimeout.current = setTimeout(() => { vimGPending.current = false; vimCount.current = ''; }, 1500);
           return;
         }
         if (e.key === 'h' || e.key === 'j' || e.key === 'k' || e.key === 'l') {
@@ -427,7 +441,14 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
           const count = Math.max(1, parseInt(vimCount.current) || 1);
           vimCount.current = '';
           clearTimeout(vimTimeout.current);
-          navigateVim(e.key, count);
+          if (vimGPending.current) {
+            // g + h/j/k/l: frame jump
+            vimGPending.current = false;
+            navigateVim(e.key, count);
+          } else {
+            // h/j/k/l: nudge selected node by pixels
+            nudgeSelected(e.key, count);
+          }
           return;
         }
         // F (Shift+f) to zoom-focus on selected node
@@ -445,6 +466,14 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
         // Esc to deselect
         if (e.key === 'Escape') {
           setActiveFrameId(null);
+        }
+        // Reset g pending on other keys
+        vimGPending.current = false;
+      } else if (!mod && !isInput && !vimMode) {
+        // Non-vim: / still opens search
+        if (e.key === '/') {
+          e.preventDefault();
+          setShowFrameSearch(true);
         }
       }
     };
@@ -608,6 +637,7 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
           onClose={() => setShowCommandPalette(false)}
         />
       )}
+      <NudgeHandler />
       <ZoomToSelected onZoomTo={zoomToRect} />
       <VimTextObjects vimMode={vimMode} />
       {vimMode && (

@@ -169,7 +169,8 @@ export function HintLabels({ vimMode, svgScale, cameraCx, cameraCy, viewBox }: P
 
   if (!active || targets.length === 0) return null;
 
-  const labelSize = Math.max(10, 14 / svgScale);
+  // 画面上で常に14pxに見えるサイズ（SVG座標系に変換）
+  const labelSize = 14 / svgScale;
   const padX = labelSize * 0.6;
   const padY = labelSize * 0.3;
   const bgH = labelSize + padY * 2;
@@ -213,10 +214,10 @@ export function HintLabels({ vimMode, svgScale, cameraCx, cameraCy, viewBox }: P
       ))}
       {/* Mode indicator */}
       <text
-        x={viewBox.x + 8 / svgScale}
-        y={viewBox.y + 18 / svgScale}
+        x={viewBox.x + 10 / svgScale}
+        y={viewBox.y + 20 / svgScale}
         fill={mode === 'f' ? '#fbbf24' : '#86efac'}
-        fontSize={12 / svgScale}
+        fontSize={13 / svgScale}
         fontWeight="700"
         fontFamily="JetBrains Mono, monospace"
       >
