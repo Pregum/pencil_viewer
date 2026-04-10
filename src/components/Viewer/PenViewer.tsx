@@ -308,10 +308,51 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
     }));
   }, [baseVb]);
 
+  // Vim-like frame navigation: [count]h/j/k/l
+  // h=left, l=right (sorted by X), j=down, k=up (sorted by Y)
+  const vimCount = useRef('');
+  const vimTimeout = useRef<ReturnType<typeof setTimeout>>();
+
+  const navigateVim = useCallback(
+    (direction: 'h' | 'j' | 'k' | 'l', count: number) => {
+      if (frames.length === 0) return;
+
+      // Sort frames by position for directional navigation
+      const sortedByX = [...frames].sort((a, b) => a.x - b.x || a.y - b.y);
+      const sortedByY = [...frames].sort((a, b) => a.y - b.y || a.x - b.x);
+
+      // Find current frame index
+      const currentId = activeFrameId;
+      let sorted: FrameEntry[];
+      let step: number;
+
+      switch (direction) {
+        case 'l': sorted = sortedByX; step = count; break;
+        case 'h': sorted = sortedByX; step = -count; break;
+        case 'j': sorted = sortedByY; step = count; break;
+        case 'k': sorted = sortedByY; step = -count; break;
+      }
+
+      const currentIdx = currentId
+        ? sorted.findIndex((f) => f.id === currentId)
+        : -1;
+      const startIdx = currentIdx >= 0 ? currentIdx : (step > 0 ? -1 : sorted.length);
+      const targetIdx = Math.max(0, Math.min(sorted.length - 1, startIdx + step));
+      const target = sorted[targetIdx];
+      if (target) zoomToFrame(target);
+    },
+    [frames, activeFrameId, zoomToFrame],
+  );
+
   // Keyboard shortcuts
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
+
+      // Skip vim keys when typing in inputs
+      const tag = (e.target as HTMLElement).tagName;
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
       if (mod && e.key === '[') {
         e.preventDefault();
         navigateBack();
@@ -339,11 +380,37 @@ export function PenViewer({ doc }: { doc: PenDocument }) {
       } else if (mod && e.key === '-') {
         e.preventDefault();
         zoomByFactor(1 / 1.25);
+      } else if (!mod && !isInput) {
+        // Vim-style: [count]h/j/k/l navigation
+        if (/^[0-9]$/.test(e.key)) {
+          vimCount.current += e.key;
+          clearTimeout(vimTimeout.current);
+          vimTimeout.current = setTimeout(() => { vimCount.current = ''; }, 1500);
+          return;
+        }
+        if (e.key === 'h' || e.key === 'j' || e.key === 'k' || e.key === 'l') {
+          e.preventDefault();
+          const count = Math.max(1, parseInt(vimCount.current) || 1);
+          vimCount.current = '';
+          clearTimeout(vimTimeout.current);
+          navigateVim(e.key, count);
+          return;
+        }
+        // / to open search (vim-style)
+        if (e.key === '/') {
+          e.preventDefault();
+          setShowFrameSearch(true);
+          return;
+        }
+        // Esc to deselect
+        if (e.key === 'Escape') {
+          setActiveFrameId(null);
+        }
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [zoomByFactor, resetView, zoomTo100, navigateBack, navigateForward]);
+  }, [zoomByFactor, resetView, zoomTo100, navigateBack, navigateForward, navigateVim]);
 
   const cursor = isSpaceHeld.current || isPanning.current ? 'grab' : 'default';
 
