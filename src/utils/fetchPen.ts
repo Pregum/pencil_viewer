@@ -1,4 +1,24 @@
+/**
+ * 許可するスキームを制限し、SSRF / javascript: URI を防止する。
+ */
+function validateUrl(url: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`無効な URL です: ${url}`);
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error(
+      `${parsed.protocol} スキームは許可されていません。https: または http: のみ使用できます`,
+    );
+  }
+  return parsed;
+}
+
 export async function fetchPenText(url: string): Promise<string> {
+  validateUrl(url);
+
   let res: Response;
   try {
     res = await fetch(url);

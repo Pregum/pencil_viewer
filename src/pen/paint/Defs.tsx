@@ -16,9 +16,25 @@ export function Defs({ registry }: { registry: PaintRegistry }) {
   );
 }
 
+/** 安全な画像 URL のみ許可し、javascript: / data:text/html 等を排除 */
+function sanitizeImageUrl(url: string): string | null {
+  // data:image/* (base64) は許可
+  if (/^data:image\/[a-z+]+;base64,/i.test(url)) return url;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') return url;
+  } catch {
+    // invalid URL
+  }
+  return null;
+}
+
 function renderPaint(p: PaintRef) {
   if (p.kind === 'gradient') return renderGradient(p.id, p.def as GradientFill);
   // image fill (pattern) — MVP では簡易対応
+  const rawUrl = (p.def as { url: string }).url;
+  const safeUrl = sanitizeImageUrl(rawUrl);
+  if (!safeUrl) return null; // 不正な URL はレンダリングしない
   return (
     <pattern
       key={p.id}
@@ -28,7 +44,7 @@ function renderPaint(p: PaintRef) {
       height={1}
     >
       <image
-        href={(p.def as { url: string }).url}
+        href={safeUrl}
         preserveAspectRatio="xMidYMid slice"
         width={1}
         height={1}

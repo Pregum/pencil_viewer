@@ -13,7 +13,11 @@ import { z } from 'zod';
 
 const zSize = z.union([z.number(), z.string()]).optional();
 
-const zColor = z.string();
+/** CSS color のみ許可。url() / javascript: 等の注入を防止 */
+const zColor = z.string().refine(
+  (s) => !/^\s*url\s*\(/i.test(s) && !/^\s*javascript:/i.test(s),
+  { message: 'Invalid color value' },
+);
 
 const zSolidFill = z
   .object({
