@@ -46,7 +46,12 @@ export function FrameSearch({ frames, activeFrameId, cameraCx, cameraCy, onSelec
 
   useEffect(() => {
     inputRef.current?.focus();
-  }, []);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); onClose(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   useEffect(() => {
     setSelectedIdx(0);
