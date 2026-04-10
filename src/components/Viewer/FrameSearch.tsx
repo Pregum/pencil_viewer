@@ -77,6 +77,9 @@ export function FrameSearch({ frames, activeFrameId, cameraCx, cameraCy, onSelec
   }, [selectedIdx]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // IME 変換中のキー入力は無視（日本語確定 Enter で閉じない）
+    if (e.nativeEvent.isComposing || e.key === 'Process') return;
+
     if (e.key === 'Escape') {
       e.preventDefault();
       onClose();

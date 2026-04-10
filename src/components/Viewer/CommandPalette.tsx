@@ -57,6 +57,7 @@ export function CommandPalette({ commands, onClose }: Props) {
   }, [selectedIdx]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.nativeEvent.isComposing || e.key === 'Process') return;
     if (e.key === 'Escape') {
       e.preventDefault();
       onClose();
