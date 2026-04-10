@@ -10,6 +10,7 @@ import { layoutDocument } from '../layout';
 import type { PenDocument } from '../types';
 import { readFileAsText } from '../../utils/readFile';
 import { fetchPenText } from '../../utils/fetchPen';
+import { loadDocumentFonts } from '../../utils/fontLoader';
 
 export type Source =
   | { kind: 'file'; name: string }
@@ -63,6 +64,7 @@ export function useDocument(): {
       // parse → variable 置換 → layout の順でパイプライン
       const substituted = substituteVariables(result.doc);
       const laidOut = layoutDocument(substituted);
+      loadDocumentFonts(laidOut);
       dispatch({ type: 'LOAD_SUCCESS', source, doc: laidOut });
     } else {
       dispatch({
