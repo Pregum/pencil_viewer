@@ -37,11 +37,36 @@ export type VariableMap = Record<string, VariableDef>;
 const VAR_REF_RE = /^\$([a-zA-Z_][a-zA-Z0-9_-]*)$/;
 
 /**
+ * ドキュメントのテーマ軸定義を抽出する。
+ * 例: { "mode": ["light", "dark"], "device": ["phone", "tablet"] }
+ */
+export type ThemeAxes = Record<string, string[]>;
+export type SelectedTheme = Record<string, string>;
+
+export function extractThemeAxes(doc: PenDocument): ThemeAxes | null {
+  const themes = doc.themes;
+  if (!themes || typeof themes !== 'object') return null;
+  const axes: ThemeAxes = {};
+  for (const [axis, values] of Object.entries(themes as Record<string, unknown>)) {
+    if (Array.isArray(values) && values.every((v) => typeof v === 'string')) {
+      axes[axis] = values as string[];
+    }
+  }
+  return Object.keys(axes).length > 0 ? axes : null;
+}
+
+/**
  * ドキュメントを深く walk し、すべての `$variable` 参照を実値に置換した新しい
  * ドキュメントを返す(元のオブジェクトは mutate しない)。
+ *
+ * @param selectedTheme テーマ軸の選択値(例: { mode: 'dark' })。
+ *   未指定の場合は themed 配列の先頭値を使う。
  */
-export function substituteVariables(doc: PenDocument): PenDocument {
-  const vars = parseVariables(doc.variables);
+export function substituteVariables(
+  doc: PenDocument,
+  selectedTheme?: SelectedTheme,
+): PenDocument {
+  const vars = parseVariables(doc.variables, selectedTheme);
   if (!vars || Object.keys(vars).length === 0) return doc;
   const children = doc.children.map((c) => walk(c, vars) as PenNode);
   return { ...doc, children };
@@ -51,7 +76,10 @@ export function substituteVariables(doc: PenDocument): PenDocument {
  * variable 辞書を narrow した形で取り出す。配列(theme 付き)の場合は先頭を使う。
  * 型が不明または壊れている項目は無視する。
  */
-export function parseVariables(raw: unknown): VariableMap | null {
+export function parseVariables(
+  raw: unknown,
+  selectedTheme?: SelectedTheme,
+): VariableMap | null {
   if (!raw || typeof raw !== 'object') return null;
   const out: VariableMap = {};
   for (const [name, def] of Object.entries(raw as Record<string, unknown>)) {
@@ -61,12 +89,10 @@ export function parseVariables(raw: unknown): VariableMap | null {
     if (t !== 'color' && t !== 'number' && t !== 'boolean' && t !== 'string') continue;
 
     let value: unknown = d.value;
-    // theme 別の配列: [{ value, theme }, ...] → 先頭の value を採用
+    // theme 別の配列: [{ value, theme }, ...] → 選択テーマにマッチするものを優先
     if (Array.isArray(value)) {
-      const first = value[0];
-      if (first && typeof first === 'object' && 'value' in first) {
-        value = (first as { value: unknown }).value;
-      }
+      const picked = pickThemedValue(value, selectedTheme);
+      value = picked;
     }
 
     if (
@@ -79,6 +105,37 @@ export function parseVariables(raw: unknown): VariableMap | null {
     }
   }
   return out;
+}
+
+/**
+ * themed 配列から selectedTheme にマッチする value を選ぶ。
+ * マッチしない場合は先頭の value を返す。
+ */
+function pickThemedValue(
+  arr: unknown[],
+  selectedTheme?: SelectedTheme,
+): unknown {
+  if (arr.length === 0) return undefined;
+
+  if (selectedTheme && Object.keys(selectedTheme).length > 0) {
+    for (const entry of arr) {
+      if (!entry || typeof entry !== 'object') continue;
+      const e = entry as { value?: unknown; theme?: Record<string, string> };
+      if (!e.theme) continue;
+      // すべての選択軸がマッチするか
+      const matches = Object.entries(selectedTheme).every(
+        ([axis, val]) => e.theme![axis] === val,
+      );
+      if (matches && 'value' in e) return e.value;
+    }
+  }
+
+  // フォールバック: 先頭値
+  const first = arr[0];
+  if (first && typeof first === 'object' && 'value' in first) {
+    return (first as { value: unknown }).value;
+  }
+  return undefined;
 }
 
 /**

@@ -38,10 +38,13 @@ const KNOWN_TYPES = new Set([
   'group',
   'icon_font',
   'image',
+  'ref',
+  'connection',
+  'note',
 ]);
 
 /** ビューアーで非表示にするノードタイプ(開発者メモ等) */
-const HIDDEN_TYPES = new Set(['context', 'note', 'connection']);
+const HIDDEN_TYPES = new Set(['context']);
 
 export function parsePen(input: unknown): ParseResult {
   const result = zPenDocument.safeParse(input);

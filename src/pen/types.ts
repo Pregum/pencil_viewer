@@ -207,6 +207,44 @@ export interface ImageNode extends GraphicsBase {
 }
 
 /**
+ * コンポーネント参照(インスタンス)。ref → 別ノード ID を参照し、
+ * descendants でサブツリーのプロパティを上書きする。
+ */
+export interface RefNode extends NodeBase {
+  type: 'ref';
+  ref: string;
+  width?: SizeValue;
+  height?: SizeValue;
+  descendants?: Record<string, Record<string, unknown>>;
+  [key: string]: unknown;
+}
+
+/**
+ * ノード間を結ぶコネクション線。
+ */
+export interface ConnectionNode extends NodeBase {
+  type: 'connection';
+  width?: SizeValue;
+  height?: SizeValue;
+  source?: { path: string; anchor?: string };
+  target?: { path: string; anchor?: string };
+  stroke?: Stroke;
+}
+
+/**
+ * 付箋メモ。開発者向けのアノテーション。
+ */
+export interface NoteNode extends NodeBase {
+  type: 'note';
+  content?: string;
+  width?: SizeValue;
+  height?: SizeValue;
+  fontFamily?: string;
+  fontSize?: number;
+  fill?: Fills;
+}
+
+/**
  * 未対応ノード。parser は未知の `type` をこの型で通す(描画時はプレースホルダ)。
  */
 export interface UnsupportedNode extends NodeBase {
@@ -228,6 +266,9 @@ export type PenNode =
   | GroupNode
   | IconFontNode
   | ImageNode
+  | RefNode
+  | ConnectionNode
+  | NoteNode
   | UnsupportedNode;
 
 export interface PenDocument {

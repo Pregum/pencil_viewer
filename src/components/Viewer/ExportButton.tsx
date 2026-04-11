@@ -1,20 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor } from '../../pen/state/EditorContext';
+
+type ExportFormat = 'pen' | 'svg' | 'png';
 
 export function ExportButton() {
   const { exportPen } = useEditor();
-  const [showSaveAs, setShowSaveAs] = useState(false);
-  const [fileName, setFileName] = useState('exported.pen');
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  // Cmd+S = quick .pen export
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
-      if (mod && e.shiftKey && e.key === 's') {
-        // Cmd+Shift+S: Save As
-        e.preventDefault();
-        setShowSaveAs(true);
-      } else if (mod && e.key === 's') {
-        // Cmd+S: Quick export
+      if (mod && e.key === 's') {
         e.preventDefault();
         exportPen();
       }
@@ -23,70 +33,128 @@ export function ExportButton() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [exportPen]);
 
-  const handleSaveAs = () => {
-    exportPen(fileName);
-    setShowSaveAs(false);
-  };
+  const handleExport = useCallback(
+    (format: ExportFormat) => {
+      setOpen(false);
+      if (format === 'pen') {
+        exportPen();
+        return;
+      }
+
+      const svg = document.querySelector('.viewer__svg') as SVGSVGElement | null;
+      if (!svg) return;
+
+      if (format === 'svg') {
+        exportSvg(svg);
+      } else {
+        exportPng(svg);
+      }
+    },
+    [exportPen],
+  );
 
   return (
-    <>
+    <div ref={menuRef} style={{ position: 'relative' }}>
       <button
         type="button"
         className="viewer__zoom-btn"
-        title="Export .pen (Cmd+S)"
-        onClick={() => exportPen()}
+        title="Export"
+        onClick={() => setOpen((v) => !v)}
         style={{ fontSize: 12, width: 'auto', padding: '0 8px' }}
       >
-        Export
+        Export ▾
       </button>
-      {showSaveAs && (
-        <div
-          className="dialog-backdrop"
-          onClick={(e) => {
-            if ((e.target as HTMLElement).classList.contains('dialog-backdrop'))
-              setShowSaveAs(false);
-          }}
-        >
-          <div className="dialog" style={{ width: 400 }}>
-            <div className="dialog__header">
-              <span className="dialog__title">Save As</span>
-              <button
-                type="button"
-                className="dialog__close"
-                onClick={() => setShowSaveAs(false)}
-              >
-                &times;
-              </button>
-            </div>
-            <div className="dialog__body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div>
-                <label style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  File Name
-                </label>
-                <input
-                  className="prop-panel__input"
-                  value={fileName}
-                  onChange={(e) => setFileName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSaveAs();
-                    if (e.key === 'Escape') setShowSaveAs(false);
-                  }}
-                  autoFocus
-                  style={{ marginTop: 4 }}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button className="button" onClick={() => setShowSaveAs(false)}>
-                  Cancel
-                </button>
-                <button className="button button--primary" onClick={handleSaveAs}>
-                  Save
-                </button>
-              </div>
-            </div>
-          </div>
+      {open && (
+        <div className="export-menu">
+          <button className="export-menu__item" onClick={() => handleExport('svg')}>
+            <span className="export-menu__icon">🖼</span>
+            <span>
+              <strong>SVG</strong>
+              <small>Vector — lossless, editable</small>
+            </span>
+          </button>
+          <button className="export-menu__item" onClick={() => handleExport('png')}>
+            <span className="export-menu__icon">📷</span>
+            <span>
+              <strong>PNG</strong>
+              <small>Raster — 2x for Retina</small>
+            </span>
+          </button>
+          <div className="export-menu__divider" />
+          <button className="export-menu__item" onClick={() => handleExport('pen')}>
+            <span className="export-menu__icon">📄</span>
+            <span>
+              <strong>.pen JSON</strong>
+              <small>Source file (Cmd+S)</small>
+            </span>
+          </button>
         </div>
       )}
-    </>
+    </div>
   );
+}
+
+function exportSvg(svg: SVGSVGElement) {
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  // Remove selection highlights and UI overlays
+  clone.querySelectorAll('[data-ui]').forEach((el) => el.remove());
+  // Set explicit xmlns for standalone SVG
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+
+  const serializer = new XMLSerializer();
+  const svgString = serializer.serializeToString(clone);
+  const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+  downloadBlob(blob, 'pencil-viewer-export.svg');
+}
+
+function exportPng(svg: SVGSVGElement) {
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  clone.querySelectorAll('[data-ui]').forEach((el) => el.remove());
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+
+  const viewBox = svg.getAttribute('viewBox')?.split(' ').map(Number) ?? [0, 0, 800, 600];
+  const [, , vbW, vbH] = viewBox;
+  const scale = 2; // Retina
+  const width = vbW * scale;
+  const height = vbH * scale;
+
+  const serializer = new XMLSerializer();
+  const svgString = serializer.serializeToString(clone);
+  const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(svgBlob);
+
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(img, 0, 0, width, height);
+    URL.revokeObjectURL(url);
+
+    canvas.toBlob((blob) => {
+      if (blob) downloadBlob(blob, 'pencil-viewer-export.png');
+    }, 'image/png');
+  };
+  img.onerror = () => {
+    URL.revokeObjectURL(url);
+    alert('PNG export failed. Try SVG export instead.');
+  };
+  img.src = url;
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }

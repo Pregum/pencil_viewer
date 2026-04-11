@@ -14,6 +14,8 @@ import { Frame } from './Frame';
 import { Group } from './Group';
 import { IconFont } from './IconFont';
 import { Image } from './Image';
+import { Note } from './Note';
+import { Connection } from './Connection';
 import { Unsupported } from './Unsupported';
 import { SelectableNode } from './SelectableNode';
 
@@ -39,6 +41,26 @@ function renderNode(node: PenNode) {
       return <IconFont node={node} />;
     case 'image':
       return <Image node={node} />;
+    case 'ref':
+      // ref は resolveRefs で展開済み。未解決の場合のフォールバック
+      return (
+        <Unsupported
+          node={{
+            type: 'unsupported',
+            id: node.id,
+            x: node.x ?? 0,
+            y: node.y ?? 0,
+            width: typeof node.width === 'number' ? node.width : 120,
+            height: typeof node.height === 'number' ? node.height : 60,
+            originalType: `ref:${node.ref}`,
+            raw: node,
+          }}
+        />
+      );
+    case 'note':
+      return <Note node={node} />;
+    case 'connection':
+      return <Connection node={node} />;
     case 'unsupported':
       return <Unsupported node={node} />;
     default:

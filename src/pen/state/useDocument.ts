@@ -5,6 +5,7 @@
 
 import { useCallback, useReducer } from 'react';
 import { parsePenText, type ParseError } from '../parser';
+import { resolveRefs } from '../refs';
 import { substituteVariables } from '../variables';
 import { layoutDocument } from '../layout';
 import type { PenDocument } from '../types';
@@ -61,8 +62,9 @@ export function useDocument(): {
   const loadText = useCallback(async (source: Source, text: string) => {
     const result = parsePenText(text);
     if (result.ok) {
-      // parse → variable 置換 → layout の順でパイプライン
-      const substituted = substituteVariables(result.doc);
+      // parse → ref 展開 → variable 置換 → layout の順でパイプライン
+      const refsResolved = resolveRefs(result.doc);
+      const substituted = substituteVariables(refsResolved);
       const rawDoc = substituted; // レイアウト前の状態を保持（エクスポート用）
       const laidOut = layoutDocument(substituted);
       loadDocumentFonts(laidOut);
