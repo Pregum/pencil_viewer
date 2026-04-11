@@ -56,10 +56,10 @@ Push to `main` triggers `.github/workflows/deploy.yml` automatically.
 | :white_check_mark: | Zoom / pan / frame navigation |
 | :white_check_mark: | Responsive mobile layout |
 | :white_check_mark: | GitHub Pages deployment (free) |
-| :construction: | Theme switching (light / dark variables) |
-| :construction: | `ref` (component instance) resolution |
-| :construction: | Full `connection` / `note` node rendering |
-| :construction: | Export to PNG / SVG |
+| :white_check_mark: | Theme switching (light / dark variables) |
+| :white_check_mark: | `ref` (component instance) resolution |
+| :white_check_mark: | `connection` / `note` node rendering |
+| :white_check_mark: | Export to SVG / PNG |
 | :construction: | Collaborative viewing via shared URL |
 
 ## License
