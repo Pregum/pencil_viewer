@@ -1,0 +1,47 @@
+{
+  "lp.badge": "オープンソース",
+  "lp.title.1": "Pencil",
+  "lp.title.2": "Viewer",
+  "lp.subtitle": "<link>.pen</link> デザインファイルをブラウザで直接表示・検査。<br/>アカウント不要。アップロード不要。完全クライアントサイド。",
+  "lp.cta": "今すぐ試す",
+
+  "lp.feat.drag.title": "ドラッグ & ドロップ",
+  "lp.feat.drag.desc": ".pen ファイルを即座にオープン。URL 貼り付けも可能。サインアップ不要。",
+  "lp.feat.render.title": "フルレンダリング",
+  "lp.feat.render.desc": "図形、テキスト、グラデーション、シャドウ、アイコンフォント、flex レイアウト — すべて SVG で描画。",
+  "lp.feat.privacy.title": "プライバシー最優先",
+  "lp.feat.privacy.desc": "すべてブラウザ上で動作。ファイルがデバイスの外に出ることはありません。",
+  "lp.feat.mobile.title": "モバイル対応",
+  "lp.feat.mobile.desc": "レスポンシブデザイン。通勤中にスマホでワイヤーフレームを確認。",
+  "lp.feat.token.title": "変数トークン",
+  "lp.feat.token.desc": "$surface-primary などの変数参照をドキュメントから自動解決。",
+  "lp.feat.oss.title": "無料 & オープンソース",
+  "lp.feat.oss.desc": "MIT ライセンス。GitHub Pages で $0 でセルフホスト可能。",
+
+  "lp.how.title": "使い方",
+  "lp.how.step1.title": ".pen ファイルをドロップ",
+  "lp.how.step1.desc": "または URL を貼り付け / サンプルを選択",
+  "lp.how.step2.title": "パース & レイアウト",
+  "lp.how.step2.desc": "zod 検証、変数解決、flex レイアウト計算",
+  "lp.how.step3.title": "SVG で表示",
+  "lp.how.step3.desc": "ズーム・パン・フレームナビ — Figma ライクなキャンバス",
+
+  "lp.try.title": "今すぐ試す",
+
+  "dropzone.active": "ここにドロップ",
+  "dropzone.title": ".pen ファイルをドロップ",
+  "dropzone.subtitle": "または クリックしてファイルを選択",
+
+  "url.placeholder": "https://example.com/design.pen",
+  "url.submit": "開く",
+
+  "samples.title": "サンプル",
+
+  "error.title": "読み込みに失敗しました",
+  "error.cors.hint": "CORS で拒否された可能性があります。D&D かサンプルで試してください。",
+  "error.retry": "別のファイルを選ぶ",
+  "error.sample": "サンプルを見る",
+
+  "header.back": "戻る",
+  "loading": "読み込み中…"
+}

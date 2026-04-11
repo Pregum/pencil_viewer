@@ -1,4 +1,5 @@
 import { useDropzone } from 'react-dropzone';
+import { useI18n } from '../../i18n/I18nContext';
 
 export function DropZone({
   onFile,
@@ -7,6 +8,7 @@ export function DropZone({
   onFile: (file: File) => void;
   disabled?: boolean;
 }) {
+  const { t } = useI18n();
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     multiple: false,
     disabled,
@@ -31,9 +33,9 @@ export function DropZone({
         📄
       </div>
       <div className="dropzone__title">
-        {isDragActive ? 'ここにドロップ' : '.pen ファイルをドロップ'}
+        {isDragActive ? t('dropzone.active') : t('dropzone.title')}
       </div>
-      <div className="dropzone__subtitle">または クリックしてファイルを選択</div>
+      <div className="dropzone__subtitle">{t('dropzone.subtitle')}</div>
     </div>
   );
 }

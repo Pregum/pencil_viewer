@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/I18nContext';
 import { DropZone } from './Loader/DropZone';
 import { UrlInput } from './Loader/UrlInput';
 import { SampleList } from './Loader/SampleList';
@@ -11,21 +12,27 @@ export function Landing({
   onUrl: (url: string) => void;
   onSample: (name: string) => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <div className="lp">
       {/* --- Hero --- */}
       <section className="lp__hero">
-        <div className="lp__hero-badge">Open Source</div>
+        <div className="lp__hero-badge">{t('lp.badge')}</div>
         <h1 className="lp__title">
-          Pencil <span className="lp__title-accent">Viewer</span>
+          {t('lp.title.1')} <span className="lp__title-accent">{t('lp.title.2')}</span>
         </h1>
         <p className="lp__subtitle">
-          View &amp; inspect <a href="https://www.pencil.dev/" target="_blank" rel="noopener noreferrer">.pen</a> design files directly in your browser.
-          <br />
-          No account. No upload. Fully client-side.
+          {t('lp.subtitle')
+            .replace(/<link>(.*?)<\/link>/g, '')
+            .replace(/<br\/>/g, '')
+            .split(/(<link>.*?<\/link>|<br\/>)/g)
+            .length // just use dangerouslySetInnerHTML for simplicity
+            ? null
+            : null}
+          <SubtitleHtml html={t('lp.subtitle')} />
         </p>
         <div className="lp__hero-visual">
-          {/* Decorative inline SVG showing abstract wireframe shapes */}
           <svg viewBox="0 0 480 200" className="lp__deco-svg" aria-hidden>
             <rect x="20" y="20" width="120" height="80" rx="12" fill="#7C3AED" opacity="0.15" />
             <rect x="30" y="30" width="100" height="60" rx="8" fill="none" stroke="#7C3AED" strokeWidth="2" strokeDasharray="6 4" />
@@ -39,78 +46,41 @@ export function Landing({
             <path d="M20 160 Q120 130 240 150 T460 140" stroke="#7C3AED" strokeWidth="2" fill="none" opacity="0.3" />
           </svg>
         </div>
-        <a href="#try" className="lp__cta">
-          Try it now &darr;
-        </a>
+        <a href="#try" className="lp__cta">{t('lp.cta')} &darr;</a>
       </section>
 
       {/* --- Features --- */}
       <section className="lp__features">
-        <div className="lp__feature">
-          <div className="lp__feature-icon">📂</div>
-          <h3>Drag &amp; Drop</h3>
-          <p>Open any <code>.pen</code> file instantly. Or paste a URL. No sign-up required.</p>
-        </div>
-        <div className="lp__feature">
-          <div className="lp__feature-icon">🎨</div>
-          <h3>Full Rendering</h3>
-          <p>Shapes, text, gradients, shadows, icon fonts, flex layout &mdash; all rendered as SVG.</p>
-        </div>
-        <div className="lp__feature">
-          <div className="lp__feature-icon">🔐</div>
-          <h3>Privacy First</h3>
-          <p>Everything runs in your browser. Files never leave your device.</p>
-        </div>
-        <div className="lp__feature">
-          <div className="lp__feature-icon">📱</div>
-          <h3>Mobile Ready</h3>
-          <p>Responsive design. Review wireframes on your phone during commute.</p>
-        </div>
-        <div className="lp__feature">
-          <div className="lp__feature-icon">🧩</div>
-          <h3>Variable Tokens</h3>
-          <p><code>$surface-primary</code> and friends are resolved automatically from the doc.</p>
-        </div>
-        <div className="lp__feature">
-          <div className="lp__feature-icon">⚡</div>
-          <h3>Free &amp; Open Source</h3>
-          <p>MIT licensed. Self-host on GitHub Pages for $0. Contribute on GitHub.</p>
-        </div>
+        {(['drag', 'render', 'privacy', 'mobile', 'token', 'oss'] as const).map((key) => (
+          <div className="lp__feature" key={key}>
+            <div className="lp__feature-icon">
+              {key === 'drag' ? '📂' : key === 'render' ? '🎨' : key === 'privacy' ? '🔐' : key === 'mobile' ? '📱' : key === 'token' ? '🧩' : '⚡'}
+            </div>
+            <h3>{t(`lp.feat.${key}.title`)}</h3>
+            <p>{t(`lp.feat.${key}.desc`)}</p>
+          </div>
+        ))}
       </section>
 
       {/* --- How it works --- */}
       <section className="lp__how">
-        <h2 className="lp__section-title">How it works</h2>
+        <h2 className="lp__section-title">{t('lp.how.title')}</h2>
         <div className="lp__steps">
-          <div className="lp__step">
-            <div className="lp__step-num">1</div>
-            <div className="lp__step-text">
-              <strong>Drop a .pen file</strong>
-              <span>or paste a URL / pick a sample</span>
+          {[1, 2, 3].map((n) => (
+            <div className="lp__step" key={n}>
+              <div className="lp__step-num">{n}</div>
+              <div className="lp__step-text">
+                <strong>{t(`lp.how.step${n}.title`)}</strong>
+                <span>{t(`lp.how.step${n}.desc`)}</span>
+              </div>
             </div>
-          </div>
-          <div className="lp__step-arrow" aria-hidden>&rarr;</div>
-          <div className="lp__step">
-            <div className="lp__step-num">2</div>
-            <div className="lp__step-text">
-              <strong>Parsed &amp; laid out</strong>
-              <span>zod validation, variable resolution, flex layout</span>
-            </div>
-          </div>
-          <div className="lp__step-arrow" aria-hidden>&rarr;</div>
-          <div className="lp__step">
-            <div className="lp__step-num">3</div>
-            <div className="lp__step-text">
-              <strong>View as SVG</strong>
-              <span>zoom, pan, frame nav &mdash; Figma-like canvas</span>
-            </div>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* --- Try it (existing drop zone) --- */}
+      {/* --- Try it --- */}
       <section className="lp__try" id="try">
-        <h2 className="lp__section-title">Try it now</h2>
+        <h2 className="lp__section-title">{t('lp.try.title')}</h2>
         <div className="idle">
           <DropZone onFile={onFile} />
           <div className="idle__divider"><span>or</span></div>
@@ -121,16 +91,33 @@ export function Landing({
 
       {/* --- Footer --- */}
       <footer className="lp__footer">
-        <a href="https://github.com/Pregum/pencil_viewer" target="_blank" rel="noopener noreferrer">
-          GitHub
-        </a>
+        <a href="https://github.com/Pregum/pencil_viewer" target="_blank" rel="noopener noreferrer">GitHub</a>
         <span>&middot;</span>
-        <a href="https://www.pencil.dev/" target="_blank" rel="noopener noreferrer">
-          Pencil.dev
-        </a>
+        <a href="https://www.pencil.dev/" target="_blank" rel="noopener noreferrer">Pencil.dev</a>
         <span>&middot;</span>
         <span>MIT License</span>
       </footer>
     </div>
+  );
+}
+
+/** subtitle の <link>...</link> と <br/> を安全に React 要素に変換する */
+function SubtitleHtml({ html }: { html: string }) {
+  const parts = html.split(/(<link>.*?<\/link>|<br\/>)/g);
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part === '<br/>') return <br key={i} />;
+        const linkMatch = part.match(/^<link>(.*?)<\/link>$/);
+        if (linkMatch) {
+          return (
+            <a key={i} href="https://www.pencil.dev/" target="_blank" rel="noopener noreferrer">
+              {linkMatch[1]}
+            </a>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
   );
 }

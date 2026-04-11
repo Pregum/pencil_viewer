@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
+import { useI18n } from '../../i18n/I18nContext';
 
 export function UrlInput({ onSubmit }: { onSubmit: (url: string) => void }) {
+  const { t } = useI18n();
   const [value, setValue] = useState('');
 
   const handleSubmit = (e: FormEvent) => {
@@ -14,12 +16,12 @@ export function UrlInput({ onSubmit }: { onSubmit: (url: string) => void }) {
       <input
         type="url"
         className="url-form__input"
-        placeholder="https://example.com/design.pen"
+        placeholder={t('url.placeholder')}
         value={value}
         onChange={(e) => setValue(e.target.value)}
       />
       <button type="submit" className="url-form__submit" disabled={!value.trim()}>
-        開く
+        {t('url.submit')}
       </button>
     </form>
   );

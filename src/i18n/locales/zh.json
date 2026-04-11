@@ -1,0 +1,47 @@
+{
+  "lp.badge": "开源项目",
+  "lp.title.1": "Pencil",
+  "lp.title.2": "Viewer",
+  "lp.subtitle": "在浏览器中直接查看和检查 <link>.pen</link> 设计文件。<br/>无需账号。无需上传。完全客户端运行。",
+  "lp.cta": "立即体验",
+
+  "lp.feat.drag.title": "拖放打开",
+  "lp.feat.drag.desc": "拖放 .pen 文件即可打开。也支持粘贴 URL。无需注册。",
+  "lp.feat.render.title": "完整渲染",
+  "lp.feat.render.desc": "形状、文本、渐变、阴影、图标字体、flex 布局 — 全部以 SVG 渲染。",
+  "lp.feat.privacy.title": "隐私优先",
+  "lp.feat.privacy.desc": "一切在浏览器中运行。文件不会离开您的设备。",
+  "lp.feat.mobile.title": "移动端适配",
+  "lp.feat.mobile.desc": "响应式设计。在手机上随时查看线框图。",
+  "lp.feat.token.title": "变量令牌",
+  "lp.feat.token.desc": "$surface-primary 等变量引用从文档中自动解析。",
+  "lp.feat.oss.title": "免费 & 开源",
+  "lp.feat.oss.desc": "MIT 许可证。可在 GitHub Pages 免费自托管。",
+
+  "lp.how.title": "工作流程",
+  "lp.how.step1.title": "拖放 .pen 文件",
+  "lp.how.step1.desc": "或粘贴 URL / 选择示例",
+  "lp.how.step2.title": "解析并布局",
+  "lp.how.step2.desc": "zod 验证、变量解析、flex 布局计算",
+  "lp.how.step3.title": "以 SVG 查看",
+  "lp.how.step3.desc": "缩放、平移、画框导航 — 类 Figma 画布",
+
+  "lp.try.title": "立即体验",
+
+  "dropzone.active": "拖放到此处",
+  "dropzone.title": "拖放 .pen 文件",
+  "dropzone.subtitle": "或点击选择文件",
+
+  "url.placeholder": "https://example.com/design.pen",
+  "url.submit": "打开",
+
+  "samples.title": "示例",
+
+  "error.title": "加载失败",
+  "error.cors.hint": "可能被 CORS 拦截。请尝试拖放或选择示例。",
+  "error.retry": "选择其他文件",
+  "error.sample": "查看示例",
+
+  "header.back": "返回",
+  "loading": "加载中…"
+}

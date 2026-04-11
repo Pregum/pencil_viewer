@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useI18n } from '../../i18n/I18nContext';
 
 export interface SampleMeta {
   name: string;
@@ -7,6 +8,7 @@ export interface SampleMeta {
 }
 
 export function SampleList({ onPick }: { onPick: (name: string) => void }) {
+  const { t } = useI18n();
   const [samples, setSamples] = useState<SampleMeta[] | null>(null);
 
   useEffect(() => {
@@ -29,7 +31,7 @@ export function SampleList({ onPick }: { onPick: (name: string) => void }) {
 
   return (
     <section className="samples">
-      <h3 className="samples__title">サンプル</h3>
+      <h3 className="samples__title">{t('samples.title')}</h3>
       <div className="samples__grid">
         {samples.map((s) => (
           <button

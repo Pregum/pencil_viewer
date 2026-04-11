@@ -3,16 +3,24 @@ import { useDocument } from './pen/state/useDocument';
 import { PenViewer } from './components/Viewer/PenViewer';
 import { Landing } from './components/Landing';
 import { ErrorView } from './components/ErrorView';
+import { useI18n } from './i18n/I18nContext';
+import type { SupportedLocale } from './i18n/detectLocale';
+
+const LOCALES: { code: SupportedLocale; label: string }[] = [
+  { code: 'en', label: 'EN' },
+  { code: 'ja', label: 'JA' },
+  { code: 'zh', label: 'ZH' },
+];
 
 export function App() {
   const { state, loadFile, loadUrl, loadSample, reset } = useDocument();
+  const { locale, setLocale, t } = useI18n();
 
   // ?src= クエリから自動読み込み
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const src = params.get('src');
     if (src) void loadUrl(src);
-    // 意図的に初回マウントのみ実行
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -32,11 +40,25 @@ export function App() {
           <div className="header__file">
             <span>{sourceLabel}</span>
             <button type="button" className="button button--ghost" onClick={reset}>
-              戻る
+              {t('header.back')}
             </button>
           </div>
         )}
         <div className="header__links">
+          {/* 言語切替 */}
+          <div className="lang-switcher" role="radiogroup" aria-label="Language">
+            {LOCALES.map(({ code, label }) => (
+              <button
+                key={code}
+                type="button"
+                className={`lang-switcher__btn${locale === code ? ' lang-switcher__btn--active' : ''}`}
+                onClick={() => setLocale(code)}
+                aria-pressed={locale === code}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <a
             href="https://github.com/Pregum/pencil_viewer"
             target="_blank"
@@ -64,7 +86,7 @@ export function App() {
 
         {state.status === 'loading' && (
           <p className="muted">
-            読み込み中…{' '}
+            {t('loading')}{' '}
             {state.source.kind === 'file'
               ? state.source.name
               : state.source.kind === 'url'

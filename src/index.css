@@ -70,6 +70,42 @@ html,
   gap: 8px;
   margin-left: auto;
 }
+
+/* --- Language switcher --- */
+.lang-switcher {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 2px;
+}
+.lang-switcher__btn {
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.12s ease;
+}
+.lang-switcher__btn:hover {
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+.lang-switcher__btn--active {
+  color: #fff;
+  background: var(--color-accent);
+}
+.lang-switcher__btn--active:hover {
+  color: #fff;
+  background: var(--color-accent);
+}
 .header__gh-link {
   display: grid;
   place-items: center;

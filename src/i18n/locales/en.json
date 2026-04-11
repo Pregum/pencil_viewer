@@ -1,0 +1,47 @@
+{
+  "lp.badge": "Open Source",
+  "lp.title.1": "Pencil",
+  "lp.title.2": "Viewer",
+  "lp.subtitle": "View & inspect <link>.pen</link> design files directly in your browser.<br/>No account. No upload. Fully client-side.",
+  "lp.cta": "Try it now",
+
+  "lp.feat.drag.title": "Drag & Drop",
+  "lp.feat.drag.desc": "Open any .pen file instantly. Or paste a URL. No sign-up required.",
+  "lp.feat.render.title": "Full Rendering",
+  "lp.feat.render.desc": "Shapes, text, gradients, shadows, icon fonts, flex layout — all rendered as SVG.",
+  "lp.feat.privacy.title": "Privacy First",
+  "lp.feat.privacy.desc": "Everything runs in your browser. Files never leave your device.",
+  "lp.feat.mobile.title": "Mobile Ready",
+  "lp.feat.mobile.desc": "Responsive design. Review wireframes on your phone during commute.",
+  "lp.feat.token.title": "Variable Tokens",
+  "lp.feat.token.desc": "$surface-primary and friends are resolved automatically from the doc.",
+  "lp.feat.oss.title": "Free & Open Source",
+  "lp.feat.oss.desc": "MIT licensed. Self-host on GitHub Pages for $0. Contribute on GitHub.",
+
+  "lp.how.title": "How it works",
+  "lp.how.step1.title": "Drop a .pen file",
+  "lp.how.step1.desc": "or paste a URL / pick a sample",
+  "lp.how.step2.title": "Parsed & laid out",
+  "lp.how.step2.desc": "zod validation, variable resolution, flex layout",
+  "lp.how.step3.title": "View as SVG",
+  "lp.how.step3.desc": "zoom, pan, frame nav — Figma-like canvas",
+
+  "lp.try.title": "Try it now",
+
+  "dropzone.active": "Drop here",
+  "dropzone.title": "Drop a .pen file",
+  "dropzone.subtitle": "or click to select a file",
+
+  "url.placeholder": "https://example.com/design.pen",
+  "url.submit": "Open",
+
+  "samples.title": "Samples",
+
+  "error.title": "Failed to load",
+  "error.cors.hint": "This may be blocked by CORS. Try drag & drop or pick a sample instead.",
+  "error.retry": "Choose another file",
+  "error.sample": "View samples",
+
+  "header.back": "Back",
+  "loading": "Loading…"
+}
