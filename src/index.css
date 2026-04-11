@@ -341,3 +341,126 @@ html,
   width: 100%;
   height: 100%;
 }
+
+/* ==========================================================================
+   Responsive — 閲覧特化モバイル対応
+   ビューポートを最大化しつつ、Idle 画面は操作しやすいサイズを維持
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  /* --- Header --- */
+  .header {
+    padding: 0 12px;
+    height: 48px;
+    gap: 8px;
+  }
+  .brand {
+    font-size: 14px;
+  }
+  .header__file {
+    gap: 6px;
+    font-size: 11px;
+    overflow: hidden;
+  }
+  .header__file > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+  }
+
+  /* --- Main --- */
+  .main {
+    padding: 12px;
+  }
+
+  /* --- Idle --- */
+  .idle {
+    gap: 16px;
+  }
+  .dropzone {
+    padding: 32px 16px;
+    border-radius: 12px;
+  }
+  .dropzone__icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+  }
+  .dropzone__title {
+    font-size: 15px;
+  }
+  .dropzone__subtitle {
+    font-size: 12px;
+  }
+  .url-form__input {
+    height: 40px;
+    font-size: 13px;
+    padding: 0 10px;
+  }
+  .url-form__submit {
+    height: 40px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+  .samples__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .sample-card {
+    padding: 10px;
+  }
+  .sample-card__thumb {
+    font-size: 20px;
+  }
+  .sample-card__name {
+    font-size: 12px;
+  }
+  .sample-card__desc {
+    font-size: 10px;
+  }
+
+  /* --- Viewer(閲覧最大化) --- */
+  .viewer {
+    border-radius: 6px;
+    box-shadow: none;
+    border: none;
+  }
+
+  /* --- Error --- */
+  .error-card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+  .error-card__header {
+    font-size: 15px;
+    gap: 8px;
+  }
+  .error-card__icon {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+  .error-card__actions {
+    flex-direction: column;
+  }
+  .error-card__actions .button {
+    height: 40px;
+  }
+}
+
+/* 極小画面(iPhone SE 等 375px) */
+@media (max-width: 400px) {
+  .header {
+    padding: 0 8px;
+    height: 44px;
+  }
+  .main {
+    padding: 8px;
+  }
+  .samples__grid {
+    grid-template-columns: 1fr;
+  }
+  .header__file > span {
+    max-width: 100px;
+  }
+}
