@@ -1,0 +1,171 @@
+{
+  "version": "2.10",
+  "variables": {
+    "bg": { "type": "color", "value": "#F9FAFB" },
+    "surface": { "type": "color", "value": "#FFFFFF" },
+    "primary": { "type": "color", "value": "#4F46E5" },
+    "text": { "type": "color", "value": "#111827" },
+    "muted": { "type": "color", "value": "#6B7280" },
+    "border": { "type": "color", "value": "#E5E7EB" },
+    "r": { "type": "number", "value": 12 }
+  },
+  "children": [
+    {
+      "type": "text", "id": "title", "x": 0, "y": -60,
+      "content": "Mobile App WF — zoom & pan で操作してみてください",
+      "fontSize": 24, "fontWeight": "700", "fill": "$text"
+    },
+    {
+      "type": "text", "id": "hint", "x": 0, "y": -28,
+      "content": "Cmd+Scroll でズーム / Space+ドラッグ でパン / Cmd+P でフレーム検索",
+      "fontSize": 13, "fill": "$muted"
+    },
+    {
+      "type": "frame", "id": "s1", "name": "Home", "x": 0, "y": 20,
+      "width": 375, "height": 812, "fill": "$bg", "cornerRadius": 20,
+      "stroke": { "thickness": 1, "fill": "$border" },
+      "layout": "vertical", "padding": [60, 0, 0, 0],
+      "children": [
+        {
+          "type": "frame", "id": "s1bar", "width": "fill_container", "height": 56,
+          "padding": [0, 20], "justifyContent": "space_between", "alignItems": "center",
+          "children": [
+            { "type": "text", "id": "s1t", "content": "Home", "fontSize": 22, "fontWeight": "700", "fill": "$text" },
+            { "type": "icon_font", "id": "s1i", "width": 24, "height": 24, "iconFontName": "bell", "iconFontFamily": "lucide", "fill": "$muted" }
+          ]
+        },
+        {
+          "type": "frame", "id": "s1search", "width": "fill_container", "height": 44,
+          "fill": "$surface", "cornerRadius": "$r",
+          "stroke": { "thickness": 1, "fill": "$border" },
+          "padding": [0, 16], "alignItems": "center", "gap": 8,
+          "children": [
+            { "type": "icon_font", "id": "si", "width": 16, "height": 16, "iconFontName": "search", "iconFontFamily": "lucide", "fill": "$muted" },
+            { "type": "text", "id": "sp", "content": "Search...", "fontSize": 14, "fill": "$muted" }
+          ]
+        },
+        {
+          "type": "frame", "id": "s1cards", "width": "fill_container", "height": "fill_container",
+          "layout": "vertical", "gap": 12, "padding": [16, 20],
+          "children": [
+            {
+              "type": "frame", "id": "c1", "width": "fill_container",
+              "fill": "$surface", "cornerRadius": "$r",
+              "stroke": { "thickness": 1, "fill": "$border" },
+              "layout": "vertical", "gap": 8, "padding": 16,
+              "children": [
+                {
+                  "type": "frame", "id": "c1h", "width": "fill_container", "gap": 10, "alignItems": "center",
+                  "children": [
+                    { "type": "ellipse", "id": "c1a", "width": 40, "height": 40, "fill": "$primary" },
+                    {
+                      "type": "frame", "id": "c1info", "width": "fill_container", "layout": "vertical", "gap": 2,
+                      "children": [
+                        { "type": "text", "id": "c1n", "content": "Alice", "fontSize": 14, "fontWeight": "600", "fill": "$text" },
+                        { "type": "text", "id": "c1d", "content": "2 min ago", "fontSize": 11, "fill": "$muted" }
+                      ]
+                    }
+                  ]
+                },
+                { "type": "text", "id": "c1t", "content": "Just finished the wireframes for the new project! Check them out in Pencil Viewer.", "fontSize": 13, "fill": "$text", "lineHeight": 1.5, "textGrowth": "fixed-width", "width": "fill_container" },
+                {
+                  "type": "frame", "id": "c1img", "width": "fill_container", "height": 180,
+                  "fill": { "type": "gradient", "gradientType": "linear", "rotation": 135, "colors": [{ "color": "#818CF8", "position": 0 }, { "color": "#C084FC", "position": 1 }] },
+                  "cornerRadius": 8
+                },
+                {
+                  "type": "frame", "id": "c1actions", "width": "fill_container", "gap": 16, "alignItems": "center",
+                  "children": [
+                    { "type": "icon_font", "id": "c1l", "width": 18, "height": 18, "iconFontName": "heart", "iconFontFamily": "lucide", "fill": "$muted" },
+                    { "type": "text", "id": "c1lc", "content": "24", "fontSize": 12, "fill": "$muted" },
+                    { "type": "icon_font", "id": "c1m", "width": 18, "height": 18, "iconFontName": "message-circle", "iconFontFamily": "lucide", "fill": "$muted" },
+                    { "type": "text", "id": "c1mc", "content": "5", "fontSize": 12, "fill": "$muted" },
+                    { "type": "icon_font", "id": "c1s", "width": 18, "height": 18, "iconFontName": "share", "iconFontFamily": "lucide", "fill": "$muted" }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame", "id": "c2", "width": "fill_container",
+              "fill": "$surface", "cornerRadius": "$r",
+              "stroke": { "thickness": 1, "fill": "$border" },
+              "layout": "vertical", "gap": 8, "padding": 16,
+              "children": [
+                {
+                  "type": "frame", "id": "c2h", "width": "fill_container", "gap": 10, "alignItems": "center",
+                  "children": [
+                    { "type": "ellipse", "id": "c2a", "width": 40, "height": 40, "fill": "#F59E0B" },
+                    {
+                      "type": "frame", "id": "c2info", "width": "fill_container", "layout": "vertical", "gap": 2,
+                      "children": [
+                        { "type": "text", "id": "c2n", "content": "Bob", "fontSize": 14, "fontWeight": "600", "fill": "$text" },
+                        { "type": "text", "id": "c2d", "content": "1 hour ago", "fontSize": 11, "fill": "$muted" }
+                      ]
+                    }
+                  ]
+                },
+                { "type": "text", "id": "c2t", "content": "Anyone tried the new SVG export feature? Works great for documentation.", "fontSize": 13, "fill": "$text", "lineHeight": 1.5, "textGrowth": "fixed-width", "width": "fill_container" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame", "id": "s2", "name": "Profile", "x": 420, "y": 20,
+      "width": 375, "height": 812, "fill": "$bg", "cornerRadius": 20,
+      "stroke": { "thickness": 1, "fill": "$border" },
+      "layout": "vertical", "padding": [60, 0, 0, 0],
+      "children": [
+        {
+          "type": "frame", "id": "s2bar", "width": "fill_container", "height": 56,
+          "padding": [0, 20], "justifyContent": "space_between", "alignItems": "center",
+          "children": [
+            { "type": "icon_font", "id": "s2b", "width": 24, "height": 24, "iconFontName": "arrow-left", "iconFontFamily": "lucide", "fill": "$text" },
+            { "type": "text", "id": "s2t", "content": "Profile", "fontSize": 16, "fontWeight": "600", "fill": "$text" },
+            { "type": "icon_font", "id": "s2s", "width": 24, "height": 24, "iconFontName": "settings", "iconFontFamily": "lucide", "fill": "$muted" }
+          ]
+        },
+        {
+          "type": "frame", "id": "s2hero", "width": "fill_container",
+          "layout": "vertical", "gap": 12, "padding": [24, 20], "alignItems": "center",
+          "children": [
+            { "type": "ellipse", "id": "s2av", "width": 80, "height": 80, "fill": "$primary" },
+            { "type": "text", "id": "s2name", "content": "Alice Designer", "fontSize": 20, "fontWeight": "700", "fill": "$text" },
+            { "type": "text", "id": "s2bio", "content": "Product designer at Acme Inc.\nLoves wireframing in Pencil.dev", "fontSize": 13, "fill": "$muted", "lineHeight": 1.5, "textAlign": "center", "textGrowth": "fixed-width", "width": 280 }
+          ]
+        },
+        {
+          "type": "frame", "id": "s2stats", "width": "fill_container",
+          "padding": [0, 20], "gap": 0,
+          "children": [
+            {
+              "type": "frame", "id": "st1", "width": "fill_container",
+              "layout": "vertical", "gap": 4, "alignItems": "center",
+              "children": [
+                { "type": "text", "id": "st1n", "content": "128", "fontSize": 20, "fontWeight": "700", "fill": "$text" },
+                { "type": "text", "id": "st1l", "content": "Designs", "fontSize": 11, "fill": "$muted" }
+              ]
+            },
+            {
+              "type": "frame", "id": "st2", "width": "fill_container",
+              "layout": "vertical", "gap": 4, "alignItems": "center",
+              "children": [
+                { "type": "text", "id": "st2n", "content": "1.2k", "fontSize": 20, "fontWeight": "700", "fill": "$text" },
+                { "type": "text", "id": "st2l", "content": "Views", "fontSize": 11, "fill": "$muted" }
+              ]
+            },
+            {
+              "type": "frame", "id": "st3", "width": "fill_container",
+              "layout": "vertical", "gap": 4, "alignItems": "center",
+              "children": [
+                { "type": "text", "id": "st3n", "content": "42", "fontSize": 20, "fontWeight": "700", "fill": "$text" },
+                { "type": "text", "id": "st3l", "content": "Exports", "fontSize": 11, "fill": "$muted" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

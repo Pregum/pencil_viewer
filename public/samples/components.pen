@@ -1,0 +1,98 @@
+{
+  "version": "2.10",
+  "children": [
+    {
+      "type": "text", "id": "title", "x": 0, "y": -60,
+      "content": "Components Demo — ref instances",
+      "fontSize": 28, "fontWeight": "700", "fill": "#111827"
+    },
+    {
+      "type": "text", "id": "desc", "x": 0, "y": -20,
+      "content": "The ButtonComp below is reusable: true. The 3 buttons are ref instances with overrides.",
+      "fontSize": 14, "fill": "#6B7280"
+    },
+    {
+      "type": "frame", "id": "ButtonComp", "x": 500, "y": -60,
+      "name": "Button Component",
+      "reusable": true,
+      "width": 160, "height": 44,
+      "fill": "#7C3AED", "cornerRadius": 10,
+      "justifyContent": "center", "alignItems": "center",
+      "children": [
+        { "type": "text", "id": "btnLabel", "content": "Button", "fontSize": 14, "fontWeight": "600", "fill": "#FFFFFF" }
+      ]
+    },
+    {
+      "type": "frame", "id": "cardComp", "x": 500, "y": 0,
+      "name": "Card Component",
+      "reusable": true,
+      "width": 280, "height": 120,
+      "fill": "#FFFFFF",
+      "stroke": { "thickness": 1, "fill": "#E5E7EB" },
+      "cornerRadius": 14,
+      "layout": "vertical", "gap": 8, "padding": 16,
+      "children": [
+        { "type": "text", "id": "cardH", "content": "Card Title", "fontSize": 16, "fontWeight": "700", "fill": "#111827" },
+        { "type": "text", "id": "cardD", "content": "Card description goes here.", "fontSize": 12, "fill": "#6B7280" },
+        {
+          "type": "ref", "id": "cardBtn", "ref": "ButtonComp",
+          "width": 120, "height": 36,
+          "descendants": {
+            "btnLabel": { "content": "Action", "fontSize": 12 }
+          }
+        }
+      ]
+    },
+    {
+      "type": "frame", "id": "instances", "x": 0, "y": 40,
+      "width": 460, "layout": "vertical", "gap": 20,
+      "children": [
+        { "type": "text", "id": "sec1", "content": "Button Instances (ref → ButtonComp)", "fontSize": 14, "fontWeight": "700", "fill": "#111827" },
+        {
+          "type": "frame", "id": "btnRow", "layout": "horizontal", "gap": 12,
+          "width": "fill_container",
+          "children": [
+            {
+              "type": "ref", "id": "btn1", "ref": "ButtonComp",
+              "descendants": { "btnLabel": { "content": "Sign Up" } }
+            },
+            {
+              "type": "ref", "id": "btn2", "ref": "ButtonComp",
+              "fill": "#10B981",
+              "descendants": { "btnLabel": { "content": "Approve" } }
+            },
+            {
+              "type": "ref", "id": "btn3", "ref": "ButtonComp",
+              "fill": "#EF4444",
+              "descendants": { "btnLabel": { "content": "Delete" } }
+            }
+          ]
+        },
+        { "type": "text", "id": "sec2", "content": "Card Instances (ref → CardComp, nested ref)", "fontSize": 14, "fontWeight": "700", "fill": "#111827" },
+        {
+          "type": "frame", "id": "cardRow", "layout": "horizontal", "gap": 16,
+          "width": "fill_container",
+          "children": [
+            {
+              "type": "ref", "id": "c1", "ref": "cardComp",
+              "descendants": {
+                "cardH": { "content": "User Profile" },
+                "cardD": { "content": "View and edit your account settings." },
+                "cardBtn/btnLabel": { "content": "Edit" }
+              }
+            },
+            {
+              "type": "ref", "id": "c2", "ref": "cardComp",
+              "descendants": {
+                "cardH": { "content": "Billing" },
+                "cardD": { "content": "Manage your subscription plan." },
+                "cardBtn": { "fill": "#10B981" },
+                "cardBtn/btnLabel": { "content": "Upgrade" }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

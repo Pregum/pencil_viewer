@@ -1,17 +1,37 @@
 [
   {
+    "name": "mobile-app.pen",
+    "label": "📱 Mobile App",
+    "description": "SNS風アプリ WF — zoom/pan/フレーム検索を試そう"
+  },
+  {
+    "name": "dashboard.pen",
+    "label": "📊 Dashboard",
+    "description": "管理画面 — サイドバー + KPI + チャート"
+  },
+  {
+    "name": "variables.pen",
+    "label": "🎨 Variables",
+    "description": "$token 変数参照のデモ"
+  },
+  {
+    "name": "components.pen",
+    "label": "🧩 Components",
+    "description": "ref コンポーネントインスタンスのデモ"
+  },
+  {
     "name": "shapes.pen",
-    "label": "基本図形",
+    "label": "△○□ Shapes",
     "description": "rect / ellipse / polygon / line / text / path"
   },
   {
-    "name": "layout.pen",
-    "label": "フレーム",
-    "description": "frame と子ノードの再帰描画"
+    "name": "gradient.pen",
+    "label": "🌈 Gradient",
+    "description": "linear / radial / blur / shadow"
   },
   {
-    "name": "gradient.pen",
-    "label": "グラデーション",
-    "description": "linear / radial / blur / shadow"
+    "name": "layout.pen",
+    "label": "📐 Layout",
+    "description": "frame と子ノードの再帰描画"
   }
 ]
