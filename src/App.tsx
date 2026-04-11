@@ -1,9 +1,7 @@
 import { useEffect } from 'react';
 import { useDocument } from './pen/state/useDocument';
 import { PenViewer } from './components/Viewer/PenViewer';
-import { DropZone } from './components/Loader/DropZone';
-import { UrlInput } from './components/Loader/UrlInput';
-import { SampleList } from './components/Loader/SampleList';
+import { Landing } from './components/Landing';
 import { ErrorView } from './components/ErrorView';
 
 export function App() {
@@ -57,14 +55,11 @@ export function App() {
 
       <main className="main">
         {state.status === 'idle' && (
-          <div className="idle">
-            <DropZone onFile={(f) => void loadFile(f)} />
-            <div className="idle__divider">
-              <span>or</span>
-            </div>
-            <UrlInput onSubmit={(url) => void loadUrl(url)} />
-            <SampleList onPick={(name) => void loadSample(name)} />
-          </div>
+          <Landing
+            onFile={(f) => void loadFile(f)}
+            onUrl={(url) => void loadUrl(url)}
+            onSample={(name) => void loadSample(name)}
+          />
         )}
 
         {state.status === 'loading' && (
