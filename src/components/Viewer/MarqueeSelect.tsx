@@ -65,6 +65,8 @@ export function MarqueeSelect({ svgRef }: Props) {
   const handlePointerDown = useCallback(
     (e: PointerEvent) => {
       if (e.button !== 0 || e.altKey || e.metaKey || e.ctrlKey) return;
+      // タッチでは範囲選択を無効化(閲覧メインの操作感を優先、ドラッグはパンに割り当てる)
+      if (e.pointerType === 'touch') return;
       const svg = svgRef.current;
       if (!svg) return;
 

@@ -98,6 +98,14 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const panStart = useRef({ x: 0, y: 0 });
   const cameraStart = useRef<Camera>(camera);
 
+  // Touch: 複数指の追跡とピンチズーム状態
+  const activePointers = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchState = useRef<{
+    startDist: number;
+    startCenter: { x: number; y: number };
+    cameraStart: Camera;
+  } | null>(null);
+
   // Active frame highlight
   const [activeFrameId, setActiveFrameId] = useState<string | null>(null);
 
@@ -268,9 +276,43 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
     return () => el.removeEventListener('wheel', onWheel);
   }, [camera.svgWidth]);
 
-  // Pan: space+drag, middle-button drag, or alt+drag
+  // Pan: space+drag, middle-button drag, alt+drag, or touch drag (1 本指)
+  // Pinch zoom: タッチ 2 本指
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      // タッチの場合: activePointers に追加し、本数に応じてパン or ピンチを決定
+      if (e.pointerType === 'touch') {
+        activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        if (activePointers.current.size === 1) {
+          // 1 本指: パン開始
+          isPanning.current = true;
+          pinchState.current = null;
+          panStart.current = { x: e.clientX, y: e.clientY };
+          cameraStart.current = { ...camera };
+          (e.target as HTMLElement).setPointerCapture(e.pointerId);
+          e.preventDefault();
+        } else if (activePointers.current.size === 2) {
+          // 2 本指: パンを解除してピンチズーム開始
+          isPanning.current = false;
+          const pts = Array.from(activePointers.current.values());
+          const dx = pts[0].x - pts[1].x;
+          const dy = pts[0].y - pts[1].y;
+          const dist = Math.hypot(dx, dy);
+          const centerX = (pts[0].x + pts[1].x) / 2;
+          const centerY = (pts[0].y + pts[1].y) / 2;
+          pinchState.current = {
+            startDist: dist || 1,
+            startCenter: { x: centerX, y: centerY },
+            cameraStart: { ...camera },
+          };
+          (e.target as HTMLElement).setPointerCapture(e.pointerId);
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // マウス: 従来どおり Space / 中ボタン / Alt でパン
       const wantPan =
         e.button === 1 ||
         (e.button === 0 && e.altKey) ||
@@ -288,7 +330,63 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      // タッチでピンチ中: 距離変化からズーム、中心移動からパン
+      if (e.pointerType === 'touch' && pinchState.current) {
+        if (!activePointers.current.has(e.pointerId)) return;
+        activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+        const pts = Array.from(activePointers.current.values());
+        if (pts.length < 2) return;
+
+        const el = containerRef.current;
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+
+        const dx = pts[0].x - pts[1].x;
+        const dy = pts[0].y - pts[1].y;
+        const dist = Math.hypot(dx, dy);
+        const centerX = (pts[0].x + pts[1].x) / 2;
+        const centerY = (pts[0].y + pts[1].y) / 2;
+
+        const { startDist, startCenter, cameraStart: cs } = pinchState.current;
+        const zoomFactor = startDist / Math.max(dist, 1); // 指が離れる → svgWidth 縮小 → ズームイン
+        const newSvgWidth = clampSvgWidth(cs.svgWidth * zoomFactor);
+
+        const aspect = rect.width / rect.height;
+        const oldH = cs.svgWidth / aspect;
+        const newH = newSvgWidth / aspect;
+
+        // ピンチ開始時の中心点(画面座標比率)を SVG 座標に変換
+        const fx = (startCenter.x - rect.left) / rect.width;
+        const fy = (startCenter.y - rect.top) / rect.height;
+        const oldLeft = cs.cx - cs.svgWidth / 2;
+        const oldTop = cs.cy - oldH / 2;
+        const pinchSvgX = oldLeft + fx * cs.svgWidth;
+        const pinchSvgY = oldTop + fy * oldH;
+
+        // 中心点の移動分だけパン(画面座標差 → SVG 座標差)
+        const pixelsPerSvgUnit = rect.width / newSvgWidth;
+        const panDx = (centerX - startCenter.x) / pixelsPerSvgUnit;
+        const panDy = (centerY - startCenter.y) / pixelsPerSvgUnit;
+
+        // ピンチ中心点を画面上で固定しつつ新しい svgWidth を適用
+        const newLeft = pinchSvgX - fx * newSvgWidth - panDx;
+        const newTop = pinchSvgY - fy * newH - panDy;
+
+        setCamera({
+          cx: newLeft + newSvgWidth / 2,
+          cy: newTop + newH / 2,
+          svgWidth: newSvgWidth,
+        });
+        return;
+      }
+
+      // 通常パン(マウス Space/Alt/中ボタン or タッチ 1 本指)
       if (!isPanning.current) return;
+      if (e.pointerType === 'touch') {
+        if (!activePointers.current.has(e.pointerId)) return;
+        activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      }
       const el = containerRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
@@ -304,9 +402,27 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
     [],
   );
 
-  const handlePointerUp = useCallback(() => {
+  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'touch') {
+      activePointers.current.delete(e.pointerId);
+      // 2 本指 → 1 本指に戻った場合: ピンチ終了、残った指で新たにパン開始
+      if (activePointers.current.size === 1 && pinchState.current) {
+        pinchState.current = null;
+        const [remaining] = Array.from(activePointers.current.values());
+        isPanning.current = true;
+        panStart.current = { x: remaining.x, y: remaining.y };
+        cameraStart.current = { ...camera };
+        return;
+      }
+      // すべての指が離れた
+      if (activePointers.current.size === 0) {
+        isPanning.current = false;
+        pinchState.current = null;
+      }
+      return;
+    }
     isPanning.current = false;
-  }, []);
+  }, [camera]);
 
   // Zoom to center helper
   const zoomByFactor = useCallback((factor: number) => {

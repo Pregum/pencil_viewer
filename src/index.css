@@ -476,7 +476,15 @@ html,
   background:
     radial-gradient(circle, var(--color-border) 1px, transparent 1px);
   background-size: 20px 20px;
+  /* モバイル操作最適化 —
+     - touch-action: none でブラウザデフォルトのスクロール / ピンチズームを完全に奪い取り、
+       自前のパン / ピンチズームロジックに委譲する
+     - user-select: none でロングタップ時のテキスト選択を抑止
+     - -webkit-touch-callout: none で iOS のロングプレス時のコンテキストメニュー(コピー等)を抑止 */
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .viewer__svg {
