@@ -20,6 +20,11 @@
     "description": "ref コンポーネントインスタンスのデモ"
   },
   {
+    "name": "rotation.pen",
+    "label": "🎞️ Rotation",
+    "description": "Polaroid scatter — rotation (傾き) のデモ"
+  },
+  {
     "name": "shapes.pen",
     "label": "△○□ Shapes",
     "description": "rect / ellipse / polygon / line / text / path"

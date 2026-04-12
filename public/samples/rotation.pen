@@ -1,0 +1,140 @@
+{
+  "version": "2.7",
+  "children": [
+    {
+      "type": "frame",
+      "id": "canvas",
+      "name": "Rotation Showcase",
+      "width": 600,
+      "height": 500,
+      "fill": "#0F0F0F",
+      "layout": "none",
+      "children": [
+        {
+          "type": "text",
+          "id": "title",
+          "content": "Polaroid Scatter — rotation demo",
+          "x": 24,
+          "y": 20,
+          "fill": "#FFFFFF",
+          "fontSize": 16,
+          "fontWeight": "700"
+        },
+        {
+          "type": "frame",
+          "id": "p1",
+          "name": "Photo 1",
+          "x": 40,
+          "y": 70,
+          "width": 140,
+          "height": 160,
+          "fill": "#FFFFFF",
+          "cornerRadius": 2,
+          "rotation": -8,
+          "layout": "vertical",
+          "padding": [6, 6, 18, 6],
+          "gap": 4,
+          "children": [
+            { "type": "frame", "id": "p1img", "width": "fill_container", "height": 110, "fill": "#3498DB" },
+            { "type": "text", "id": "p1cap", "content": "#01 Beach", "fill": "#7F8C8D", "fontSize": 10, "fontWeight": "600" }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "p2",
+          "name": "Photo 2",
+          "x": 210,
+          "y": 90,
+          "width": 140,
+          "height": 160,
+          "fill": "#FFFFFF",
+          "cornerRadius": 2,
+          "rotation": 6,
+          "layout": "vertical",
+          "padding": [6, 6, 18, 6],
+          "gap": 4,
+          "children": [
+            { "type": "frame", "id": "p2img", "width": "fill_container", "height": 110, "fill": "#E67E22" },
+            { "type": "text", "id": "p2cap", "content": "#02 Sunrise", "fill": "#7F8C8D", "fontSize": 10, "fontWeight": "600" }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "p3",
+          "name": "Photo 3",
+          "x": 380,
+          "y": 75,
+          "width": 140,
+          "height": 160,
+          "fill": "#FFFFFF",
+          "cornerRadius": 2,
+          "rotation": -5,
+          "layout": "vertical",
+          "padding": [6, 6, 18, 6],
+          "gap": 4,
+          "children": [
+            { "type": "frame", "id": "p3img", "width": "fill_container", "height": 110, "fill": "#1ABC9C" },
+            { "type": "text", "id": "p3cap", "content": "#03 Snorkel", "fill": "#7F8C8D", "fontSize": 10, "fontWeight": "600" }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "p4",
+          "name": "Photo 4",
+          "x": 80,
+          "y": 270,
+          "width": 140,
+          "height": 160,
+          "fill": "#FFFFFF",
+          "cornerRadius": 2,
+          "rotation": 9,
+          "layout": "vertical",
+          "padding": [6, 6, 18, 6],
+          "gap": 4,
+          "children": [
+            { "type": "frame", "id": "p4img", "width": "fill_container", "height": 110, "fill": "#F39C12" },
+            { "type": "text", "id": "p4cap", "content": "#04 Lunch", "fill": "#7F8C8D", "fontSize": 10, "fontWeight": "600" }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "p5",
+          "name": "Photo 5",
+          "x": 250,
+          "y": 280,
+          "width": 140,
+          "height": 160,
+          "fill": "#FFFFFF",
+          "cornerRadius": 2,
+          "rotation": -10,
+          "layout": "vertical",
+          "padding": [6, 6, 18, 6],
+          "gap": 4,
+          "children": [
+            { "type": "frame", "id": "p5img", "width": "fill_container", "height": 110, "fill": "#9B59B6" },
+            { "type": "text", "id": "p5cap", "content": "#05 Snack", "fill": "#7F8C8D", "fontSize": 10, "fontWeight": "600" }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "p6",
+          "name": "Photo 6",
+          "x": 420,
+          "y": 265,
+          "width": 140,
+          "height": 160,
+          "fill": "#FFFFFF",
+          "cornerRadius": 2,
+          "rotation": 11,
+          "layout": "vertical",
+          "padding": [6, 6, 18, 6],
+          "gap": 4,
+          "children": [
+            { "type": "frame", "id": "p6img", "width": "fill_container", "height": 110, "fill": "#E74C3C" },
+            { "type": "text", "id": "p6cap", "content": "#06 Dinner", "fill": "#7F8C8D", "fontSize": 10, "fontWeight": "600" }
+          ]
+        }
+      ]
+    }
+  ]
+}

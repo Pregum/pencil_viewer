@@ -30,6 +30,15 @@ export function SelectableNode({ node, children }: Props) {
   const height = typeof (node as { height?: unknown }).height === 'number'
     ? ((node as { height: number }).height)
     : 0;
+  // NodeBase.rotation(度)を SVG rotate(angle, cx, cy) で適用。
+  // ピボットはノード自身の中心 (x+w/2, y+h/2)。
+  // 子孫レンダラ(Frame の translate(x, y) など)はこの回転の内側にあるため、
+  // 自動的に正しい位置で回転する。選択枠/ハンドルも一緒に回るので追加の補正は不要。
+  const rotation = (node as { rotation?: number }).rotation ?? 0;
+  const groupTransform =
+    rotation !== 0 && width > 0 && height > 0
+      ? `rotate(${rotation} ${x + width / 2} ${y + height / 2})`
+      : undefined;
 
   const handleClick = (e: React.MouseEvent) => {
     if (isDragging.current || isResizing.current) return;
@@ -128,6 +137,7 @@ export function SelectableNode({ node, children }: Props) {
 
   return (
     <g
+      transform={groupTransform}
       onClick={handleClick}
       onPointerDown={isSelected ? (e) => handlePointerDown(e) : undefined}
       onPointerMove={handlePointerMove}
