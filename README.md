@@ -73,7 +73,7 @@ Free tier covers 100k requests/day, which is more than enough for personal or sm
 | :white_check_mark: | `ref` (component instance) resolution |
 | :white_check_mark: | `connection` / `note` node rendering |
 | :white_check_mark: | Export to SVG / PNG |
-| :construction: | Collaborative viewing via shared URL |
+| :white_check_mark: | Collaborative viewing via shared URL (Cloudflare Workers + KV) |
 
 ## License
 
@@ -127,7 +127,7 @@ Free tier covers 100k requests/day, which is more than enough for personal or sm
 | :white_check_mark: | `ref`(コンポーネントインスタンス)解決 |
 | :white_check_mark: | `connection` / `note` ノード描画 |
 | :white_check_mark: | SVG / PNG エクスポート |
-| :construction: | URL 共有による共同閲覧 |
+| :white_check_mark: | URL 共有による共同閲覧(Cloudflare Workers + KV) |
 
 ## ライセンス
 
@@ -181,7 +181,7 @@ Free tier covers 100k requests/day, which is more than enough for personal or sm
 | :white_check_mark: | `ref`（组件实例）解析 |
 | :white_check_mark: | `connection` / `note` 节点渲染 |
 | :white_check_mark: | SVG / PNG 导出 |
-| :construction: | URL 共享协同查看 |
+| :white_check_mark: | URL 共享协同查看（Cloudflare Workers + KV） |
 
 ## 许可证
 
