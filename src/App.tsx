@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDocument } from './pen/state/useDocument';
 import { PenViewer } from './components/Viewer/PenViewer';
 import { Landing } from './components/Landing';
 import { ErrorView } from './components/ErrorView';
 import { useI18n } from './i18n/I18nContext';
 import type { SupportedLocale } from './i18n/detectLocale';
+import { isShareEnabled, uploadPen, fetchSharedPen } from './utils/shareApi';
 
 const LOCALES: { code: SupportedLocale; label: string }[] = [
   { code: 'en', label: 'EN' },
@@ -16,13 +17,46 @@ export function App() {
   const { state, loadFile, loadUrl, loadSample, reset } = useDocument();
   const { locale, setLocale, t } = useI18n();
 
-  // ?src= クエリから自動読み込み
+  const [shareStatus, setShareStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle');
+
+  // ?src= または ?id= クエリから自動読み込み
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const src = params.get('src');
-    if (src) void loadUrl(src);
+    const id = params.get('id');
+    if (src) {
+      void loadUrl(src);
+    } else if (id && isShareEnabled()) {
+      void (async () => {
+        try {
+          const text = await fetchSharedPen(id);
+          // loadText 相当の処理を loadUrl 経由では難しいので、loadFile の代替として
+          // Blob → File に変換して loadFile を呼ぶ
+          const file = new File([text], `shared-${id}.pen`, { type: 'application/json' });
+          void loadFile(file);
+        } catch (e) {
+          console.error('Failed to load shared file:', e);
+        }
+      })();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleShare = useCallback(async () => {
+    if (state.status !== 'ready' || !state.rawDoc) return;
+    setShareStatus('uploading');
+    try {
+      const content = JSON.stringify(state.rawDoc, null, 2);
+      const result = await uploadPen(content);
+      setShareStatus('done');
+      await navigator.clipboard.writeText(result.url);
+      setTimeout(() => setShareStatus('idle'), 3000);
+    } catch (e) {
+      console.error('Share failed:', e);
+      setShareStatus('error');
+      setTimeout(() => setShareStatus('idle'), 3000);
+    }
+  }, [state]);
 
   const sourceLabel = (() => {
     if (state.status !== 'ready') return '';
@@ -39,6 +73,16 @@ export function App() {
         {state.status === 'ready' && (
           <div className="header__file">
             <span>{sourceLabel}</span>
+            {isShareEnabled() && (
+              <button
+                type="button"
+                className="button button--primary button--sm"
+                onClick={() => void handleShare()}
+                disabled={shareStatus === 'uploading'}
+              >
+                {shareStatus === 'uploading' ? '...' : shareStatus === 'done' ? '✓ Copied!' : '🔗 Share'}
+              </button>
+            )}
             <button type="button" className="button button--ghost" onClick={reset}>
               {t('header.back')}
             </button>

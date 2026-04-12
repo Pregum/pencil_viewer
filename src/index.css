@@ -316,6 +316,12 @@ html,
   background: #6d28d9;
   border-color: #6d28d9;
 }
+.button--sm {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 11px;
+  border-radius: 6px;
+}
 .button--ghost {
   background: transparent;
   border-color: transparent;
