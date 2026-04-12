@@ -76,15 +76,36 @@ export function App() {
             {isShareEnabled() && (
               <button
                 type="button"
-                className="button button--primary button--sm"
+                className="button button--primary button--sm header__share-btn"
                 onClick={() => void handleShare()}
                 disabled={shareStatus === 'uploading'}
+                title={t('header.share') ?? 'Share'}
+                aria-label={t('header.share') ?? 'Share'}
               >
-                {shareStatus === 'uploading' ? '...' : shareStatus === 'done' ? '✓ Copied!' : '🔗 Share'}
+                {shareStatus === 'uploading' ? (
+                  <span className="button__icon">…</span>
+                ) : shareStatus === 'done' ? (
+                  <>
+                    <span className="button__icon">✓</span>
+                    <span className="button__label">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="button__icon">🔗</span>
+                    <span className="button__label">Share</span>
+                  </>
+                )}
               </button>
             )}
-            <button type="button" className="button button--ghost" onClick={reset}>
-              {t('header.back')}
+            <button
+              type="button"
+              className="button button--ghost header__back-btn"
+              onClick={reset}
+              title={t('header.back')}
+              aria-label={t('header.back')}
+            >
+              <span className="button__icon">←</span>
+              <span className="button__label">{t('header.back')}</span>
             </button>
           </div>
         )}

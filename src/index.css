@@ -53,6 +53,8 @@ html,
   font-size: 16px;
   font-weight: 600;
   color: var(--color-text);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .header__file {
@@ -303,6 +305,17 @@ html,
   color: var(--color-text);
   cursor: pointer;
   font-family: inherit;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.button__icon {
+  display: inline-flex;
+  align-items: center;
+}
+.button__label {
+  display: inline;
 }
 .button:hover {
   border-color: var(--color-accent);
@@ -1485,18 +1498,33 @@ html,
     padding: 0 12px;
     height: 48px;
     gap: 8px;
+    flex-wrap: nowrap;
   }
   .brand { font-size: 14px; }
   .header__file {
     gap: 6px;
     font-size: 11px;
     overflow: hidden;
+    flex-shrink: 1;
+    min-width: 0;
   }
+  /* モバイルではファイルパス表示は省略(場所を取るため) */
   .header__file > span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 120px;
+    display: none;
+  }
+  /* モバイル: Share / Back ボタンはアイコンのみにして場所を節約 */
+  .header__file .button__label {
+    display: none;
+  }
+  .header__share-btn,
+  .header__back-btn {
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    justify-content: center;
+  }
+  .header__back-btn .button__icon {
+    font-size: 16px;
   }
 
   /* --- Main (idle) --- */
