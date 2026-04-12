@@ -44,6 +44,19 @@ Push to `main` triggers `.github/workflows/deploy.yml` automatically.
 
 **First-time setup:** Repository Settings -> Pages -> Source = **GitHub Actions**.
 
+## Optional: URL Sharing (Cloudflare Workers)
+
+Pencil Viewer can optionally generate shareable URLs for `.pen` files via a Cloudflare Workers + KV backend.
+**This feature is entirely optional** --- the viewer works fully without it. If `VITE_SHARE_API_URL` is unset, the Share button simply hides itself.
+
+If you want to enable it for your own fork:
+
+1. Create a free Cloudflare account
+2. Follow the setup guide in [`workers/share-api/README.md`](./workers/share-api/README.md)
+3. Set `VITE_SHARE_API_URL` to your deployed Worker URL before building the frontend
+
+Free tier covers 100k requests/day, which is more than enough for personal or small OSS usage.
+
 ## Roadmap
 
 | Status | Feature |
@@ -85,6 +98,19 @@ Push to `main` triggers `.github/workflows/deploy.yml` automatically.
 - **未対応ノードに耐性** --- 未知の `type` は破線プレースホルダで表示、全体描画は止まらない
 - **モバイル対応** --- レスポンシブ CSS で小画面では編集パネルを非表示にし、閲覧に特化
 
+## オプション: URL 共有機能(Cloudflare Workers)
+
+`.pen` ファイルを短縮 URL で共有する機能を Cloudflare Workers + KV で追加できます。
+**この機能は完全に任意です** --- 無効のままでもビューアはすべての機能が使えます。`VITE_SHARE_API_URL` が未設定ならば Share ボタンは自動的に非表示になります。
+
+フォークした自分のインスタンスで有効化したい場合:
+
+1. Cloudflare アカウントを作成(無料)
+2. [`workers/share-api/README.md`](./workers/share-api/README.md) のセットアップ手順に従う
+3. デプロイして得た Worker URL を `VITE_SHARE_API_URL` に設定してフロントエンドを再ビルド
+
+無料枠で 10 万リクエスト / 日まで使えるため、個人利用や小規模 OSS なら実質無料で運用できます。
+
 ## ロードマップ
 
 | 状態 | 機能 |
@@ -125,6 +151,19 @@ Push to `main` triggers `.github/workflows/deploy.yml` automatically.
 - **类 Figma 画布操作** --- 缩放（Cmd+滚轮）/ 平移（滚轮 / Space+拖拽）/ 画框导航（Cmd+P）
 - **容错渲染** --- 未知节点类型以虚线占位符显示，不影响整体渲染
 - **移动端适配** --- 响应式 CSS，小屏幕自动隐藏编辑面板，专注查看体验
+
+## 可选：URL 共享（Cloudflare Workers）
+
+可通过 Cloudflare Workers + KV 为 `.pen` 文件生成可共享的短链接。
+**此功能完全可选** --- 不启用也不影响查看器的任何功能。如未设置 `VITE_SHARE_API_URL`，Share 按钮会自动隐藏。
+
+如果你 Fork 后想在自己的实例上启用：
+
+1. 创建免费 Cloudflare 账号
+2. 按照 [`workers/share-api/README.md`](./workers/share-api/README.md) 的步骤操作
+3. 将部署后得到的 Worker URL 设置到 `VITE_SHARE_API_URL`，然后重新构建前端
+
+免费套餐每日 10 万请求，个人使用或小型 OSS 项目完全够用。
 
 ## 路线图
 

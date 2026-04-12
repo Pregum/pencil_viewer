@@ -1,0 +1,30 @@
+# Pencil Viewer Share API — wrangler 設定テンプレート
+#
+# 使い方:
+#   1. このファイルを `wrangler.toml` にコピー
+#      cp wrangler.toml.example wrangler.toml
+#   2. `npx wrangler kv namespace create PEN_FILES` で KV を作成
+#      → 出力された id を下の `[[kv_namespaces]].id` に貼り付け
+#   3. `ALLOWED_ORIGIN` を自分のフロントエンド URL に変更
+#   4. `npx wrangler deploy` でデプロイ
+#
+# 注意: `wrangler.toml` は .gitignore されているためコミットされません。
+#       実 ID / 実 URL を直接編集しても安全です。
+
+name = "pencil-viewer-share"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# KV namespace for storing shared .pen files
+[[kv_namespaces]]
+binding = "PEN_FILES"
+id = "YOUR_KV_NAMESPACE_ID_HERE"  # ← `npx wrangler kv namespace create PEN_FILES` で取得した ID
+
+[vars]
+# CORS で許可するオリジン — フロントエンドのデプロイ先 URL に変更してください
+# 例: GitHub Pages なら "https://<username>.github.io"
+ALLOWED_ORIGIN = "https://example.github.io"
+# 共有ファイルの有効期限（秒） — デフォルト 30 日
+TTL_SECONDS = "2592000"
+# 最大ファイルサイズ（バイト） — デフォルト 5MB
+MAX_SIZE = "5242880"

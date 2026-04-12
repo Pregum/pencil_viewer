@@ -19,3 +19,16 @@ npm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Claude Code session data
+.claude/
+
+# Cloudflare Workers — 実 ID 入りの wrangler.toml はコミットしない
+# (テンプレートとして wrangler.toml.example をコミットする)
+workers/*/wrangler.toml
+.wrangler/
