@@ -97,10 +97,10 @@ Push to `main` triggers `.github/workflows/deploy.yml` automatically.
 | :white_check_mark: | ズーム / パン / フレームナビゲーション |
 | :white_check_mark: | レスポンシブモバイル対応 |
 | :white_check_mark: | GitHub Pages デプロイ(無料) |
-| :construction: | テーマ切替(light / dark 変数) |
-| :construction: | `ref`(コンポーネントインスタンス)解決 |
-| :construction: | `connection` / `note` ノード描画 |
-| :construction: | PNG / SVG エクスポート |
+| :white_check_mark: | テーマ切替(light / dark 変数) |
+| :white_check_mark: | `ref`(コンポーネントインスタンス)解決 |
+| :white_check_mark: | `connection` / `note` ノード描画 |
+| :white_check_mark: | SVG / PNG エクスポート |
 | :construction: | URL 共有による共同閲覧 |
 
 ## ライセンス
@@ -138,10 +138,10 @@ Push to `main` triggers `.github/workflows/deploy.yml` automatically.
 | :white_check_mark: | 缩放 / 平移 / 画框导航 |
 | :white_check_mark: | 响应式移动端布局 |
 | :white_check_mark: | GitHub Pages 部署（免费） |
-| :construction: | 主题切换（亮色 / 暗色变量） |
-| :construction: | `ref`（组件实例）解析 |
-| :construction: | `connection` / `note` 节点渲染 |
-| :construction: | PNG / SVG 导出 |
+| :white_check_mark: | 主题切换（亮色 / 暗色变量） |
+| :white_check_mark: | `ref`（组件实例）解析 |
+| :white_check_mark: | `connection` / `note` 节点渲染 |
+| :white_check_mark: | SVG / PNG 导出 |
 | :construction: | URL 共享协同查看 |
 
 ## 许可证
