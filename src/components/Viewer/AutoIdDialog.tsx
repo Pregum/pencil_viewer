@@ -63,7 +63,7 @@ interface Props {
 }
 
 export function AutoIdDialog({ onClose }: Props) {
-  const { state, updateNode } = useEditor();
+  const { state, updateNodeSilent, pushUndoCheckpoint } = useEditor();
   const [prefix, setPrefix] = useState('WF-');
   const [suffix, setSuffix] = useState('');
   const [startNum, setStartNum] = useState(1);
@@ -128,8 +128,9 @@ export function AutoIdDialog({ onClose }: Props) {
   }, [grouped, prefix, suffix, startNum]);
 
   const apply = () => {
+    pushUndoCheckpoint();
     for (const p of preview) {
-      updateNode(p.id, { name: p.newName } as Partial<PenNode>);
+      updateNodeSilent(p.id, { name: p.newName } as Partial<PenNode>);
     }
     onClose();
   };

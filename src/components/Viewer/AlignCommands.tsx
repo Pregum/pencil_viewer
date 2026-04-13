@@ -29,7 +29,7 @@ function findNode(nodes: PenNode[], id: string): PenNode | null {
 }
 
 export function useAlignCommands(): Command[] {
-  const { state, updateNode, pushUndoCheckpoint } = useEditor();
+  const { state, updateNodeSilent, pushUndoCheckpoint } = useEditor();
 
   const getSelectedRects = useCallback(() => {
     const ids = state.selectedNodeIds.size > 0
@@ -48,32 +48,32 @@ export function useAlignCommands(): Command[] {
     if (rects.length < 2) return;
     pushUndoCheckpoint();
     const minX = Math.min(...rects.map((r) => r.x));
-    for (const r of rects) updateNode(r.id, { x: minX } as Partial<PenNode>);
-  }, [getSelectedRects, updateNode, pushUndoCheckpoint]);
+    for (const r of rects) updateNodeSilent(r.id, { x: minX } as Partial<PenNode>);
+  }, [getSelectedRects, updateNodeSilent, pushUndoCheckpoint]);
 
   const alignRight = useCallback(() => {
     const rects = getSelectedRects();
     if (rects.length < 2) return;
     pushUndoCheckpoint();
     const maxRight = Math.max(...rects.map((r) => r.x + r.w));
-    for (const r of rects) updateNode(r.id, { x: maxRight - r.w } as Partial<PenNode>);
-  }, [getSelectedRects, updateNode, pushUndoCheckpoint]);
+    for (const r of rects) updateNodeSilent(r.id, { x: maxRight - r.w } as Partial<PenNode>);
+  }, [getSelectedRects, updateNodeSilent, pushUndoCheckpoint]);
 
   const alignTop = useCallback(() => {
     const rects = getSelectedRects();
     if (rects.length < 2) return;
     pushUndoCheckpoint();
     const minY = Math.min(...rects.map((r) => r.y));
-    for (const r of rects) updateNode(r.id, { y: minY } as Partial<PenNode>);
-  }, [getSelectedRects, updateNode, pushUndoCheckpoint]);
+    for (const r of rects) updateNodeSilent(r.id, { y: minY } as Partial<PenNode>);
+  }, [getSelectedRects, updateNodeSilent, pushUndoCheckpoint]);
 
   const alignBottom = useCallback(() => {
     const rects = getSelectedRects();
     if (rects.length < 2) return;
     pushUndoCheckpoint();
     const maxBottom = Math.max(...rects.map((r) => r.y + r.h));
-    for (const r of rects) updateNode(r.id, { y: maxBottom - r.h } as Partial<PenNode>);
-  }, [getSelectedRects, updateNode, pushUndoCheckpoint]);
+    for (const r of rects) updateNodeSilent(r.id, { y: maxBottom - r.h } as Partial<PenNode>);
+  }, [getSelectedRects, updateNodeSilent, pushUndoCheckpoint]);
 
   const alignCenterH = useCallback(() => {
     const rects = getSelectedRects();
@@ -81,8 +81,8 @@ export function useAlignCommands(): Command[] {
     pushUndoCheckpoint();
     const centers = rects.map((r) => r.x + r.w / 2);
     const avg = centers.reduce((a, b) => a + b, 0) / centers.length;
-    for (const r of rects) updateNode(r.id, { x: Math.round(avg - r.w / 2) } as Partial<PenNode>);
-  }, [getSelectedRects, updateNode, pushUndoCheckpoint]);
+    for (const r of rects) updateNodeSilent(r.id, { x: Math.round(avg - r.w / 2) } as Partial<PenNode>);
+  }, [getSelectedRects, updateNodeSilent, pushUndoCheckpoint]);
 
   const alignCenterV = useCallback(() => {
     const rects = getSelectedRects();
@@ -90,8 +90,8 @@ export function useAlignCommands(): Command[] {
     pushUndoCheckpoint();
     const centers = rects.map((r) => r.y + r.h / 2);
     const avg = centers.reduce((a, b) => a + b, 0) / centers.length;
-    for (const r of rects) updateNode(r.id, { y: Math.round(avg - r.h / 2) } as Partial<PenNode>);
-  }, [getSelectedRects, updateNode, pushUndoCheckpoint]);
+    for (const r of rects) updateNodeSilent(r.id, { y: Math.round(avg - r.h / 2) } as Partial<PenNode>);
+  }, [getSelectedRects, updateNodeSilent, pushUndoCheckpoint]);
 
   const distributeH = useCallback(() => {
     const rects = getSelectedRects();
@@ -103,10 +103,10 @@ export function useAlignCommands(): Command[] {
     const gap = (totalSpan - totalWidth) / (sorted.length - 1);
     let cursor = sorted[0].x;
     for (const r of sorted) {
-      updateNode(r.id, { x: Math.round(cursor) } as Partial<PenNode>);
+      updateNodeSilent(r.id, { x: Math.round(cursor) } as Partial<PenNode>);
       cursor += r.w + gap;
     }
-  }, [getSelectedRects, updateNode, pushUndoCheckpoint]);
+  }, [getSelectedRects, updateNodeSilent, pushUndoCheckpoint]);
 
   const distributeV = useCallback(() => {
     const rects = getSelectedRects();
@@ -118,10 +118,10 @@ export function useAlignCommands(): Command[] {
     const gap = (totalSpan - totalHeight) / (sorted.length - 1);
     let cursor = sorted[0].y;
     for (const r of sorted) {
-      updateNode(r.id, { y: Math.round(cursor) } as Partial<PenNode>);
+      updateNodeSilent(r.id, { y: Math.round(cursor) } as Partial<PenNode>);
       cursor += r.h + gap;
     }
-  }, [getSelectedRects, updateNode, pushUndoCheckpoint]);
+  }, [getSelectedRects, updateNodeSilent, pushUndoCheckpoint]);
 
   const sortByX = useCallback(() => {
     const rects = getSelectedRects();
@@ -131,9 +131,9 @@ export function useAlignCommands(): Command[] {
     const positions = rects.map((r) => ({ x: r.x, y: r.y }));
     positions.sort((a, b) => a.x - b.x || a.y - b.y);
     for (let i = 0; i < sorted.length; i++) {
-      updateNode(sorted[i].id, { x: positions[i].x, y: positions[i].y } as Partial<PenNode>);
+      updateNodeSilent(sorted[i].id, { x: positions[i].x, y: positions[i].y } as Partial<PenNode>);
     }
-  }, [getSelectedRects, updateNode, pushUndoCheckpoint]);
+  }, [getSelectedRects, updateNodeSilent, pushUndoCheckpoint]);
 
   const count = state.selectedNodeIds.size;
   const suffix = count > 0 ? ` (${count} nodes)` : '';

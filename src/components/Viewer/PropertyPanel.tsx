@@ -23,11 +23,13 @@ function EditableField({
   label,
   value,
   onChange,
+  onFocus,
   type = 'text',
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  onFocus?: () => void;
   type?: 'text' | 'number' | 'color';
 }) {
   return (
@@ -37,6 +39,7 @@ function EditableField({
         className="prop-panel__input"
         type={type}
         value={value}
+        onFocus={onFocus}
         onChange={(e) => onChange(e.target.value)}
       />
     </div>
@@ -47,10 +50,12 @@ function NumberField({
   label,
   value,
   onChange,
+  onFocus,
 }: {
   label: string;
   value: number;
   onChange: (v: number) => void;
+  onFocus?: () => void;
 }) {
   return (
     <div className="prop-panel__field-inline">
@@ -59,6 +64,7 @@ function NumberField({
         className="prop-panel__input prop-panel__input--num"
         type="number"
         value={Math.round(value * 100) / 100}
+        onFocus={onFocus}
         onChange={(e) => {
           const n = parseFloat(e.target.value);
           if (!isNaN(n)) onChange(n);
@@ -84,12 +90,24 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
+  /** 通常の更新（undo に積む） */
   const patch = useCallback(
     (p: Partial<PenNode>) => {
       if (selectedNode) updateNode(selectedNode.id, p);
     },
     [selectedNode, updateNode],
   );
+
+  /** テキスト/数値入力用: focus でチェックポイント、入力中は silent */
+  const patchInput = useCallback(
+    (p: Partial<PenNode>) => {
+      if (selectedNode) updateNodeSilent(selectedNode.id, p);
+    },
+    [selectedNode, updateNodeSilent],
+  );
+  const onInputFocus = useCallback(() => {
+    if (selectedNode) pushUndoCheckpoint();
+  }, [selectedNode, pushUndoCheckpoint]);
 
   // i / I key: enter insert mode and focus the first editable field
   useEffect(() => {
@@ -174,10 +192,10 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
       <div className="prop-panel__section">
         <div className="prop-panel__title">Position & Size</div>
         <div className="prop-panel__pos-grid">
-          <NumberField label="X" value={n.x ?? 0} onChange={(v) => patch({ x: v } as Partial<PenNode>)} />
-          <NumberField label="Y" value={n.y ?? 0} onChange={(v) => patch({ y: v } as Partial<PenNode>)} />
+          <NumberField label="X" value={n.x ?? 0} onFocus={onInputFocus} onChange={(v) => patchInput({ x: v } as Partial<PenNode>)} />
+          <NumberField label="Y" value={n.y ?? 0} onFocus={onInputFocus} onChange={(v) => patchInput({ y: v } as Partial<PenNode>)} />
           {typeof width === 'number' && (
-            <NumberField label="W" value={width} onChange={(v) => patch({ width: v } as Partial<PenNode>)} />
+            <NumberField label="W" value={width} onFocus={onInputFocus} onChange={(v) => patchInput({ width: v } as Partial<PenNode>)} />
           )}
           {typeof width === 'string' && (
             <div className="prop-panel__field-inline">
@@ -186,7 +204,7 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
             </div>
           )}
           {typeof height === 'number' && (
-            <NumberField label="H" value={height} onChange={(v) => patch({ height: v } as Partial<PenNode>)} />
+            <NumberField label="H" value={height} onFocus={onInputFocus} onChange={(v) => patchInput({ height: v } as Partial<PenNode>)} />
           )}
           {typeof height === 'string' && (
             <div className="prop-panel__field-inline">
@@ -269,12 +287,14 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
           <EditableField
             label="Family"
             value={fontFamily}
-            onChange={(v) => patch({ fontFamily: v } as Partial<PenNode>)}
+            onFocus={onInputFocus}
+            onChange={(v) => patchInput({ fontFamily: v } as Partial<PenNode>)}
           />
           <NumberField
             label="Size"
             value={fontSize}
-            onChange={(v) => patch({ fontSize: v } as Partial<PenNode>)}
+            onFocus={onInputFocus}
+            onChange={(v) => patchInput({ fontSize: v } as Partial<PenNode>)}
           />
         </div>
       )}
@@ -288,7 +308,8 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
             className="prop-panel__textarea"
             value={content}
             rows={Math.min(8, content.split('\n').length + 1)}
-            onChange={(e) => patch({ content: e.target.value } as Partial<PenNode>)}
+            onFocus={onInputFocus}
+            onChange={(e) => patchInput({ content: e.target.value } as Partial<PenNode>)}
             onBlur={handleBlur}
           />
         </div>
