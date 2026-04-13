@@ -30,6 +30,9 @@
 - **Frame search with minimap** --- Cmd+P with category labels, distance sorting, minimap preview
 - **Auto ID** --- batch rename frames with prefix/suffix (Cmd+I)
 - **Edit animation** --- scanner + pulse glow effect when nodes are edited via MCP
+- **Five UI States Audit** --- automated design quality check for Empty/Loading/Error/Partial/Ideal states per screen
+- **Design Doc Export** --- generate Markdown design documents with component structure, UI state coverage, and design tokens
+- **Vision page** --- product vision and use-case documentation for PMs, designers, and engineers
 
 ## Architecture
 
@@ -93,6 +96,9 @@ Free tier covers 100k requests/day, which is more than enough for personal or sm
 | :white_check_mark: | In-app documentation (i18n) |
 | :white_check_mark: | Edit animation effects |
 | :white_check_mark: | Layers panel & frame search with minimap |
+| :white_check_mark: | Five UI States audit |
+| :white_check_mark: | Design document export (Markdown) |
+| :white_check_mark: | Vision & Use Cases page |
 
 ### MCP / CLI Integration [BETA]
 
@@ -139,6 +145,9 @@ Once running, Claude Code (or any HTTP client) can `GET` / `POST` against `http:
 - **フレーム検索 + ミニマップ** --- Cmd+P でカテゴリラベル、距離順ソート、ミニマッププレビュー
 - **Auto ID** --- フレームの一括リネーム(プレフィクス / サフィックス指定、Cmd+I)
 - **編集アニメーション** --- MCP 経由でノード編集時にスキャナー + パルスグローエフェクト
+- **Five UI States 監査** --- 各画面の Empty/Loading/Error/Partial/Ideal 状態を自動チェックするデザイン品質監査
+- **デザインドキュメントエクスポート** --- コンポーネント構造、UI 状態カバレッジ、デザイントークンを含む Markdown デザインドキュメントを生成
+- **ビジョンページ** --- PM・デザイナー・エンジニア向けのプロダクトビジョンとユースケースドキュメント
 
 ## オプション: URL 共有機能(Cloudflare Workers)
 
@@ -177,6 +186,9 @@ Once running, Claude Code (or any HTTP client) can `GET` / `POST` against `http:
 | :white_check_mark: | アプリ内ドキュメント(i18n) |
 | :white_check_mark: | 編集アニメーション |
 | :white_check_mark: | レイヤーパネル & フレーム検索 + ミニマップ |
+| :white_check_mark: | Five UI States 監査 |
+| :white_check_mark: | デザインドキュメントエクスポート(Markdown) |
+| :white_check_mark: | ビジョン & ユースケースページ |
 
 ### MCP / CLI 連携 [BETA]
 
@@ -223,6 +235,9 @@ cd tools/collab-bridge && npm start
 - **画框搜索 + 小地图** --- Cmd+P 带分类标签、距离排序、小地图预览
 - **Auto ID** --- 批量重命名画框（前缀/后缀，Cmd+I）
 - **编辑动画** --- 通过 MCP 编辑节点时触发扫描线 + 脉冲辉光效果
+- **Five UI States 审计** --- 自动检查每个画面的 Empty/Loading/Error/Partial/Ideal 状态，进行设计质量审计
+- **设计文档导出** --- 生成包含组件结构、UI 状态覆盖率和设计令牌的 Markdown 设计文档
+- **愿景页面** --- 面向产品经理、设计师和工程师的产品愿景与用例文档
 
 ## 可选：URL 共享（Cloudflare Workers）
 
@@ -261,6 +276,9 @@ cd tools/collab-bridge && npm start
 | :white_check_mark: | 应用内文档（i18n） |
 | :white_check_mark: | 编辑动画效果 |
 | :white_check_mark: | 图层面板与画框搜索 + 小地图 |
+| :white_check_mark: | Five UI States 审计 |
+| :white_check_mark: | 设计文档导出（Markdown） |
+| :white_check_mark: | 愿景与用例页面 |
 
 ### MCP / CLI 集成 [BETA]
 

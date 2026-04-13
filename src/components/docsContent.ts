@@ -129,6 +129,20 @@ export interface DocsLocale {
     claudeExampleTitle: string;
     claudeExampleDesc: string;
   };
+
+  designQuality: {
+    title: string;
+    intro: string;
+    fiveStatesTitle: string;
+    fiveStatesDesc: string;
+    fiveStatesConvention: string;
+    designDocTitle: string;
+    designDocDesc: string;
+    restApiTitle: string;
+    restApiExamples: string[];
+    mcpToolsTitle: string;
+    mcpToolsDesc: string;
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -147,6 +161,7 @@ const en: DocsLocale = {
     { id: 'shortcuts', title: 'Keyboard Shortcuts' },
     { id: 'collab', title: 'Collaborative Editing' },
     { id: 'api-integration', title: 'API & CLI Integration' },
+    { id: 'design-quality', title: 'Design Quality' },
   ],
 
   gettingStarted: {
@@ -453,6 +468,28 @@ const en: DocsLocale = {
     claudeExampleDesc:
       'With MCP configured, you can give natural language commands such as "change the header color to blue". Claude Code will call update_node via MCP and the change appears in the browser in real-time.',
   },
+
+  designQuality: {
+    title: 'Design Quality',
+    intro:
+      'Pencil Viewer includes built-in tools for auditing design quality and exporting design documentation.',
+    fiveStatesTitle: 'Five UI States Audit',
+    fiveStatesDesc:
+      'Open the command palette (Cmd + Shift + P) and run "Five UI States Audit". This checks every screen in your document for coverage of the five essential UI states: Empty, Loading, Error, Partial, and Ideal.',
+    fiveStatesConvention:
+      'Detection is based on frame naming conventions. Append a state suffix to your frame names to mark them \u2014 for example "UserList - Empty", "UserList - Loading", "UserList - Error". The audit reports which states are present and which are missing for each screen.',
+    designDocTitle: 'Design Doc Export',
+    designDocDesc:
+      'Open the command palette (Cmd + Shift + P) and run "Export Design Doc". This generates a Markdown document containing a screen summary table, component tree, color palette, and design tokens. The output can be imported directly into Notion or any Markdown-compatible tool.',
+    restApiTitle: 'REST API / MCP',
+    restApiExamples: [
+      'curl http://localhost:4567/check-ui-states',
+      'curl http://localhost:4567/export-design-doc?project=MyProject&locale=ja',
+    ],
+    mcpToolsTitle: 'MCP Tools',
+    mcpToolsDesc:
+      'The following MCP tools are available for design quality workflows: check_ui_states (audit all screens), suggest_missing_states (recommend states to add), and export_design_doc (generate Markdown documentation).',
+  },
 };
 
 /* ------------------------------------------------------------------ */
@@ -471,6 +508,7 @@ const ja: DocsLocale = {
     { id: 'shortcuts', title: 'キーボードショートカット' },
     { id: 'collab', title: '共同編集' },
     { id: 'api-integration', title: 'API & CLI 連携' },
+    { id: 'design-quality', title: 'デザイン品質' },
   ],
 
   gettingStarted: {
@@ -777,6 +815,28 @@ const ja: DocsLocale = {
     claudeExampleDesc:
       'MCP を設定すると「ヘッダーの色を青に変更して」のような自然言語コマンドを実行できます。Claude Code が MCP 経由で update_node を呼び出し、変更がブラウザにリアルタイムで反映されます。',
   },
+
+  designQuality: {
+    title: 'デザイン品質',
+    intro:
+      'Pencil Viewer にはデザイン品質の監査とデザインドキュメントのエクスポートのためのツールが組み込まれています。',
+    fiveStatesTitle: 'Five UI States 監査',
+    fiveStatesDesc:
+      'コマンドパレット (Cmd + Shift + P) を開き「Five UI States Audit」を実行します。ドキュメント内の各画面について、5 つの重要な UI 状態（Empty、Loading、Error、Partial、Ideal）のカバレッジを自動チェックします。',
+    fiveStatesConvention:
+      '検出はフレームの命名規則に基づいています。フレーム名に状態サフィックスを追加してマークします。例:「UserList - Empty」「UserList - Loading」「UserList - Error」。監査レポートでは各画面の状態の有無が表示されます。',
+    designDocTitle: 'デザインドキュメントエクスポート',
+    designDocDesc:
+      'コマンドパレット (Cmd + Shift + P) を開き「Export Design Doc」を実行します。画面サマリーテーブル、コンポーネントツリー、カラーパレット、デザイントークンを含む Markdown ドキュメントが生成されます。出力は Notion や Markdown 対応ツールに直接インポートできます。',
+    restApiTitle: 'REST API / MCP',
+    restApiExamples: [
+      'curl http://localhost:4567/check-ui-states',
+      'curl http://localhost:4567/export-design-doc?project=MyProject&locale=ja',
+    ],
+    mcpToolsTitle: 'MCP ツール',
+    mcpToolsDesc:
+      'デザイン品質ワークフロー用の MCP ツール: check_ui_states（全画面監査）、suggest_missing_states（追加すべき状態の提案）、export_design_doc（Markdown ドキュメント生成）。',
+  },
 };
 
 /* ------------------------------------------------------------------ */
@@ -795,6 +855,7 @@ const zh: DocsLocale = {
     { id: 'shortcuts', title: '键盘快捷键' },
     { id: 'collab', title: '协同编辑' },
     { id: 'api-integration', title: 'API 与 CLI 集成' },
+    { id: 'design-quality', title: '设计质量' },
   ],
 
   gettingStarted: {
@@ -1100,6 +1161,28 @@ const zh: DocsLocale = {
     claudeExampleTitle: 'Claude Code 示例',
     claudeExampleDesc:
       '配置 MCP 后，您可以使用"将标题颜色改为蓝色"等自然语言命令。Claude Code 将通过 MCP 调用 update_node，更改会实时反映在浏览器中。',
+  },
+
+  designQuality: {
+    title: '设计质量',
+    intro:
+      'Pencil Viewer 内置了设计质量审计和设计文档导出工具。',
+    fiveStatesTitle: 'Five UI States 审计',
+    fiveStatesDesc:
+      '打开命令面板 (Cmd + Shift + P) 并运行"Five UI States Audit"。这将检查文档中每个画面的五种关键 UI 状态覆盖情况：Empty、Loading、Error、Partial 和 Ideal。',
+    fiveStatesConvention:
+      '检测基于画框命名规则。在画框名称后添加状态后缀来标记，例如"UserList - Empty"、"UserList - Loading"、"UserList - Error"。审计报告会显示每个画面已有和缺失的状态。',
+    designDocTitle: '设计文档导出',
+    designDocDesc:
+      '打开命令面板 (Cmd + Shift + P) 并运行"Export Design Doc"。生成包含画面摘要表、组件树、调色板和设计令牌的 Markdown 文档。输出可直接导入 Notion 或任何 Markdown 兼容工具。',
+    restApiTitle: 'REST API / MCP',
+    restApiExamples: [
+      'curl http://localhost:4567/check-ui-states',
+      'curl http://localhost:4567/export-design-doc?project=MyProject&locale=ja',
+    ],
+    mcpToolsTitle: 'MCP 工具',
+    mcpToolsDesc:
+      '可用于设计质量工作流的 MCP 工具：check_ui_states（审计所有画面）、suggest_missing_states（建议需要添加的状态）、export_design_doc（生成 Markdown 文档）。',
   },
 };
 

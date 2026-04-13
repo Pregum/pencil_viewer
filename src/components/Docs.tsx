@@ -275,6 +275,27 @@ export function Docs({ onBack, locale }: DocsProps) {
           <h3>{c.apiIntegration.claudeExampleTitle}</h3>
           <p>{c.apiIntegration.claudeExampleDesc}</p>
         </section>
+
+        {/* Design Quality */}
+        <section id="design-quality">
+          <h2>{c.designQuality.title}</h2>
+          <p>{c.designQuality.intro}</p>
+
+          <h3>{c.designQuality.fiveStatesTitle}</h3>
+          <p>{c.designQuality.fiveStatesDesc}</p>
+          <p>{c.designQuality.fiveStatesConvention}</p>
+
+          <h3>{c.designQuality.designDocTitle}</h3>
+          <p>{c.designQuality.designDocDesc}</p>
+
+          <h3>{c.designQuality.restApiTitle}</h3>
+          {c.designQuality.restApiExamples.map((ex, i) => (
+            <pre key={i}><code>{ex}</code></pre>
+          ))}
+
+          <h3>{c.designQuality.mcpToolsTitle}</h3>
+          <p>{c.designQuality.mcpToolsDesc}</p>
+        </section>
       </article>
     </div>
   );
