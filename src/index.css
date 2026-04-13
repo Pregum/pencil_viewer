@@ -2168,3 +2168,271 @@ html,
     overflow-y: auto;
   }
 }
+
+/* ================================================================== */
+/*  Vision & Use Cases page                                           */
+/* ================================================================== */
+
+.vision__hero {
+  margin-bottom: 40px;
+  text-align: center;
+}
+
+.vision__title {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--color-text);
+  margin: 0 0 8px;
+  letter-spacing: -0.5px;
+}
+
+.vision__subtitle {
+  font-size: 16px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* Vision cards (Product Vision) */
+.vision__cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.vision__card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 24px;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.vision__card:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 2px 12px rgba(124, 58, 237, 0.08);
+}
+
+.vision__card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--color-accent);
+}
+
+.vision__card p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--color-text);
+}
+
+/* Problem list */
+.vision__problem-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.vision__problem-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: 8px;
+  padding: 16px 20px;
+}
+
+.vision__problem-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-error);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.vision__problem-item p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--color-text);
+}
+
+/* Roles (Solution) */
+.vision__roles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.vision__role-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-top: 3px solid;
+  border-radius: 10px;
+  padding: 24px;
+}
+
+.vision__role-card h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+
+.vision__role-card ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.vision__role-card li {
+  position: relative;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--color-text);
+  margin-bottom: 6px;
+}
+
+.vision__role-card li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.35;
+}
+
+/* Workflow flow diagram */
+.vision__flow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  padding: 24px 0;
+}
+
+.vision__flow-step {
+  display: flex;
+  align-items: center;
+}
+
+.vision__flow-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px 20px;
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent);
+  border-radius: 10px;
+  min-width: 120px;
+  text-align: center;
+}
+
+.vision__flow-node strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.vision__flow-node span {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.vision__flow-arrow {
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  color: var(--color-text-subtle);
+}
+
+/* Roadmap */
+.vision__roadmap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vision__roadmap-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  border-radius: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.vision__roadmap-row--done {
+  border-left: 3px solid #059669;
+}
+
+.vision__roadmap-row--next {
+  border-left: 3px solid var(--color-accent);
+  opacity: 0.85;
+}
+
+.vision__roadmap-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.vision__roadmap-badge--done {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.vision__roadmap-badge--next {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.vision__roadmap-phase {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+  min-width: 120px;
+}
+
+.vision__roadmap-desc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+/* Responsive */
+@media (max-width: 860px) {
+  .vision__roles {
+    grid-template-columns: 1fr;
+  }
+  .vision__flow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .vision__flow-step {
+    flex-direction: column;
+  }
+  .vision__flow-arrow {
+    transform: rotate(90deg);
+    padding: 4px 0;
+  }
+  .vision__flow-node {
+    width: 100%;
+  }
+}

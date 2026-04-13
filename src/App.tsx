@@ -4,6 +4,7 @@ import { PenViewer } from './components/Viewer/PenViewer';
 import { Landing } from './components/Landing';
 import { ErrorView } from './components/ErrorView';
 import { Docs } from './components/Docs';
+import { Vision } from './components/Vision';
 import { useI18n } from './i18n/I18nContext';
 import type { SupportedLocale } from './i18n/detectLocale';
 import { isShareEnabled, uploadPen, fetchSharedPen } from './utils/shareApi';
@@ -19,6 +20,7 @@ export function App() {
   const { locale, setLocale, t } = useI18n();
 
   const [showDocs, setShowDocs] = useState(false);
+  const [showVision, setShowVision] = useState(false);
   const [shareStatus, setShareStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle');
 
   // ?src= または ?id= クエリから自動読み込み
@@ -115,7 +117,14 @@ export function App() {
           <button
             type="button"
             className="button button--ghost button--sm header__docs-btn"
-            onClick={() => setShowDocs(true)}
+            onClick={() => { setShowVision(true); setShowDocs(false); }}
+          >
+            Vision
+          </button>
+          <button
+            type="button"
+            className="button button--ghost button--sm header__docs-btn"
+            onClick={() => { setShowDocs(true); setShowVision(false); }}
           >
             Docs
           </button>
@@ -150,9 +159,11 @@ export function App() {
       </header>
 
       <main className="main">
-        {showDocs && <Docs onBack={() => setShowDocs(false)} locale={locale} />}
+        {showVision && <Vision onBack={() => setShowVision(false)} locale={locale} />}
 
-        {!showDocs && state.status === 'idle' && (
+        {showDocs && !showVision && <Docs onBack={() => setShowDocs(false)} locale={locale} />}
+
+        {!showDocs && !showVision && state.status === 'idle' && (
           <Landing
             onFile={(f) => void loadFile(f)}
             onUrl={(url) => void loadUrl(url)}
@@ -160,7 +171,7 @@ export function App() {
           />
         )}
 
-        {!showDocs && state.status === 'loading' && (
+        {!showDocs && !showVision && state.status === 'loading' && (
           <p className="muted">
             {t('loading')}{' '}
             {state.source.kind === 'file'
@@ -171,7 +182,7 @@ export function App() {
           </p>
         )}
 
-        {!showDocs && state.status === 'error' && (
+        {!showDocs && !showVision && state.status === 'error' && (
           <ErrorView
             error={state.error}
             source={state.source}
@@ -180,7 +191,7 @@ export function App() {
           />
         )}
 
-        {!showDocs && state.status === 'ready' && <PenViewer doc={state.doc} rawDoc={state.rawDoc} />}
+        {!showDocs && !showVision && state.status === 'ready' && <PenViewer doc={state.doc} rawDoc={state.rawDoc} />}
       </main>
     </div>
   );
