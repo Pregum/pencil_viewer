@@ -110,12 +110,15 @@ export function IconFont({ node }: { node: IconFontNode }) {
       const scale = size / 24;
       const offsetX = x + (width - size) / 2;
       const offsetY = y + (height - size) / 2;
+      // strokeWidth を 24px 基準で固定（scale で自動調整される）
+      // Pencil 本家と同じく、アイコンサイズに関係なく線の太さが一定に見える
+      const sw = 2;
       return (
         <g
           transform={`translate(${offsetX} ${offsetY}) scale(${scale})`}
           fill="none"
           stroke={resolvedFill}
-          strokeWidth={2}
+          strokeWidth={sw}
           strokeLinecap="round"
           strokeLinejoin="round"
           filter={filter}
