@@ -30,6 +30,7 @@
 - **Frame search with minimap** --- Cmd+P with category labels, distance sorting, minimap preview
 - **Auto ID** --- batch rename frames with prefix/suffix (Cmd+I)
 - **Edit animation** --- scanner + pulse glow effect when nodes are edited via MCP
+- **AI Design Review** --- Cloudflare Workers AI (Llama 3.1) powered design analysis. Four modes: full review, Five UI States, accessibility, and quick feedback. Stateless, $0 cost.
 - **Five UI States Audit** --- automated design quality check for Empty/Loading/Error/Partial/Ideal states per screen
 - **Design Doc Export** --- generate Markdown design documents with component structure, UI state coverage, and design tokens
 - **Vision page** --- product vision and use-case documentation for PMs, designers, and engineers
@@ -100,6 +101,7 @@ Free tier covers 100k requests/day, which is more than enough for personal or sm
 | :white_check_mark: | Design document export (Markdown) |
 | :white_check_mark: | Vision & Use Cases page |
 | :white_check_mark: | Undo / Redo (Figma-equivalent granularity) |
+| :white_check_mark: | AI Design Review (Cloudflare Workers AI) |
 | :construction: | Figma Import (Figma API → .pen conversion) |
 | :construction: | Notion API (direct page creation / update) |
 | :construction: | CI Integration (GitHub Actions design review) |
@@ -114,6 +116,29 @@ cd tools/collab-bridge && npm start
 ```
 
 Once running, Claude Code (or any HTTP client) can `GET` / `POST` against `http://localhost:<port>` to query nodes, push edits, and trigger edit animations. See [`tools/collab-bridge/README.md`](./tools/collab-bridge/README.md) for the full API reference and setup instructions.
+
+### AI Design Review [BETA]
+
+Pencil Viewer integrates with Cloudflare Workers AI (Llama 3.1) to provide AI-powered design analysis directly from the canvas. This feature is **entirely optional** --- the viewer works fully without it.
+
+**Setup:**
+
+```bash
+cd workers/ai-review && cp wrangler.toml.example wrangler.toml && npm install && npx wrangler deploy
+```
+
+Then set `VITE_AI_REVIEW_URL` in your repository variables (or `.env`) before building the frontend.
+
+**Review Modes:**
+
+| Mode | Description |
+|---|---|
+| Full Review | Comprehensive design analysis covering layout, typography, color, and consistency |
+| Five UI States | Checks coverage of Empty / Loading / Error / Partial / Ideal states |
+| Accessibility | Evaluates contrast, touch targets, screen reader friendliness, and WCAG compliance |
+| Quick Feedback | Short, actionable feedback for rapid iteration |
+
+> **Note:** This feature is optional, costs $0 (Cloudflare Workers AI free tier), and is fully stateless --- no design data is stored on the server.
 
 ## License
 
@@ -149,6 +174,7 @@ Once running, Claude Code (or any HTTP client) can `GET` / `POST` against `http:
 - **フレーム検索 + ミニマップ** --- Cmd+P でカテゴリラベル、距離順ソート、ミニマッププレビュー
 - **Auto ID** --- フレームの一括リネーム(プレフィクス / サフィックス指定、Cmd+I)
 - **編集アニメーション** --- MCP 経由でノード編集時にスキャナー + パルスグローエフェクト
+- **AI デザインレビュー** --- Cloudflare Workers AI（Llama 3.1）によるデザイン分析。4 つのモード：フルレビュー、Five UI States、アクセシビリティ、クイックフィードバック。ステートレス、$0 コスト。
 - **Five UI States 監査** --- 各画面の Empty/Loading/Error/Partial/Ideal 状態を自動チェックするデザイン品質監査
 - **デザインドキュメントエクスポート** --- コンポーネント構造、UI 状態カバレッジ、デザイントークンを含む Markdown デザインドキュメントを生成
 - **ビジョンページ** --- PM・デザイナー・エンジニア向けのプロダクトビジョンとユースケースドキュメント
@@ -194,6 +220,7 @@ Once running, Claude Code (or any HTTP client) can `GET` / `POST` against `http:
 | :white_check_mark: | デザインドキュメントエクスポート(Markdown) |
 | :white_check_mark: | ビジョン & ユースケースページ |
 | :white_check_mark: | Undo / Redo (Figma 同等の粒度) |
+| :white_check_mark: | AI デザインレビュー (Cloudflare Workers AI) |
 | :construction: | Figma インポート (Figma API → .pen 変換) |
 | :construction: | Notion API (ページ直接作成/更新) |
 | :construction: | CI 連携 (GitHub Actions デザインレビュー) |
@@ -208,6 +235,29 @@ cd tools/collab-bridge && npm start
 ```
 
 起動後、Claude Code(または任意の HTTP クライアント)が `http://localhost:<port>` に対して `GET` / `POST` を実行し、ノードの取得・編集・編集アニメーションのトリガーが可能です。詳しい API リファレンスとセットアップ手順は [`tools/collab-bridge/README.md`](./tools/collab-bridge/README.md) を参照してください。
+
+### AI デザインレビュー [BETA]
+
+Pencil Viewer は Cloudflare Workers AI（Llama 3.1）と連携し、キャンバスから直接 AI によるデザイン分析を行えます。**この機能は完全に任意です** --- 無効でもビューアの全機能は使えます。
+
+**セットアップ:**
+
+```bash
+cd workers/ai-review && cp wrangler.toml.example wrangler.toml && npm install && npx wrangler deploy
+```
+
+デプロイ後、`VITE_AI_REVIEW_URL` をリポジトリ変数（または `.env`）に設定してフロントエンドを再ビルドします。
+
+**レビューモード:**
+
+| モード | 説明 |
+|---|---|
+| フルレビュー | レイアウト、タイポグラフィ、色、一貫性を包括的に分析 |
+| Five UI States | Empty / Loading / Error / Partial / Ideal 状態のカバレッジを確認 |
+| アクセシビリティ | コントラスト、タッチターゲット、スクリーンリーダー対応、WCAG 準拠を評価 |
+| クイックフィードバック | 素早い反復のための短く実用的なフィードバック |
+
+> **注意:** この機能は任意で、$0（Cloudflare Workers AI 無料枠）、完全にステートレスです --- デザインデータはサーバーに保存されません。
 
 ## ライセンス
 
@@ -243,6 +293,7 @@ cd tools/collab-bridge && npm start
 - **画框搜索 + 小地图** --- Cmd+P 带分类标签、距离排序、小地图预览
 - **Auto ID** --- 批量重命名画框（前缀/后缀，Cmd+I）
 - **编辑动画** --- 通过 MCP 编辑节点时触发扫描线 + 脉冲辉光效果
+- **AI 设计审查** --- Cloudflare Workers AI（Llama 3.1）驱动的设计分析。四种模式：全面审查、Five UI States、无障碍性、快速反馈。无状态，$0 成本。
 - **Five UI States 审计** --- 自动检查每个画面的 Empty/Loading/Error/Partial/Ideal 状态，进行设计质量审计
 - **设计文档导出** --- 生成包含组件结构、UI 状态覆盖率和设计令牌的 Markdown 设计文档
 - **愿景页面** --- 面向产品经理、设计师和工程师的产品愿景与用例文档
@@ -288,6 +339,7 @@ cd tools/collab-bridge && npm start
 | :white_check_mark: | 设计文档导出（Markdown） |
 | :white_check_mark: | 愿景与用例页面 |
 | :white_check_mark: | 撤销 / 重做（Figma 等效粒度） |
+| :white_check_mark: | AI 设计审查（Cloudflare Workers AI） |
 | :construction: | Figma 导入（Figma API → .pen 转换） |
 | :construction: | Notion API（直接创建/更新页面） |
 | :construction: | CI 集成（GitHub Actions 设计审查） |
@@ -302,6 +354,29 @@ cd tools/collab-bridge && npm start
 ```
 
 启动后，Claude Code（或任意 HTTP 客户端）可对 `http://localhost:<port>` 发送 `GET` / `POST` 请求，查询节点、推送编辑、触发编辑动画。完整的 API 参考和配置说明请参阅 [`tools/collab-bridge/README.md`](./tools/collab-bridge/README.md)。
+
+### AI 设计审查 [BETA]
+
+Pencil Viewer 集成了 Cloudflare Workers AI（Llama 3.1），可直接从画布进行 AI 驱动的设计分析。**此功能完全可选** --- 不启用也不影响查看器的任何功能。
+
+**设置：**
+
+```bash
+cd workers/ai-review && cp wrangler.toml.example wrangler.toml && npm install && npx wrangler deploy
+```
+
+部署后，在仓库变量（或 `.env`）中设置 `VITE_AI_REVIEW_URL`，然后重新构建前端。
+
+**审查模式：**
+
+| 模式 | 说明 |
+|---|---|
+| 全面审查 | 涵盖布局、排版、颜色和一致性的综合设计分析 |
+| Five UI States | 检查 Empty / Loading / Error / Partial / Ideal 状态的覆盖情况 |
+| 无障碍性 | 评估对比度、触摸目标、屏幕阅读器友好性和 WCAG 合规性 |
+| 快速反馈 | 用于快速迭代的简短可操作反馈 |
+
+> **注意：** 此功能可选，$0 成本（Cloudflare Workers AI 免费套餐），完全无状态 --- 不会在服务器上存储任何设计数据。
 
 ## 许可证
 

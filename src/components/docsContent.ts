@@ -142,6 +142,12 @@ export interface DocsLocale {
     restApiExamples: string[];
     mcpToolsTitle: string;
     mcpToolsDesc: string;
+    aiReviewTitle: string;
+    aiReviewDesc: string;
+    aiReviewAccess: string;
+    aiReviewModesTitle: string;
+    aiReviewModesTable: TableData;
+    aiReviewSetup: string;
   };
 }
 
@@ -489,6 +495,23 @@ const en: DocsLocale = {
     mcpToolsTitle: 'MCP Tools',
     mcpToolsDesc:
       'The following MCP tools are available for design quality workflows: check_ui_states (audit all screens), suggest_missing_states (recommend states to add), and export_design_doc (generate Markdown documentation).',
+    aiReviewTitle: 'AI Design Review [BETA]',
+    aiReviewDesc:
+      'Pencil Viewer integrates with Cloudflare Workers AI (Llama 3.1) to provide AI-powered design analysis. No design data is stored on the server --- the feature is fully stateless and costs $0.',
+    aiReviewAccess:
+      'Open the command palette (Cmd + Shift + P) and run "AI Design Review" to launch the review panel.',
+    aiReviewModesTitle: 'Review Modes',
+    aiReviewModesTable: {
+      headers: ['Mode', 'Description'],
+      rows: [
+        { cols: ['Full Review', 'Comprehensive analysis covering layout, typography, color, and consistency'] },
+        { cols: ['Five UI States', 'Checks coverage of Empty / Loading / Error / Partial / Ideal states'] },
+        { cols: ['Accessibility', 'Evaluates contrast, touch targets, screen reader friendliness, and WCAG compliance'] },
+        { cols: ['Quick Feedback', 'Short, actionable feedback for rapid iteration'] },
+      ],
+    },
+    aiReviewSetup:
+      'This feature requires a Cloudflare Workers AI backend. See workers/ai-review/README.md for setup instructions.',
   },
 };
 
@@ -836,6 +859,23 @@ const ja: DocsLocale = {
     mcpToolsTitle: 'MCP ツール',
     mcpToolsDesc:
       'デザイン品質ワークフロー用の MCP ツール: check_ui_states（全画面監査）、suggest_missing_states（追加すべき状態の提案）、export_design_doc（Markdown ドキュメント生成）。',
+    aiReviewTitle: 'AI デザインレビュー [BETA]',
+    aiReviewDesc:
+      'Pencil Viewer は Cloudflare Workers AI（Llama 3.1）と連携し、AI によるデザイン分析を提供します。デザインデータはサーバーに保存されません。完全にステートレスで $0 コストです。',
+    aiReviewAccess:
+      'コマンドパレット (Cmd + Shift + P) を開き「AI Design Review」を実行してレビューパネルを起動します。',
+    aiReviewModesTitle: 'レビューモード',
+    aiReviewModesTable: {
+      headers: ['モード', '説明'],
+      rows: [
+        { cols: ['フルレビュー', 'レイアウト、タイポグラフィ、色、一貫性を包括的に分析'] },
+        { cols: ['Five UI States', 'Empty / Loading / Error / Partial / Ideal 状態のカバレッジを確認'] },
+        { cols: ['アクセシビリティ', 'コントラスト、タッチターゲット、スクリーンリーダー対応、WCAG 準拠を評価'] },
+        { cols: ['クイックフィードバック', '素早い反復のための短く実用的なフィードバック'] },
+      ],
+    },
+    aiReviewSetup:
+      'この機能には Cloudflare Workers AI バックエンドが必要です。セットアップ手順は workers/ai-review/README.md を参照してください。',
   },
 };
 
@@ -1183,6 +1223,23 @@ const zh: DocsLocale = {
     mcpToolsTitle: 'MCP 工具',
     mcpToolsDesc:
       '可用于设计质量工作流的 MCP 工具：check_ui_states（审计所有画面）、suggest_missing_states（建议需要添加的状态）、export_design_doc（生成 Markdown 文档）。',
+    aiReviewTitle: 'AI 设计审查 [BETA]',
+    aiReviewDesc:
+      'Pencil Viewer 集成了 Cloudflare Workers AI（Llama 3.1），提供 AI 驱动的设计分析。不会在服务器上存储任何设计数据，完全无状态，$0 成本。',
+    aiReviewAccess:
+      '打开命令面板 (Cmd + Shift + P) 并运行"AI Design Review"以启动审查面板。',
+    aiReviewModesTitle: '审查模式',
+    aiReviewModesTable: {
+      headers: ['模式', '说明'],
+      rows: [
+        { cols: ['全面审查', '涵盖布局、排版、颜色和一致性的综合设计分析'] },
+        { cols: ['Five UI States', '检查 Empty / Loading / Error / Partial / Ideal 状态的覆盖情况'] },
+        { cols: ['无障碍性', '评估对比度、触摸目标、屏幕阅读器友好性和 WCAG 合规性'] },
+        { cols: ['快速反馈', '用于快速迭代的简短可操作反馈'] },
+      ],
+    },
+    aiReviewSetup:
+      '此功能需要 Cloudflare Workers AI 后端。有关设置说明，请参阅 workers/ai-review/README.md。',
   },
 };
 

@@ -295,6 +295,13 @@ export function Docs({ onBack, locale }: DocsProps) {
 
           <h3>{c.designQuality.mcpToolsTitle}</h3>
           <p>{c.designQuality.mcpToolsDesc}</p>
+
+          <h3>{c.designQuality.aiReviewTitle}</h3>
+          <p>{c.designQuality.aiReviewDesc}</p>
+          <p>{c.designQuality.aiReviewAccess}</p>
+          <h4>{c.designQuality.aiReviewModesTitle}</h4>
+          <DocsTable data={c.designQuality.aiReviewModesTable} />
+          <p><em>{c.designQuality.aiReviewSetup}</em></p>
         </section>
       </article>
     </div>
