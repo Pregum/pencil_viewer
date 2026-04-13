@@ -22,6 +22,8 @@ import { CollabBar } from './CollabBar';
 import { useCollab } from '../../collab/useCollab';
 import { useBridge } from '../../collab/useBridge';
 import { ContextMenu } from './ContextMenu';
+import { AIReviewPanel } from './AIReviewPanel';
+import { isAIReviewEnabled } from '../../utils/aiReview';
 import { ZoomInput } from './ZoomInput';
 
 const MIN_SCALE = 0.05;
@@ -129,6 +131,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const [showAutoId, setShowAutoId] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showUIStates, setShowUIStates] = useState(false);
+  const [showAIReview, setShowAIReview] = useState(false);
   const [vimMode, setVimMode] = useState(false);
   const [showLayers, setShowLayers] = useState(true);
   const [showProperties, setShowProperties] = useState(true);
@@ -820,6 +823,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
       )}
       {showAutoId && <AutoIdDialog onClose={() => setShowAutoId(false)} />}
       {showUIStates && <UIStatesPanel onClose={() => setShowUIStates(false)} locale="ja" />}
+      {showAIReview && <AIReviewPanel onClose={() => setShowAIReview(false)} locale="ja" />}
       {showCommandPalette && (
         <CommandPaletteWrapper
           baseCommands={[
@@ -827,6 +831,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             { id: 'frame-search', label: 'Search Frames', shortcut: 'Cmd+P', action: () => setShowFrameSearch(true) },
             { id: 'auto-id', label: 'Auto ID / Rename Frames', shortcut: 'Cmd+I', action: () => setShowAutoId(true) },
             { id: 'ui-states', label: 'Five UI States Audit', action: () => setShowUIStates(true) },
+            ...(isAIReviewEnabled() ? [{ id: 'ai-review', label: '🤖 AI Design Review', action: () => setShowAIReview(true) }] : []),
             { id: 'fit-view', label: 'Fit to View', shortcut: 'Cmd+0', action: resetView },
             { id: 'zoom-100', label: 'Zoom to 100%', shortcut: 'Cmd+1', action: zoomTo100 },
             { id: 'shortcuts', label: 'Show Keyboard Shortcuts', shortcut: 'Cmd+/', action: () => setShowShortcuts(true) },

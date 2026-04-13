@@ -1,0 +1,10 @@
+name = "pencil-ai-review"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+[ai]
+binding = "AI"
+
+# Optional: restrict origins
+# [vars]
+# ALLOWED_ORIGINS = "https://pregum.github.io,http://localhost:5173"

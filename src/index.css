@@ -1401,6 +1401,48 @@ html,
   color: #dc2626;
 }
 
+/* --- AI Review Panel --- */
+.ai-review__error {
+  padding: 12px;
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: 8px;
+  color: var(--color-error);
+  font-size: 13px;
+}
+.ai-review__result {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.ai-review__meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--color-canvas);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 11px;
+  color: var(--color-text-subtle);
+}
+.ai-review__body {
+  padding: 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--color-text);
+  white-space: pre-wrap;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.ai-review__empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  white-space: pre-line;
+  line-height: 1.6;
+}
+
 /* --- UI States Panel --- */
 .ui-states__summary {
   display: flex;

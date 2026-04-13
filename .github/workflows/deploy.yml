@@ -51,6 +51,7 @@ jobs:
           # Cloudflare Workers Share API — vars に未設定の fork では空文字になり、
           # isShareEnabled() が false を返すので Share ボタンは自動的に非表示になる
           VITE_SHARE_API_URL: ${{ vars.VITE_SHARE_API_URL }}
+          VITE_AI_REVIEW_URL: ${{ vars.VITE_AI_REVIEW_URL }}
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
