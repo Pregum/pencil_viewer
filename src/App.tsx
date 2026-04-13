@@ -150,7 +150,7 @@ export function App() {
       </header>
 
       <main className="main">
-        {showDocs && <Docs onBack={() => setShowDocs(false)} />}
+        {showDocs && <Docs onBack={() => setShowDocs(false)} locale={locale} />}
 
         {!showDocs && state.status === 'idle' && (
           <Landing
