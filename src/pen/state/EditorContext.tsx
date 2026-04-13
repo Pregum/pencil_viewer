@@ -72,6 +72,8 @@ interface EditorContextValue {
   /** Undo 用: 現在の doc を明示的に undo スタックに積む */
   pushUndoCheckpoint: () => void;
   deleteNode: (nodeId: string) => void;
+  /** ドキュメントの children を直接差し替える（undo 付き） */
+  replaceDocChildren: (children: PenNode[]) => void;
   exportPen: (fileName?: string) => void;
   undo: () => void;
   redo: () => void;
@@ -180,6 +182,20 @@ export function EditorProvider({
     [pushUndo],
   );
 
+  const replaceDocChildren = useCallback(
+    (children: PenNode[]) => {
+      setState((s) => {
+        pushUndo(s.doc, s.rawDoc);
+        return {
+          ...s,
+          doc: { ...s.doc, children },
+          rawDoc: { ...s.rawDoc, children },
+        };
+      });
+    },
+    [pushUndo],
+  );
+
   const undo = useCallback(() => {
     if (undoStack.current.length === 0) return;
     setState((s) => {
@@ -270,8 +286,8 @@ export function EditorProvider({
   const canRedo = redoStack.current.length > 0;
 
   const value = useMemo(
-    () => ({ state, selectNode, selectMultiple, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, pushUndoCheckpoint, deleteNode, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
-    [state, selectNode, selectMultiple, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, pushUndoCheckpoint, deleteNode, selectedNode, exportPen, undo, redo, canUndo, canRedo],
+    () => ({ state, selectNode, selectMultiple, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
+    [state, selectNode, selectMultiple, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, selectedNode, exportPen, undo, redo, canUndo, canRedo],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;

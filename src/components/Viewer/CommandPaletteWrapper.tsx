@@ -6,6 +6,7 @@
 import { useCallback } from 'react';
 import { CommandPalette, type Command } from './CommandPalette';
 import { useAlignCommands } from './AlignCommands';
+import { useExtraCommands } from './ExtraCommands';
 import { useEditor } from '../../pen/state/EditorContext';
 import { generateDesignDoc, downloadMarkdown } from '../../analysis/designDocExport';
 
@@ -16,6 +17,7 @@ interface Props {
 
 export function CommandPaletteWrapper({ baseCommands, onClose }: Props) {
   const alignCommands = useAlignCommands();
+  const extraCommands = useExtraCommands();
   const { state } = useEditor();
 
   const exportDesignDoc = useCallback(() => {
@@ -33,7 +35,7 @@ export function CommandPaletteWrapper({ baseCommands, onClose }: Props) {
     { id: 'export-design-doc-en', label: 'Export Design Doc (Markdown / EN)', action: exportDesignDocEn },
   ];
 
-  const allCommands = [...baseCommands, ...alignCommands, ...docCommands];
+  const allCommands = [...baseCommands, ...alignCommands, ...extraCommands, ...docCommands];
 
   return <CommandPalette commands={allCommands} onClose={onClose} />;
 }
