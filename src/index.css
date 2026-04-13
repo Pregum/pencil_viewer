@@ -1241,6 +1241,116 @@ html,
   z-index: 5;
 }
 
+/* --- Collab Bar --- */
+.collab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-family: inherit;
+}
+.collab-btn:hover {
+  border-color: #22c55e;
+  color: #22c55e;
+}
+.collab-btn__icon {
+  font-size: 8px;
+  color: #9ca3af;
+}
+.collab-btn:hover .collab-btn__icon {
+  color: #22c55e;
+}
+
+.collab-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.collab-bar__status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #22c55e;
+}
+
+.collab-bar__dot {
+  width: 6px;
+  height: 6px;
+  background: #22c55e;
+  border-radius: 50%;
+  animation: collab-pulse 2s ease-in-out infinite;
+}
+
+@keyframes collab-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.collab-bar__peers {
+  display: flex;
+  margin-left: 4px;
+}
+
+.collab-bar__avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  border: 2px solid var(--color-surface);
+  margin-left: -6px;
+}
+.collab-bar__avatar:first-child {
+  margin-left: 0;
+}
+
+.collab-bar__copy {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #052e16;
+  border: 1px solid #166534;
+  border-radius: 4px;
+  color: #22c55e;
+  cursor: pointer;
+  font-family: inherit;
+}
+.collab-bar__copy:hover {
+  background: #166534;
+}
+
+.collab-bar__leave {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.collab-bar__leave:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
 /* --- Auto ID Dialog --- */
 .auto-id__settings {
   display: grid;

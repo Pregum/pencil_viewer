@@ -16,6 +16,8 @@ import { ZoomToSelected } from './ZoomToSelected';
 import { HintLabels } from './HintLabels';
 import { NudgeHandler } from './NudgeHandler';
 import { MarqueeSelect } from './MarqueeSelect';
+import { CollabBar } from './CollabBar';
+import { useCollab } from '../../collab/useCollab';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -85,6 +87,9 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
 
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  // P2P Collab
+  const { collab, createRoom, disconnect, getRoomUrl } = useCollab();
 
   // Camera in SVG coordinate space
   const [camera, setCamera] = useState<Camera>(() => ({
@@ -719,6 +724,13 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         )}
 
         <span style={{ flex: 1 }} />
+        <CollabBar
+          collab={collab}
+          onStartCollab={() => createRoom(rawDoc ?? doc, () => {})}
+          onDisconnect={disconnect}
+          roomUrl={getRoomUrl()}
+        />
+        <span className="viewer__separator" />
         <ExportButton />
         <span className="viewer__separator" />
         <button
