@@ -60,9 +60,16 @@ export function FrameSearch({ frames, activeFrameId, cameraCx, cameraCy, onSelec
     inputRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { e.preventDefault(); onClose(); }
+      // Block Ctrl+P/N and Cmd+P from propagating to PenViewer while search is open
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && (e.key === 'p' || e.key === 'n')) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // capture phase to intercept before PenViewer's listener
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, [onClose]);
 
   useEffect(() => {
