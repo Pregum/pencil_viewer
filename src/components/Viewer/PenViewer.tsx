@@ -17,6 +17,7 @@ import { HintLabels } from './HintLabels';
 import { NudgeHandler } from './NudgeHandler';
 import { MarqueeSelect } from './MarqueeSelect';
 import { EditAnimation } from './EditAnimation';
+import { UIStatesPanel } from './UIStatesPanel';
 import { CollabBar } from './CollabBar';
 import { useCollab } from '../../collab/useCollab';
 import { useBridge } from '../../collab/useBridge';
@@ -125,6 +126,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const [showFrameSearch, setShowFrameSearch] = useState(false);
   const [showAutoId, setShowAutoId] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showUIStates, setShowUIStates] = useState(false);
   const [vimMode, setVimMode] = useState(false);
   const [showLayers, setShowLayers] = useState(true);
   const [showProperties, setShowProperties] = useState(true);
@@ -808,12 +810,14 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         />
       )}
       {showAutoId && <AutoIdDialog onClose={() => setShowAutoId(false)} />}
+      {showUIStates && <UIStatesPanel onClose={() => setShowUIStates(false)} locale="ja" />}
       {showCommandPalette && (
         <CommandPaletteWrapper
           baseCommands={[
             { id: 'vim-toggle', label: `Vim Mode: ${vimMode ? 'ON → OFF' : 'OFF → ON'}`, action: () => setVimMode((v) => !v) },
             { id: 'frame-search', label: 'Search Frames', shortcut: 'Cmd+P', action: () => setShowFrameSearch(true) },
             { id: 'auto-id', label: 'Auto ID / Rename Frames', shortcut: 'Cmd+I', action: () => setShowAutoId(true) },
+            { id: 'ui-states', label: 'Five UI States Audit', action: () => setShowUIStates(true) },
             { id: 'fit-view', label: 'Fit to View', shortcut: 'Cmd+0', action: resetView },
             { id: 'zoom-100', label: 'Zoom to 100%', shortcut: 'Cmd+1', action: zoomTo100 },
             { id: 'shortcuts', label: 'Show Keyboard Shortcuts', shortcut: 'Cmd+/', action: () => setShowShortcuts(true) },

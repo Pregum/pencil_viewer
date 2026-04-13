@@ -1358,6 +1358,128 @@ html,
   color: #dc2626;
 }
 
+/* --- UI States Panel --- */
+.ui-states__summary {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+.ui-states__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 20px;
+  background: var(--color-canvas);
+  border-radius: 8px;
+  min-width: 80px;
+}
+.ui-states__stat-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--color-text);
+}
+.ui-states__stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.ui-states__list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+.ui-states__screen {
+  border-bottom: 1px solid var(--color-border);
+}
+.ui-states__screen:last-child { border-bottom: none; }
+.ui-states__screen-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+.ui-states__screen-header:hover { background: var(--color-canvas); }
+.ui-states__screen-toggle {
+  font-size: 10px;
+  color: var(--color-text-subtle);
+  width: 12px;
+}
+.ui-states__screen-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  flex: 1;
+}
+.ui-states__bar {
+  width: 80px;
+  height: 6px;
+  background: var(--color-canvas);
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+}
+.ui-states__bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.ui-states__bar-label {
+  position: absolute;
+  right: -32px;
+  top: -3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  width: 28px;
+  text-align: right;
+}
+.ui-states__screen-detail {
+  padding: 8px 14px 12px 34px;
+}
+.ui-states__badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ui-state-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  border: 1.5px solid;
+}
+.ui-state-badge--detected {
+  background: var(--color-canvas);
+  color: var(--color-text);
+}
+.ui-state-badge--missing {
+  background: #fef2f2;
+  border-color: #fecaca !important;
+  color: #991b1b;
+  opacity: 0.7;
+}
+.ui-states__missing-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #dc2626;
+  font-weight: 500;
+}
+.ui-states__tip {
+  font-size: 11px;
+  color: var(--color-text-subtle);
+  background: var(--color-canvas);
+  padding: 10px 12px;
+  border-radius: 6px;
+  line-height: 1.5;
+}
+
 /* --- Docs feature cards --- */
 .docs__features {
   display: grid;

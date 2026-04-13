@@ -86,6 +86,13 @@ const httpServer = createServer(async (req, res) => {
       return json(res, { ok: true });
     }
 
+    // GET /check-ui-states
+    if (req.method === 'GET' && path === '/check-ui-states') {
+      const doc = getPenDoc();
+      const results = analyzeUIStates(doc);
+      return json(res, { report: formatReport(results), data: results });
+    }
+
     // 404
     json(res, { error: 'Not found' }, 404);
   } catch (e) {
@@ -195,6 +202,85 @@ function listFrames(nodes, result = []) {
   return result;
 }
 
+// ── Five UI States Analyzer ──
+const STATE_PATTERNS = [
+  { state: 'empty', patterns: [/empty/i, /no.?data/i, /no.?result/i, /no.?item/i, /zero.?state/i, /blank/i, /空/i, /データなし/i, /結果なし/i, /未登録/i, /まだ/i] },
+  { state: 'loading', patterns: [/loading/i, /spinner/i, /skeleton/i, /shimmer/i, /progress/i, /読み込み/i, /ロード/i] },
+  { state: 'error', patterns: [/error/i, /fail/i, /404/i, /500/i, /offline/i, /エラー/i, /失敗/i, /not.?found/i] },
+  { state: 'partial', patterns: [/partial/i, /incomplete/i, /limited/i, /部分/i, /一部/i, /制限/i] },
+];
+
+function inferState(name) {
+  for (const { state, patterns } of STATE_PATTERNS) {
+    if (patterns.some(p => p.test(name))) return state;
+  }
+  return 'ideal';
+}
+
+function extractScreenName(name) {
+  let clean = name.replace(/^WF:\s*/i, '').replace(/^Screen:\s*/i, '');
+  for (const { patterns } of STATE_PATTERNS) {
+    for (const p of patterns) {
+      clean = clean.replace(new RegExp(`[\\s\\-_/|]+${p.source}$`, 'i'), '');
+    }
+  }
+  return clean.trim() || name;
+}
+
+function analyzeUIStates(doc) {
+  const allStates = ['ideal', 'empty', 'loading', 'error', 'partial'];
+  const frames = doc.children
+    .filter(n => n.type === 'frame' && typeof n.width === 'number' && n.width >= 100 && typeof n.height === 'number' && n.height >= 100)
+    .map(n => ({ id: n.id, name: n.name ?? n.id, x: n.x ?? 0, y: n.y ?? 0, width: n.width, height: n.height, inferredState: inferState(n.name ?? '') }));
+
+  const groups = new Map();
+  for (const f of frames) {
+    const screen = extractScreenName(f.name);
+    if (!groups.has(screen)) groups.set(screen, []);
+    groups.get(screen).push(f);
+  }
+
+  const results = [];
+  for (const [screenName, screenFrames] of groups) {
+    const detected = [...new Set(screenFrames.map(f => f.inferredState))];
+    const missing = allStates.filter(s => !detected.includes(s));
+    const coverage = Math.round((detected.length / allStates.length) * 100);
+    results.push({ screenName, frames: screenFrames, detectedStates: detected, missingStates: missing, coverage });
+  }
+  results.sort((a, b) => a.coverage - b.coverage);
+  return results;
+}
+
+function formatReport(results) {
+  const lines = ['# Five UI States Analysis Report', ''];
+  const total = results.length;
+  const full = results.filter(r => r.coverage === 100).length;
+  lines.push(`> ${full} of ${total} screens have full coverage`, '');
+
+  const stateLabels = { ideal: '✅ Ideal', empty: '📭 Empty', loading: '⏳ Loading', error: '❌ Error', partial: '🔶 Partial' };
+  for (const g of results) {
+    const icon = g.coverage === 100 ? '✅' : g.coverage >= 60 ? '⚠️' : '❌';
+    lines.push(`## ${icon} ${g.screenName} (${g.coverage}%)`);
+    lines.push(`**Detected**: ${g.detectedStates.map(s => stateLabels[s]).join(', ')}`);
+    if (g.missingStates.length > 0) {
+      lines.push(`**Missing**: ${g.missingStates.map(s => stateLabels[s]).join(', ')}`);
+    }
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+function getStateDescription(state, screenName) {
+  switch (state) {
+    case 'empty': return `${screenName} にデータがまだ存在しない場合の表示。初回利用時やフィルタ結果が0件の場合。アクションへの導線を提示する。`;
+    case 'loading': return `${screenName} のデータを読み込み中の表示。スケルトン UI やスピナーを使い、進捗を示す。`;
+    case 'error': return `${screenName} でエラーが発生した場合の表示。原因の説明とリトライ操作を提示する。`;
+    case 'partial': return `${screenName} のデータが一部のみ表示されている状態。ネットワーク不安定時やページネーション途中。`;
+    case 'ideal': return `${screenName} の正常表示。データが正しく読み込まれた理想的な状態。`;
+    default: return '';
+  }
+}
+
 // ── MCP Server (stdin/stdout JSON-RPC) ──
 const rl = createInterface({ input: process.stdin });
 
@@ -204,6 +290,8 @@ const TOOLS = [
   { name: 'update_node', description: 'Update node properties', inputSchema: { type: 'object', properties: { id: { type: 'string' }, patch: { type: 'object' } }, required: ['id', 'patch'] } },
   { name: 'get_document', description: 'Get full PenDocument', inputSchema: { type: 'object', properties: {} } },
   { name: 'get_status', description: 'Get bridge status', inputSchema: { type: 'object', properties: {} } },
+  { name: 'check_ui_states', description: 'Analyze Five UI States coverage for all screens. Returns a report showing which states (Ideal/Empty/Loading/Error/Partial) are defined and which are missing.', inputSchema: { type: 'object', properties: {} } },
+  { name: 'suggest_missing_states', description: 'Get suggestions for missing UI states with frame templates that can be added to the document.', inputSchema: { type: 'object', properties: { screenName: { type: 'string', description: 'Screen name to get suggestions for (from check_ui_states result)' } }, required: ['screenName'] } },
 ];
 
 function handleMcpRequest(msg) {
@@ -230,6 +318,38 @@ function handleMcpRequest(msg) {
       }
       case 'get_document': return respond(id, { content: [{ type: 'text', text: JSON.stringify(doc, null, 2) }] });
       case 'get_status': return respond(id, { content: [{ type: 'text', text: JSON.stringify({ wsPort: PORT, clients: wsClients.size, nodes: doc.children.length }, null, 2) }] });
+      case 'check_ui_states': {
+        const results = analyzeUIStates(doc);
+        const report = formatReport(results);
+        return respond(id, { content: [{ type: 'text', text: report }, { type: 'text', text: '\n---\nRaw data:\n' + JSON.stringify(results, null, 2) }] });
+      }
+      case 'suggest_missing_states': {
+        const results = analyzeUIStates(doc);
+        const screen = results.find(r => r.screenName === args.screenName);
+        if (!screen) return respond(id, { content: [{ type: 'text', text: `Screen not found: ${args.screenName}. Available: ${results.map(r => r.screenName).join(', ')}` }], isError: true });
+        if (screen.missingStates.length === 0) return respond(id, { content: [{ type: 'text', text: `${args.screenName}: All Five UI States are covered! 🎉` }] });
+        // Generate frame templates for missing states
+        const baseFrame = screen.frames[0];
+        const suggestions = screen.missingStates.map((state, i) => ({
+          type: 'frame',
+          id: `${baseFrame.id}_${state}`,
+          name: `WF: ${screen.screenName} - ${state.charAt(0).toUpperCase() + state.slice(1)}`,
+          x: baseFrame.x + (baseFrame.width + 40) * (screen.frames.length + i),
+          y: baseFrame.y,
+          width: baseFrame.width,
+          height: baseFrame.height,
+          fill: '#FAF8F5',
+          layout: 'vertical',
+          children: [
+            { type: 'text', id: `${baseFrame.id}_${state}_title`, content: `${screen.screenName} — ${state.charAt(0).toUpperCase() + state.slice(1)} State`, fontSize: 18, fontWeight: '600', fill: '#111827', x: 20, y: 20 },
+            { type: 'text', id: `${baseFrame.id}_${state}_desc`, content: getStateDescription(state, screen.screenName), fontSize: 14, fill: '#6B7280', x: 20, y: 50, textGrowth: 'fixed-width', width: baseFrame.width - 40 },
+          ],
+        }));
+        return respond(id, { content: [
+          { type: 'text', text: `Missing states for "${args.screenName}": ${screen.missingStates.join(', ')}\n\nSuggested frames (use update_node or add these to the document):\n` },
+          { type: 'text', text: JSON.stringify(suggestions, null, 2) },
+        ] });
+      }
       default: return respond(id, { content: [{ type: 'text', text: `Unknown: ${name}` }], isError: true });
     }
   }
