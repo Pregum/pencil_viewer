@@ -7,28 +7,42 @@
 
 import { useState } from 'react';
 import type { CollabState } from '../../collab/useCollab';
+import type { BridgeState } from '../../collab/useBridge';
 
 interface Props {
   collab: CollabState;
+  bridge: BridgeState;
   onStartCollab: () => void;
   onDisconnect: () => void;
+  onToggleBridge: () => void;
   roomUrl: string;
 }
 
-export function CollabBar({ collab, onStartCollab, onDisconnect, roomUrl }: Props) {
+export function CollabBar({ collab, bridge, onStartCollab, onDisconnect, onToggleBridge, roomUrl }: Props) {
   const [copied, setCopied] = useState(false);
 
   if (!collab.connected) {
     return (
-      <button
-        type="button"
-        className="collab-btn"
-        onClick={onStartCollab}
-        title="Start collaborative session (P2P)"
-      >
-        <span className="collab-btn__icon">●</span>
-        Collab
-      </button>
+      <div className="collab-bar">
+        <button
+          type="button"
+          className="collab-btn"
+          onClick={onStartCollab}
+          title="Start collaborative session (P2P)"
+        >
+          <span className="collab-btn__icon">●</span>
+          Collab
+        </button>
+        <button
+          type="button"
+          className={`collab-btn ${bridge.connected ? 'collab-btn--active' : ''}`}
+          onClick={onToggleBridge}
+          title={bridge.connected ? 'MCP Bridge connected (click to disconnect)' : 'Connect MCP Bridge (localhost:4567)'}
+        >
+          <span className="collab-btn__icon">{bridge.connected ? '⚡' : '🔌'}</span>
+          {bridge.connected ? 'Bridge' : 'MCP'}
+        </button>
+      </div>
     );
   }
 

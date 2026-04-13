@@ -18,6 +18,7 @@ import { NudgeHandler } from './NudgeHandler';
 import { MarqueeSelect } from './MarqueeSelect';
 import { CollabBar } from './CollabBar';
 import { useCollab } from '../../collab/useCollab';
+import { useBridge } from '../../collab/useBridge';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -90,6 +91,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
 
   // P2P Collab
   const { collab, createRoom, disconnect, getRoomUrl } = useCollab();
+  const { bridge, connectBridge, disconnectBridge } = useBridge();
 
   // Camera in SVG coordinate space
   const [camera, setCamera] = useState<Camera>(() => ({
@@ -726,8 +728,16 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         <span style={{ flex: 1 }} />
         <CollabBar
           collab={collab}
+          bridge={bridge}
           onStartCollab={() => createRoom(rawDoc ?? doc, () => {})}
           onDisconnect={disconnect}
+          onToggleBridge={() => {
+            if (bridge.connected) {
+              disconnectBridge();
+            } else {
+              connectBridge('ws://localhost:4567', rawDoc ?? doc, () => {});
+            }
+          }}
           roomUrl={getRoomUrl()}
         />
         <span className="viewer__separator" />

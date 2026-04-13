@@ -1268,6 +1268,13 @@ html,
 .collab-btn:hover .collab-btn__icon {
   color: #22c55e;
 }
+.collab-btn--active {
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+.collab-btn--active .collab-btn__icon {
+  color: #f59e0b;
+}
 
 .collab-bar {
   display: flex;
