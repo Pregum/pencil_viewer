@@ -99,6 +99,10 @@ Free tier covers 100k requests/day, which is more than enough for personal or sm
 | :white_check_mark: | Five UI States audit |
 | :white_check_mark: | Design document export (Markdown) |
 | :white_check_mark: | Vision & Use Cases page |
+| :white_check_mark: | Undo / Redo (Figma-equivalent granularity) |
+| :construction: | Figma Import (Figma API → .pen conversion) |
+| :construction: | Notion API (direct page creation / update) |
+| :construction: | CI Integration (GitHub Actions design review) |
 
 ### MCP / CLI Integration [BETA]
 
@@ -189,6 +193,10 @@ Once running, Claude Code (or any HTTP client) can `GET` / `POST` against `http:
 | :white_check_mark: | Five UI States 監査 |
 | :white_check_mark: | デザインドキュメントエクスポート(Markdown) |
 | :white_check_mark: | ビジョン & ユースケースページ |
+| :white_check_mark: | Undo / Redo (Figma 同等の粒度) |
+| :construction: | Figma インポート (Figma API → .pen 変換) |
+| :construction: | Notion API (ページ直接作成/更新) |
+| :construction: | CI 連携 (GitHub Actions デザインレビュー) |
 
 ### MCP / CLI 連携 [BETA]
 
@@ -279,6 +287,10 @@ cd tools/collab-bridge && npm start
 | :white_check_mark: | Five UI States 审计 |
 | :white_check_mark: | 设计文档导出（Markdown） |
 | :white_check_mark: | 愿景与用例页面 |
+| :white_check_mark: | 撤销 / 重做（Figma 等效粒度） |
+| :construction: | Figma 导入（Figma API → .pen 转换） |
+| :construction: | Notion API（直接创建/更新页面） |
+| :construction: | CI 集成（GitHub Actions 设计审查） |
 
 ### MCP / CLI 集成 [BETA]
 
