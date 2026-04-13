@@ -69,7 +69,18 @@ function NumberField({
 }
 
 export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolean; onTogglePanel?: () => void }) {
-  const { selectedNode, selectNode, updateNode, state, enterInsertMode, exitInsertMode } = useEditor();
+  const { selectedNode, selectNode, updateNode, updateNodeSilent, pushUndoCheckpoint, state, enterInsertMode, exitInsertMode } = useEditor();
+
+  // カラーピッカー用: ドラッグ中は silent、確定時に undo に積む
+  const patchSilent = useCallback(
+    (p: Partial<PenNode>) => {
+      if (selectedNode) updateNodeSilent(selectedNode.id, p);
+    },
+    [selectedNode, updateNodeSilent],
+  );
+  const startColorChange = useCallback(() => {
+    if (selectedNode) pushUndoCheckpoint();
+  }, [selectedNode, pushUndoCheckpoint]);
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -196,7 +207,9 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
                 type="color"
                 className="prop-panel__color-input"
                 value={fillColor.slice(0, 7)}
-                onChange={(e) => patch({ fill: e.target.value } as Partial<PenNode>)}
+                onMouseDown={startColorChange}
+                onInput={(e) => patchSilent({ fill: (e.target as HTMLInputElement).value } as Partial<PenNode>)}
+                onChange={(e) => patchSilent({ fill: e.target.value } as Partial<PenNode>)}
               />
             )}
             <span className="prop-panel__color-label">{fillColor}</span>
@@ -214,9 +227,14 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
                 type="color"
                 className="prop-panel__color-input"
                 value={strokeColor.slice(0, 7)}
+                onMouseDown={startColorChange}
+                onInput={(e) => {
+                  const current = (n as { stroke?: object }).stroke ?? {};
+                  patchSilent({ stroke: { ...current, fill: (e.target as HTMLInputElement).value } } as Partial<PenNode>);
+                }}
                 onChange={(e) => {
                   const current = (n as { stroke?: object }).stroke ?? {};
-                  patch({ stroke: { ...current, fill: e.target.value } } as Partial<PenNode>);
+                  patchSilent({ stroke: { ...current, fill: e.target.value } } as Partial<PenNode>);
                 }}
               />
             )}
@@ -236,7 +254,9 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
             step={0.01}
             value={opacity}
             className="prop-panel__slider"
-            onChange={(e) => patch({ opacity: parseFloat(e.target.value) } as Partial<PenNode>)}
+            onMouseDown={startColorChange}
+            onInput={(e) => patchSilent({ opacity: parseFloat((e.target as HTMLInputElement).value) } as Partial<PenNode>)}
+            onChange={(e) => patchSilent({ opacity: parseFloat(e.target.value) } as Partial<PenNode>)}
           />
           <span className="prop-panel__opacity-val">{Math.round(opacity * 100)}%</span>
         </div>

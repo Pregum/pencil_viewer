@@ -92,13 +92,13 @@ export function EditorProvider({
 }) {
   const [state, setState] = useState<EditorState>({ doc, rawDoc: rawDoc ?? doc, selectedNodeId: null, selectedNodeIds: new Set(), insertMode: false });
 
-  // Undo/Redo stacks store doc snapshots
-  const undoStack = useRef<PenDocument[]>([]);
-  const redoStack = useRef<PenDocument[]>([]);
+  // Undo/Redo stacks store both doc and rawDoc snapshots
+  const undoStack = useRef<{ doc: PenDocument; rawDoc: PenDocument }[]>([]);
+  const redoStack = useRef<{ doc: PenDocument; rawDoc: PenDocument }[]>([]);
 
-  const pushUndo = useCallback((prevDoc: PenDocument) => {
-    undoStack.current = [...undoStack.current.slice(-(MAX_UNDO - 1)), prevDoc];
-    redoStack.current = []; // new edit clears redo
+  const pushUndo = useCallback((prevDoc: PenDocument, prevRawDoc: PenDocument) => {
+    undoStack.current = [...undoStack.current.slice(-(MAX_UNDO - 1)), { doc: prevDoc, rawDoc: prevRawDoc }];
+    redoStack.current = [];
   }, []);
 
   const selectNode = useCallback(
@@ -122,7 +122,7 @@ export function EditorProvider({
   const updateNode = useCallback(
     (nodeId: string, patch: Partial<PenNode>) => {
       setState((s) => {
-        pushUndo(s.doc);
+        pushUndo(s.doc, s.rawDoc);
         return {
           ...s,
           doc: updateNodeInDoc(s.doc, nodeId, patch),
@@ -148,7 +148,7 @@ export function EditorProvider({
   /** 手動で undo チェックポイントを作成（ドラッグ開始時に呼ぶ） */
   const pushUndoCheckpoint = useCallback(() => {
     setState((s) => {
-      pushUndo(s.doc);
+      pushUndo(s.doc, s.rawDoc);
       return s;
     });
   }, [pushUndo]);
@@ -156,7 +156,7 @@ export function EditorProvider({
   const deleteNode = useCallback(
     (nodeId: string) => {
       setState((s) => {
-        pushUndo(s.doc);
+        pushUndo(s.doc, s.rawDoc);
         const removeRecursive = (nodes: PenNode[]): PenNode[] =>
           nodes
             .filter((n) => n.id !== nodeId)
@@ -183,20 +183,20 @@ export function EditorProvider({
   const undo = useCallback(() => {
     if (undoStack.current.length === 0) return;
     setState((s) => {
-      redoStack.current = [...redoStack.current, s.doc];
-      const prevDoc = undoStack.current[undoStack.current.length - 1];
+      redoStack.current = [...redoStack.current, { doc: s.doc, rawDoc: s.rawDoc }];
+      const prev = undoStack.current[undoStack.current.length - 1];
       undoStack.current = undoStack.current.slice(0, -1);
-      return { ...s, doc: prevDoc };
+      return { ...s, doc: prev.doc, rawDoc: prev.rawDoc };
     });
   }, []);
 
   const redo = useCallback(() => {
     if (redoStack.current.length === 0) return;
     setState((s) => {
-      undoStack.current = [...undoStack.current, s.doc];
-      const nextDoc = redoStack.current[redoStack.current.length - 1];
+      undoStack.current = [...undoStack.current, { doc: s.doc, rawDoc: s.rawDoc }];
+      const next = redoStack.current[redoStack.current.length - 1];
       redoStack.current = redoStack.current.slice(0, -1);
-      return { ...s, doc: nextDoc };
+      return { ...s, doc: next.doc, rawDoc: next.rawDoc };
     });
   }, []);
 
