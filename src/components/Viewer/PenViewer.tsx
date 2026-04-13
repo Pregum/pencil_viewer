@@ -719,23 +719,6 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         )}
 
         <span style={{ flex: 1 }} />
-        <button
-          type="button"
-          className={`viewer__zoom-btn ${showLayers ? 'viewer__zoom-btn--active' : ''}`}
-          title="Toggle Layers panel"
-          onClick={() => setShowLayers((v) => !v)}
-        >
-          ☰
-        </button>
-        <button
-          type="button"
-          className={`viewer__zoom-btn ${showProperties ? 'viewer__zoom-btn--active' : ''}`}
-          title="Toggle Properties panel"
-          onClick={() => setShowProperties((v) => !v)}
-        >
-          ⚙
-        </button>
-        <span className="viewer__separator" />
         <ExportButton />
         <span className="viewer__separator" />
         <button
@@ -748,7 +731,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         </button>
       </div>
       <div className="viewer__body">
-        {showLayers && <NodeTree />}
+        <NodeTree collapsed={!showLayers} onTogglePanel={() => setShowLayers((v) => !v)} />
         <div
           ref={containerRef}
           className="viewer__canvas"
@@ -786,7 +769,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             <MarqueeSelect viewBox={currentVb} svgRef={svgRef} />
           </svg>
         </div>
-        {showProperties && <PropertyPanel />}
+        <PropertyPanel collapsed={!showProperties} onTogglePanel={() => setShowProperties((v) => !v)} />
       </div>
 
       {showShortcuts && <ShortcutsDialog onClose={() => setShowShortcuts(false)} />}

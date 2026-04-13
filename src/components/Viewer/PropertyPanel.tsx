@@ -68,7 +68,7 @@ function NumberField({
   );
 }
 
-export function PropertyPanel() {
+export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolean; onTogglePanel?: () => void }) {
   const { selectedNode, selectNode, updateNode, state, enterInsertMode, exitInsertMode } = useEditor();
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -106,9 +106,24 @@ export function PropertyPanel() {
     if (state.insertMode) exitInsertMode();
   }, [state.insertMode, exitInsertMode]);
 
+  if (collapsed) {
+    return (
+      <div className="prop-panel prop-panel--collapsed">
+        <button className="prop-panel__toggle-btn" onClick={onTogglePanel} title="Show Properties">
+          ⚙
+        </button>
+      </div>
+    );
+  }
+
   if (!selectedNode) {
     return (
       <div className="prop-panel prop-panel--empty">
+        {onTogglePanel && (
+          <button className="prop-panel__toggle-btn prop-panel__toggle-btn--top" onClick={onTogglePanel} title="Hide Properties">
+            ✕
+          </button>
+        )}
         <p className="prop-panel__hint">Click a node to inspect</p>
       </div>
     );
@@ -137,6 +152,11 @@ export function PropertyPanel() {
         >
           &times;
         </button>
+        {onTogglePanel && (
+          <button className="prop-panel__close" onClick={onTogglePanel} title="Hide Properties">
+            ⚙
+          </button>
+        )}
       </div>
 
       {/* Position & Size */}

@@ -117,7 +117,7 @@ function NodeItem({
   );
 }
 
-export function NodeTree() {
+export function NodeTree({ collapsed, onTogglePanel }: { collapsed?: boolean; onTogglePanel?: () => void }) {
   const { state, selectNode } = useEditor();
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -158,12 +158,27 @@ export function NodeTree() {
     });
   }, [state.selectedNodeId, state.doc.children]);
 
+  if (collapsed) {
+    return (
+      <div className="node-tree node-tree--collapsed">
+        <button className="node-tree__toggle-btn" onClick={onTogglePanel} title="Show Layers">
+          ☰
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="node-tree">
       <div className="node-tree__header">
-        Layers
+        <span>Layers</span>
         {state.selectedNodeIds.size > 0 && (
           <span className="node-tree__count">{state.selectedNodeIds.size} selected</span>
+        )}
+        {onTogglePanel && (
+          <button className="node-tree__toggle-btn" onClick={onTogglePanel} title="Hide Layers">
+            ✕
+          </button>
         )}
       </div>
       <div className="node-tree__list" ref={listRef}>
