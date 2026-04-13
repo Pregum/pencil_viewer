@@ -5,9 +5,10 @@
  * - 接続中: ピアアバター + ルームURL コピー + 切断ボタン
  */
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { CollabState } from '../../collab/useCollab';
 import type { BridgeState } from '../../collab/useBridge';
+import { useEditor } from '../../pen/state/EditorContext';
 
 interface Props {
   collab: CollabState;
@@ -20,6 +21,19 @@ interface Props {
 
 export function CollabBar({ collab, bridge, onStartCollab, onDisconnect, onToggleBridge, roomUrl }: Props) {
   const [copied, setCopied] = useState(false);
+  const { state } = useEditor();
+
+  // Demo: trigger edit animation on random nodes
+  const demoAnimate = useCallback(() => {
+    const nodes = state.doc.children;
+    if (nodes.length === 0) return;
+    // Pick 1-3 random nodes
+    const count = Math.min(3, nodes.length);
+    const ids: string[] = [];
+    const shuffled = [...nodes].sort(() => Math.random() - 0.5);
+    for (let i = 0; i < count; i++) ids.push(shuffled[i].id);
+    window.dispatchEvent(new CustomEvent('pencil-edit-animate', { detail: ids }));
+  }, [state.doc]);
 
   if (!collab.connected) {
     return (
@@ -41,6 +55,15 @@ export function CollabBar({ collab, bridge, onStartCollab, onDisconnect, onToggl
         >
           <span className="collab-btn__icon">{bridge.connected ? '⚡' : '🔌'}</span>
           {bridge.connected ? 'Bridge' : 'MCP'}
+        </button>
+        <button
+          type="button"
+          className="collab-btn"
+          onClick={demoAnimate}
+          title="Demo: simulate MCP edit animation"
+        >
+          <span className="collab-btn__icon">▶</span>
+          Demo
         </button>
       </div>
     );

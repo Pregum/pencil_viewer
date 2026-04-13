@@ -16,15 +16,36 @@ export interface BridgeState {
   url: string;
 }
 
+/** 2つのドキュメントの children を浅く比較し、変更されたノードIDを返す */
+function detectChangedNodes(oldDoc: PenDocument | null, newDoc: PenDocument): string[] {
+  if (!oldDoc) return [];
+  const oldStr = JSON.stringify(oldDoc.children);
+  const newStr = JSON.stringify(newDoc.children);
+  if (oldStr === newStr) return [];
+
+  // 簡易比較: 各トップレベルノードの JSON を比較
+  const changed: string[] = [];
+  const oldMap = new Map(oldDoc.children.map((n) => [n.id, JSON.stringify(n)]));
+  for (const n of newDoc.children) {
+    const oldJson = oldMap.get(n.id);
+    if (oldJson !== JSON.stringify(n)) {
+      changed.push(n.id);
+    }
+  }
+  return changed;
+}
+
 export function useBridge() {
   const [state, setState] = useState<BridgeState>({ connected: false, url: DEFAULT_URL });
   const wsRef = useRef<WebSocket | null>(null);
   const onDocUpdateRef = useRef<((doc: PenDocument) => void) | null>(null);
+  const currentDocRef = useRef<PenDocument | null>(null);
 
   const connect = useCallback((url: string, doc: PenDocument, onDocUpdate: (doc: PenDocument) => void) => {
     disconnect();
 
     onDocUpdateRef.current = onDocUpdate;
+    currentDocRef.current = doc;
 
     const ws = new WebSocket(url);
     wsRef.current = ws;
@@ -39,7 +60,14 @@ export function useBridge() {
       try {
         const msg = JSON.parse(e.data);
         if (msg.type === 'pen-doc' && msg.doc) {
+          // Detect which nodes changed for animation
+          const changedIds = detectChangedNodes(currentDocRef.current, msg.doc);
+          currentDocRef.current = msg.doc;
           onDocUpdateRef.current?.(msg.doc);
+          // Trigger edit animation
+          if (changedIds.length > 0) {
+            window.dispatchEvent(new CustomEvent('pencil-edit-animate', { detail: changedIds }));
+          }
         }
       } catch {
         // ignore

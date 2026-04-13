@@ -16,6 +16,7 @@ import { ZoomToSelected } from './ZoomToSelected';
 import { HintLabels } from './HintLabels';
 import { NudgeHandler } from './NudgeHandler';
 import { MarqueeSelect } from './MarqueeSelect';
+import { EditAnimation } from './EditAnimation';
 import { CollabBar } from './CollabBar';
 import { useCollab } from '../../collab/useCollab';
 import { useBridge } from '../../collab/useBridge';
@@ -788,6 +789,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             )}
             <HintLabels vimMode={vimMode} svgScale={scale} cameraCx={camera.cx} cameraCy={camera.cy} viewBox={currentVb} />
             <MarqueeSelect viewBox={currentVb} svgRef={svgRef} />
+            <EditAnimation />
           </svg>
         </div>
         <NodeTree collapsed={!showLayers} onTogglePanel={() => setShowLayers((v) => !v)} />
