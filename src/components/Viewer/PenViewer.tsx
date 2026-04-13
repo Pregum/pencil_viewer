@@ -118,6 +118,8 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const [showAutoId, setShowAutoId] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [vimMode, setVimMode] = useState(false);
+  const [showLayers, setShowLayers] = useState(true);
+  const [showProperties, setShowProperties] = useState(true);
 
   // Compute the actual viewBox from camera
   const getViewBox = useCallback((): ViewBox => {
@@ -717,6 +719,23 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         )}
 
         <span style={{ flex: 1 }} />
+        <button
+          type="button"
+          className={`viewer__zoom-btn ${showLayers ? 'viewer__zoom-btn--active' : ''}`}
+          title="Toggle Layers panel"
+          onClick={() => setShowLayers((v) => !v)}
+        >
+          ☰
+        </button>
+        <button
+          type="button"
+          className={`viewer__zoom-btn ${showProperties ? 'viewer__zoom-btn--active' : ''}`}
+          title="Toggle Properties panel"
+          onClick={() => setShowProperties((v) => !v)}
+        >
+          ⚙
+        </button>
+        <span className="viewer__separator" />
         <ExportButton />
         <span className="viewer__separator" />
         <button
@@ -778,8 +797,8 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
           onClose={() => setShowFrameSearch(false)}
         />
       )}
-      <NodeTree />
-      <PropertyPanel />
+      {showLayers && <NodeTree />}
+      {showProperties && <PropertyPanel />}
       {showAutoId && <AutoIdDialog onClose={() => setShowAutoId(false)} />}
       {showCommandPalette && (
         <CommandPaletteWrapper
