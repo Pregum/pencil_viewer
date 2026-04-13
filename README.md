@@ -18,6 +18,18 @@
 - **Figma-like canvas** --- zoom (Cmd+scroll), pan (scroll / Space+drag), frame navigation (Cmd+P)
 - **Resilient rendering** --- unknown node types render as dashed placeholders; one broken node never crashes the whole view
 - **Mobile-ready** --- responsive CSS hides editor panels on small screens for a pure viewing experience
+- **Vim mode** --- hjkl navigation, EasyMotion hint labels (f/t), text objects (vif/vaf/vir/vic), insert mode, number prefix
+- **Node editing** --- click to select, property panel (right side), drag to move, corner handles to resize, Backspace to delete
+- **Command palette** --- Cmd+Shift+P, align/distribute commands, vim mode toggle
+- **P2P collaborative editing** --- WebRTC + Yjs CRDT, no server data storage ("No trace, no server, no cost")
+- **MCP / REST API bridge** --- Claude Code integration via localhost bridge, real-time sync, edit animation
+- **.pen export** --- Cmd+S quick export, Cmd+Shift+S save as
+- **Undo / Redo** --- Cmd+Z / Cmd+Shift+Z with smart granularity (drag = single undo)
+- **Layers panel** --- left sidebar with collapsible node tree, auto-scroll to selected
+- **Documentation** --- in-app docs page with EN/JA/ZH support
+- **Frame search with minimap** --- Cmd+P with category labels, distance sorting, minimap preview
+- **Auto ID** --- batch rename frames with prefix/suffix (Cmd+I)
+- **Edit animation** --- scanner + pulse glow effect when nodes are edited via MCP
 
 ## Architecture
 
@@ -74,6 +86,24 @@ Free tier covers 100k requests/day, which is more than enough for personal or sm
 | :white_check_mark: | `connection` / `note` node rendering |
 | :white_check_mark: | Export to SVG / PNG |
 | :white_check_mark: | Collaborative viewing via shared URL (Cloudflare Workers + KV) |
+| :white_check_mark: | Vim mode editing |
+| :white_check_mark: | Node selection & property editing |
+| :white_check_mark: | P2P collaborative editing (WebRTC) |
+| :white_check_mark: | MCP / REST API bridge (Claude Code) |
+| :white_check_mark: | In-app documentation (i18n) |
+| :white_check_mark: | Edit animation effects |
+| :white_check_mark: | Layers panel & frame search with minimap |
+
+### MCP / CLI Integration [BETA]
+
+Pencil Viewer exposes a collab-bridge server that lets external tools --- including Claude Code and plain `curl` --- read and write nodes on the canvas in real time via WebRTC.
+
+```bash
+# Start the bridge (requires Node 18+)
+cd tools/collab-bridge && npm start
+```
+
+Once running, Claude Code (or any HTTP client) can `GET` / `POST` against `http://localhost:<port>` to query nodes, push edits, and trigger edit animations. See [`tools/collab-bridge/README.md`](./tools/collab-bridge/README.md) for the full API reference and setup instructions.
 
 ## License
 
@@ -97,6 +127,18 @@ Free tier covers 100k requests/day, which is more than enough for personal or sm
 - **Figma ライクなキャンバス操作** --- ズーム(Cmd+スクロール) / パン(スクロール / Space+ドラッグ) / フレームナビゲーション(Cmd+P)
 - **未対応ノードに耐性** --- 未知の `type` は破線プレースホルダで表示、全体描画は止まらない
 - **モバイル対応** --- レスポンシブ CSS で小画面では編集パネルを非表示にし、閲覧に特化
+- **Vim モード** --- hjkl ナビゲーション、EasyMotion ヒントラベル(f/t)、テキストオブジェクト(vif/vaf/vir/vic)、挿入モード、数値プレフィクス
+- **ノード編集** --- クリックで選択、プロパティパネル(右側)、ドラッグで移動、コーナーハンドルでリサイズ、Backspace で削除
+- **コマンドパレット** --- Cmd+Shift+P、整列・分配コマンド、Vim モード切替
+- **P2P 共同編集** --- WebRTC + Yjs CRDT、サーバーにデータを保存しない(「No trace, no server, no cost」)
+- **MCP / REST API ブリッジ** --- Claude Code 連携(localhost ブリッジ経由)、リアルタイム同期、編集アニメーション
+- **.pen エクスポート** --- Cmd+S で即時保存、Cmd+Shift+S で名前を付けて保存
+- **元に戻す / やり直す** --- Cmd+Z / Cmd+Shift+Z、スマート粒度(ドラッグ = 1 回の取り消し)
+- **レイヤーパネル** --- 左サイドバーに折りたたみ可能なノードツリー、選択ノードへ自動スクロール
+- **ドキュメント** --- アプリ内ドキュメントページ(EN/JA/ZH 対応)
+- **フレーム検索 + ミニマップ** --- Cmd+P でカテゴリラベル、距離順ソート、ミニマッププレビュー
+- **Auto ID** --- フレームの一括リネーム(プレフィクス / サフィックス指定、Cmd+I)
+- **編集アニメーション** --- MCP 経由でノード編集時にスキャナー + パルスグローエフェクト
 
 ## オプション: URL 共有機能(Cloudflare Workers)
 
@@ -128,6 +170,24 @@ Free tier covers 100k requests/day, which is more than enough for personal or sm
 | :white_check_mark: | `connection` / `note` ノード描画 |
 | :white_check_mark: | SVG / PNG エクスポート |
 | :white_check_mark: | URL 共有による共同閲覧(Cloudflare Workers + KV) |
+| :white_check_mark: | Vim モード編集 |
+| :white_check_mark: | ノード選択 & プロパティ編集 |
+| :white_check_mark: | P2P 共同編集(WebRTC) |
+| :white_check_mark: | MCP / REST API ブリッジ(Claude Code) |
+| :white_check_mark: | アプリ内ドキュメント(i18n) |
+| :white_check_mark: | 編集アニメーション |
+| :white_check_mark: | レイヤーパネル & フレーム検索 + ミニマップ |
+
+### MCP / CLI 連携 [BETA]
+
+Pencil Viewer は collab-bridge サーバーを提供しており、Claude Code や `curl` などの外部ツールから WebRTC 経由でキャンバス上のノードをリアルタイムに読み書きできます。
+
+```bash
+# ブリッジの起動(Node 18+ が必要)
+cd tools/collab-bridge && npm start
+```
+
+起動後、Claude Code(または任意の HTTP クライアント)が `http://localhost:<port>` に対して `GET` / `POST` を実行し、ノードの取得・編集・編集アニメーションのトリガーが可能です。詳しい API リファレンスとセットアップ手順は [`tools/collab-bridge/README.md`](./tools/collab-bridge/README.md) を参照してください。
 
 ## ライセンス
 
@@ -151,6 +211,18 @@ Free tier covers 100k requests/day, which is more than enough for personal or sm
 - **类 Figma 画布操作** --- 缩放（Cmd+滚轮）/ 平移（滚轮 / Space+拖拽）/ 画框导航（Cmd+P）
 - **容错渲染** --- 未知节点类型以虚线占位符显示，不影响整体渲染
 - **移动端适配** --- 响应式 CSS，小屏幕自动隐藏编辑面板，专注查看体验
+- **Vim 模式** --- hjkl 导航、EasyMotion 提示标签（f/t）、文本对象（vif/vaf/vir/vic）、插入模式、数字前缀
+- **节点编辑** --- 点击选中、属性面板（右侧）、拖动移动、角柄缩放、Backspace 删除
+- **命令面板** --- Cmd+Shift+P、对齐/分布命令、Vim 模式切换
+- **P2P 协同编辑** --- WebRTC + Yjs CRDT，服务器不存储数据（"No trace, no server, no cost"）
+- **MCP / REST API 桥接** --- 通过 localhost 桥接集成 Claude Code，实时同步，编辑动画
+- **.pen 导出** --- Cmd+S 快速导出、Cmd+Shift+S 另存为
+- **撤销 / 重做** --- Cmd+Z / Cmd+Shift+Z，智能粒度（拖动 = 单次撤销）
+- **图层面板** --- 左侧边栏可折叠节点树，自动滚动到选中节点
+- **文档** --- 应用内文档页面，支持 EN/JA/ZH
+- **画框搜索 + 小地图** --- Cmd+P 带分类标签、距离排序、小地图预览
+- **Auto ID** --- 批量重命名画框（前缀/后缀，Cmd+I）
+- **编辑动画** --- 通过 MCP 编辑节点时触发扫描线 + 脉冲辉光效果
 
 ## 可选：URL 共享（Cloudflare Workers）
 
@@ -182,6 +254,24 @@ Free tier covers 100k requests/day, which is more than enough for personal or sm
 | :white_check_mark: | `connection` / `note` 节点渲染 |
 | :white_check_mark: | SVG / PNG 导出 |
 | :white_check_mark: | URL 共享协同查看（Cloudflare Workers + KV） |
+| :white_check_mark: | Vim 模式编辑 |
+| :white_check_mark: | 节点选择与属性编辑 |
+| :white_check_mark: | P2P 协同编辑（WebRTC） |
+| :white_check_mark: | MCP / REST API 桥接（Claude Code） |
+| :white_check_mark: | 应用内文档（i18n） |
+| :white_check_mark: | 编辑动画效果 |
+| :white_check_mark: | 图层面板与画框搜索 + 小地图 |
+
+### MCP / CLI 集成 [BETA]
+
+Pencil Viewer 提供 collab-bridge 服务器，允许 Claude Code 和 `curl` 等外部工具通过 WebRTC 实时读写画布上的节点。
+
+```bash
+# 启动桥接（需要 Node 18+）
+cd tools/collab-bridge && npm start
+```
+
+启动后，Claude Code（或任意 HTTP 客户端）可对 `http://localhost:<port>` 发送 `GET` / `POST` 请求，查询节点、推送编辑、触发编辑动画。完整的 API 参考和配置说明请参阅 [`tools/collab-bridge/README.md`](./tools/collab-bridge/README.md)。
 
 ## 许可证
 
