@@ -3,7 +3,8 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import type { PenDocument, PenNode } from '../types';
+import type { PenDocument, PenNode, FrameNode } from '../types';
+import { duplicateNode } from '../../components/Viewer/ExtraCommands';
 
 export interface EditorState {
   doc: PenDocument;
@@ -97,6 +98,9 @@ export function EditorProvider({
   // Undo/Redo stacks store both doc and rawDoc snapshots
   const undoStack = useRef<{ doc: PenDocument; rawDoc: PenDocument }[]>([]);
   const redoStack = useRef<{ doc: PenDocument; rawDoc: PenDocument }[]>([]);
+
+  // Internal clipboard for Cmd+C / Cmd+V of nodes
+  const clipboardRef = useRef<PenNode | null>(null);
 
   const pushUndo = useCallback((prevDoc: PenDocument, prevRawDoc: PenDocument) => {
     undoStack.current = [...undoStack.current.slice(-(MAX_UNDO - 1)), { doc: prevDoc, rawDoc: prevRawDoc }];
@@ -216,7 +220,20 @@ export function EditorProvider({
     });
   }, []);
 
-  // Keyboard shortcuts: Cmd+Z / Cmd+Shift+Z
+  // Helper: find siblings of a node (children of same parent)
+  const findSiblings = useCallback((nodeId: string, nodes: PenNode[]): PenNode[] | null => {
+    // Check top-level children
+    if (nodes.some((n) => n.id === nodeId)) return nodes;
+    for (const n of nodes) {
+      if ('children' in n && Array.isArray((n as { children?: PenNode[] }).children)) {
+        const result = findSiblings(nodeId, (n as { children: PenNode[] }).children);
+        if (result) return result;
+      }
+    }
+    return null;
+  }, []);
+
+  // Keyboard shortcuts: Cmd+Z / Cmd+Shift+Z and more
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
@@ -259,10 +276,181 @@ export function EditorProvider({
           return s;
         });
       }
+
+      // --- Standard keyboard shortcuts (work outside vim mode too) ---
+      if (isInput) return;
+
+      // Cmd+D: Duplicate selected node
+      if (mod && !e.shiftKey && e.key === 'd') {
+        e.preventDefault();
+        setState((s) => {
+          if (!s.selectedNodeId) return s;
+          const node = findNode(s.doc.children, s.selectedNodeId);
+          if (!node) return s;
+          const cloned = duplicateNode(node);
+          pushUndo(s.doc, s.rawDoc);
+          return {
+            ...s,
+            doc: { ...s.doc, children: [...s.doc.children, cloned] },
+            rawDoc: { ...s.rawDoc, children: [...s.rawDoc.children, cloned] },
+            selectedNodeId: cloned.id,
+            selectedNodeIds: new Set(),
+          };
+        });
+        return;
+      }
+
+      // Cmd+G: Group selected nodes
+      if (mod && !e.shiftKey && e.key === 'g') {
+        e.preventDefault();
+        setState((s) => {
+          const ids = s.selectedNodeIds.size > 0
+            ? Array.from(s.selectedNodeIds)
+            : s.selectedNodeId ? [s.selectedNodeId] : [];
+          if (ids.length === 0) return s;
+          const idSet = new Set(ids);
+          const selected = s.doc.children.filter((n) => idSet.has(n.id));
+          const rest = s.doc.children.filter((n) => !idSet.has(n.id));
+          if (selected.length === 0) return s;
+          const minX = Math.min(...selected.map((n) => n.x ?? 0));
+          const minY = Math.min(...selected.map((n) => n.y ?? 0));
+          const frame: FrameNode = {
+            type: 'frame',
+            id: `group_${Date.now()}`,
+            x: minX,
+            y: minY,
+            layout: 'none',
+            children: selected.map((n) => ({
+              ...(n as object),
+              x: (n.x ?? 0) - minX,
+              y: (n.y ?? 0) - minY,
+            } as PenNode)),
+          };
+          pushUndo(s.doc, s.rawDoc);
+          const newChildren = [...rest, frame];
+          return {
+            ...s,
+            doc: { ...s.doc, children: newChildren },
+            rawDoc: { ...s.rawDoc, children: newChildren },
+            selectedNodeId: frame.id,
+            selectedNodeIds: new Set(),
+          };
+        });
+        return;
+      }
+
+      // Cmd+Shift+G: Ungroup
+      if (mod && e.shiftKey && e.key === 'G') {
+        e.preventDefault();
+        setState((s) => {
+          if (!s.selectedNodeId) return s;
+          const node = findNode(s.doc.children, s.selectedNodeId);
+          if (!node || (node.type !== 'frame' && node.type !== 'group')) return s;
+          const children = (node as { children?: PenNode[] }).children ?? [];
+          const parentX = node.x ?? 0;
+          const parentY = node.y ?? 0;
+          const promoted = children.map((c) => ({
+            ...(c as object),
+            x: (c.x ?? 0) + parentX,
+            y: (c.y ?? 0) + parentY,
+          } as PenNode));
+          const rest = s.doc.children.filter((n) => n.id !== s.selectedNodeId);
+          pushUndo(s.doc, s.rawDoc);
+          const newChildren = [...rest, ...promoted];
+          return {
+            ...s,
+            doc: { ...s.doc, children: newChildren },
+            rawDoc: { ...s.rawDoc, children: newChildren },
+            selectedNodeId: promoted[0]?.id ?? null,
+            selectedNodeIds: new Set(promoted.map((n) => n.id)),
+          };
+        });
+        return;
+      }
+
+      // Cmd+C: Copy selected node to internal clipboard (not system clipboard for node data)
+      if (mod && !e.shiftKey && e.key === 'c') {
+        e.preventDefault();
+        setState((s) => {
+          if (!s.selectedNodeId) return s;
+          const node = findNode(s.doc.children, s.selectedNodeId);
+          if (node) clipboardRef.current = node;
+          return s;
+        });
+        return;
+      }
+
+      // Cmd+V: Paste from internal clipboard
+      if (mod && !e.shiftKey && e.key === 'v') {
+        e.preventDefault();
+        const clipNode = clipboardRef.current;
+        if (!clipNode) return;
+        const cloned = duplicateNode(clipNode);
+        setState((s) => {
+          pushUndo(s.doc, s.rawDoc);
+          return {
+            ...s,
+            doc: { ...s.doc, children: [...s.doc.children, cloned] },
+            rawDoc: { ...s.rawDoc, children: [...s.rawDoc.children, cloned] },
+            selectedNodeId: cloned.id,
+            selectedNodeIds: new Set(),
+          };
+        });
+        return;
+      }
+
+      // Tab / Shift+Tab: Navigate siblings
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        setState((s) => {
+          if (!s.selectedNodeId) {
+            // Nothing selected: select first top-level node
+            const first = s.doc.children[0];
+            if (first) return { ...s, selectedNodeId: first.id, selectedNodeIds: new Set() };
+            return s;
+          }
+          const siblings = findSiblings(s.selectedNodeId, s.doc.children);
+          if (!siblings || siblings.length === 0) return s;
+          const idx = siblings.findIndex((n) => n.id === s.selectedNodeId);
+          if (idx < 0) return s;
+          const step = e.shiftKey ? -1 : 1;
+          const nextIdx = (idx + step + siblings.length) % siblings.length;
+          return { ...s, selectedNodeId: siblings[nextIdx].id, selectedNodeIds: new Set() };
+        });
+        return;
+      }
+
+      // Arrow keys (non-vim mode): move selected node by 1px (Shift: 10px)
+      // Only when not in vim mode (vim uses h/j/k/l instead).
+      // We check if vim mode is off by looking for the vim badge absence in the DOM.
+      // A simpler approach: always handle arrow keys here since vim uses h/j/k/l, not arrows.
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && !mod) {
+        setState((s) => {
+          if (!s.selectedNodeId) return s;
+          const node = findNode(s.doc.children, s.selectedNodeId);
+          if (!node) return s;
+          e.preventDefault();
+          const step = e.shiftKey ? 10 : 1;
+          let dx = 0;
+          let dy = 0;
+          if (e.key === 'ArrowLeft') dx = -step;
+          if (e.key === 'ArrowRight') dx = step;
+          if (e.key === 'ArrowUp') dy = -step;
+          if (e.key === 'ArrowDown') dy = step;
+          const patch = { x: (node.x ?? 0) + dx, y: (node.y ?? 0) + dy } as Partial<PenNode>;
+          pushUndo(s.doc, s.rawDoc);
+          return {
+            ...s,
+            doc: updateNodeInDoc(s.doc, s.selectedNodeId!, patch),
+            rawDoc: updateNodeInDoc(s.rawDoc, s.selectedNodeId!, patch),
+          };
+        });
+        return;
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo, deleteNode]);
+  }, [undo, redo, deleteNode, pushUndo, findSiblings]);
 
   const selectedNode = useMemo(
     () =>

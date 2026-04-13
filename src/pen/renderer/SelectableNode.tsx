@@ -48,6 +48,23 @@ export function SelectableNode({ node, children }: Props) {
     selectNode(node.id);
   };
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.dispatchEvent(
+      new CustomEvent('pencil-context-menu', {
+        detail: { nodeId: node.id, x: e.clientX, y: e.clientY },
+      }),
+    );
+  };
+
+  // Tooltip text: "name (type) — W×H"
+  const tooltipName = node.name ?? node.id;
+  const tooltipText =
+    width > 0 && height > 0
+      ? `${tooltipName} (${node.type}) — ${Math.round(width)}×${Math.round(height)}`
+      : `${tooltipName} (${node.type})`;
+
   // Convert screen delta to SVG delta using the SVG's CTM
   const screenToSvgDelta = useCallback((dx: number, dy: number, svg: SVGSVGElement) => {
     const ctm = svg.getScreenCTM();
@@ -139,12 +156,14 @@ export function SelectableNode({ node, children }: Props) {
     <g
       transform={groupTransform}
       onClick={handleClick}
+      onContextMenu={handleContextMenu}
       onPointerDown={isSelected ? (e) => handlePointerDown(e) : undefined}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       style={{ cursor: isSelected ? 'move' : 'pointer' }}
     >
+      <title>{tooltipText}</title>
       {children}
 
       {/* Multi-selection highlight */}

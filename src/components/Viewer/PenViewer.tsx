@@ -21,6 +21,8 @@ import { UIStatesPanel } from './UIStatesPanel';
 import { CollabBar } from './CollabBar';
 import { useCollab } from '../../collab/useCollab';
 import { useBridge } from '../../collab/useBridge';
+import { ContextMenu } from './ContextMenu';
+import { ZoomInput } from './ZoomInput';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -664,9 +666,16 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         >
           -
         </button>
-        <span className="viewer__zoom-label" title="Click to reset" onClick={resetView}>
-          {zoomPercent}%
-        </span>
+        <ZoomInput
+          zoomPercent={zoomPercent}
+          onZoomChange={(percent) => {
+            const newScale = percent / 100;
+            setCamera((prev) => ({
+              ...prev,
+              svgWidth: clampSvgWidth(baseVb.width / newScale),
+            }));
+          }}
+        />
         <button
           type="button"
           className="viewer__zoom-btn"
@@ -831,6 +840,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
       <ZoomToSelected onZoomTo={zoomToRect} />
       <VimTextObjects vimMode={vimMode} />
       {vimMode && <VimBadge />}
+      <ContextMenu />
     </div>
     </EditorProvider>
   );
