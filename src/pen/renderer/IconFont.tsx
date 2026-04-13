@@ -28,14 +28,14 @@ function toPascalCase(name: string): string {
 /** lucide の IconNode 配列を SVG 子要素に変換 */
 function renderLucideElements(
   iconData: [string, Record<string, string>][],
+  fillColor: string,
 ): React.ReactNode[] {
   return iconData.map(([tag, attrs], i) => {
-    // SVG element attributes
     const props: Record<string, unknown> = { key: i };
     for (const [k, v] of Object.entries(attrs)) {
-      // Convert kebab-case attrs to camelCase for React
       const reactKey = k.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
-      props[reactKey] = v;
+      // currentColor → 実際の色に置換
+      props[reactKey] = v === 'currentColor' ? fillColor : v;
     }
 
     switch (tag) {
@@ -123,7 +123,7 @@ export function IconFont({ node }: { node: IconFontNode }) {
           strokeLinejoin="round"
           filter={filter}
         >
-          {renderLucideElements(iconData)}
+          {renderLucideElements(iconData, resolvedFill)}
         </g>
       );
     }
