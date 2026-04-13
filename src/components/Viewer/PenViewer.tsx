@@ -26,7 +26,7 @@ import { ZoomInput } from './ZoomInput';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
-const ZOOM_SENSITIVITY = 0.002;
+const ZOOM_SENSITIVITY = 0.005;
 const FRAME_PADDING_RATIO = 0.1; // 10% padding around frame when zooming to it
 
 /** Collect all frame/group nodes with absolute bounds */

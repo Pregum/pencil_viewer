@@ -556,6 +556,8 @@ html,
   height: 100%;
   user-select: none;
   -webkit-user-select: none;
+  will-change: viewBox;
+  contain: layout style paint;
 }
 
 .viewer__frame-nav {
