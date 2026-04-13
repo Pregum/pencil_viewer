@@ -86,6 +86,17 @@ const httpServer = createServer(async (req, res) => {
       return json(res, { ok: true });
     }
 
+    // GET /export-design-doc?project=Name&locale=ja
+    if (req.method === 'GET' && path === '/export-design-doc') {
+      const doc = getPenDoc();
+      const project = url.searchParams.get('project') ?? 'Design Document';
+      const locale = url.searchParams.get('locale') ?? 'ja';
+      const md = generateDesignDoc(doc, project, locale);
+      res.writeHead(200, { 'Content-Type': 'text/markdown; charset=utf-8' });
+      res.end(md);
+      return;
+    }
+
     // GET /check-ui-states
     if (req.method === 'GET' && path === '/check-ui-states') {
       const doc = getPenDoc();
@@ -270,6 +281,85 @@ function formatReport(results) {
   return lines.join('\n');
 }
 
+function generateDesignDoc(doc, projectName, locale = 'ja') {
+  const results = analyzeUIStates(doc);
+  const allStates = ['ideal', 'empty', 'loading', 'error', 'partial'];
+  const stateLabels = { ideal: '✅ Ideal', empty: '📭 Empty', loading: '⏳ Loading', error: '❌ Error', partial: '🔶 Partial' };
+  const lines = [];
+
+  lines.push(`# 📐 ${projectName}`);
+  lines.push(`> ${locale === 'ja' ? '自動生成:' : 'Auto-generated:'} ${new Date().toISOString().split('T')[0]}`);
+  lines.push('');
+
+  // Summary table
+  lines.push(locale === 'ja' ? '## 📊 画面サマリー' : '## 📊 Screen Summary');
+  lines.push('');
+  lines.push(`| ${locale === 'ja' ? '画面名' : 'Screen'} | States | ${locale === 'ja' ? 'カバー率' : 'Coverage'} | ${locale === 'ja' ? '不足' : 'Missing'} |`);
+  lines.push('|---|---|---|---|');
+  for (const g of results) {
+    const icons = allStates.map(s => g.detectedStates.includes(s) ? stateLabels[s].split(' ')[0] : '⬜').join('');
+    const missing = g.missingStates.length > 0 ? g.missingStates.map(s => stateLabels[s]).join(', ') : '—';
+    lines.push(`| ${g.screenName} | ${icons} | ${g.coverage}% | ${missing} |`);
+  }
+  lines.push('');
+
+  // Stats
+  const total = results.length;
+  const full = results.filter(r => r.coverage === 100).length;
+  const avg = total > 0 ? Math.round(results.reduce((s, r) => s + r.coverage, 0) / total) : 0;
+  lines.push(locale === 'ja' ? '### 統計' : '### Statistics');
+  lines.push(`- ${locale === 'ja' ? '全画面数' : 'Total'}: ${total}`);
+  lines.push(`- ${locale === 'ja' ? '完全カバー' : 'Full coverage'}: ${full}`);
+  lines.push(`- ${locale === 'ja' ? '平均カバー率' : 'Average'}: ${avg}%`);
+  lines.push('', '---', '');
+
+  // Each screen
+  const frames = doc.children.filter(n => n.type === 'frame' && typeof n.width === 'number' && n.width >= 100);
+  for (const f of frames) {
+    const name = f.name ?? f.id;
+    lines.push(`# 📱 ${name}`);
+    lines.push(`- ID: \`${f.id}\``);
+    lines.push(`- ${locale === 'ja' ? 'サイズ' : 'Size'}: ${f.width} × ${f.height}`);
+    lines.push('');
+
+    // Five UI States for this frame
+    const group = results.find(g => g.frames.some(gf => gf.id === f.id));
+    lines.push('## Five UI States');
+    lines.push(`| State | ${locale === 'ja' ? '状態' : 'Status'} |`);
+    lines.push('|---|---|');
+    for (const s of allStates) {
+      const detected = group ? group.detectedStates.includes(s) : s === 'ideal';
+      lines.push(`| ${stateLabels[s]} | ${detected ? '✅' : '⚠️'} |`);
+    }
+    lines.push('');
+
+    // Component tree (depth 2)
+    lines.push(locale === 'ja' ? '## コンポーネント構成' : '## Components');
+    if (f.children) {
+      for (const c of f.children) {
+        const cn = c.name ?? c.id;
+        lines.push(`- **${cn}** (${c.type})`);
+        if (c.children) {
+          for (const cc of c.children) {
+            lines.push(`  - ${cc.name ?? cc.id} (${cc.type})`);
+          }
+        }
+      }
+    }
+    lines.push('', '---', '');
+  }
+
+  // Variables
+  if (doc.variables) {
+    lines.push(locale === 'ja' ? '# 🔧 デザイントークン' : '# 🔧 Design Tokens');
+    lines.push('```json');
+    lines.push(JSON.stringify(doc.variables, null, 2));
+    lines.push('```');
+  }
+
+  return lines.join('\n');
+}
+
 function getStateDescription(state, screenName) {
   switch (state) {
     case 'empty': return `${screenName} にデータがまだ存在しない場合の表示。初回利用時やフィルタ結果が0件の場合。アクションへの導線を提示する。`;
@@ -292,6 +382,7 @@ const TOOLS = [
   { name: 'get_status', description: 'Get bridge status', inputSchema: { type: 'object', properties: {} } },
   { name: 'check_ui_states', description: 'Analyze Five UI States coverage for all screens. Returns a report showing which states (Ideal/Empty/Loading/Error/Partial) are defined and which are missing.', inputSchema: { type: 'object', properties: {} } },
   { name: 'suggest_missing_states', description: 'Get suggestions for missing UI states with frame templates that can be added to the document.', inputSchema: { type: 'object', properties: { screenName: { type: 'string', description: 'Screen name to get suggestions for (from check_ui_states result)' } }, required: ['screenName'] } },
+  { name: 'export_design_doc', description: 'Export a design document in Markdown format with Five UI States analysis, component structure, and design tokens.', inputSchema: { type: 'object', properties: { projectName: { type: 'string', description: 'Project name for the document title' }, locale: { type: 'string', enum: ['en', 'ja'], description: 'Language (default: ja)' } } } },
 ];
 
 function handleMcpRequest(msg) {
@@ -349,6 +440,12 @@ function handleMcpRequest(msg) {
           { type: 'text', text: `Missing states for "${args.screenName}": ${screen.missingStates.join(', ')}\n\nSuggested frames (use update_node or add these to the document):\n` },
           { type: 'text', text: JSON.stringify(suggestions, null, 2) },
         ] });
+      }
+      case 'export_design_doc': {
+        const projectName = args.projectName ?? 'Design Document';
+        const locale = args.locale ?? 'ja';
+        const md = generateDesignDoc(doc, projectName, locale);
+        return respond(id, { content: [{ type: 'text', text: md }] });
       }
       default: return respond(id, { content: [{ type: 'text', text: `Unknown: ${name}` }], isError: true });
     }
