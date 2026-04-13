@@ -793,6 +793,7 @@ html,
 
 .prop-panel--collapsed {
   width: 36px;
+  bottom: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -826,10 +827,15 @@ html,
 }
 
 .prop-panel--empty {
+  bottom: auto;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  position: relative;
+  padding: 12px 8px;
+  box-shadow: none;
+  background: transparent;
+  border-left: none;
+  width: auto;
 }
 
 .prop-panel__hint {
