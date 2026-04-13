@@ -446,7 +446,7 @@ html,
 
 .viewer__body {
   flex: 1;
-  display: flex;
+  position: relative;
   min-height: 0;
   overflow: hidden;
 }
@@ -495,9 +495,9 @@ html,
 }
 
 .viewer__canvas {
-  flex: 1;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
-  position: relative;
   background:
     radial-gradient(circle, var(--color-border) 1px, transparent 1px);
   background-size: 20px 20px;
@@ -777,9 +777,14 @@ html,
 
 /* --- Property Panel --- */
 .prop-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
   width: 280px;
-  flex-shrink: 0;
   background: var(--color-surface);
+  z-index: 10;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.06);
   border-left: 1px solid var(--color-border);
   overflow-y: auto;
   z-index: 10;
@@ -792,7 +797,9 @@ html,
   flex-direction: column;
   align-items: center;
   padding-top: 8px;
-  border-left: 1px solid var(--color-border);
+  box-shadow: none;
+  background: transparent;
+  border-left: none;
 }
 
 .prop-panel__toggle-btn {
@@ -1073,21 +1080,28 @@ html,
 
 /* --- Node Tree (Left Sidebar) --- */
 .node-tree {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
   width: 240px;
-  flex-shrink: 0;
   background: var(--color-surface);
   border-right: 1px solid var(--color-border);
   overflow-y: auto;
   font-size: 12px;
   display: flex;
   flex-direction: column;
+  z-index: 10;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.06);
 }
 
 .node-tree--collapsed {
   width: 36px;
   align-items: center;
   padding-top: 8px;
-  border-right: 1px solid var(--color-border);
+  box-shadow: none;
+  background: transparent;
+  border-right: none;
 }
 
 .node-tree__toggle-btn {

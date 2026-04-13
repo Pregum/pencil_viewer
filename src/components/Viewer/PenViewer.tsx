@@ -731,7 +731,6 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         </button>
       </div>
       <div className="viewer__body">
-        <NodeTree collapsed={!showLayers} onTogglePanel={() => setShowLayers((v) => !v)} />
         <div
           ref={containerRef}
           className="viewer__canvas"
@@ -769,6 +768,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             <MarqueeSelect viewBox={currentVb} svgRef={svgRef} />
           </svg>
         </div>
+        <NodeTree collapsed={!showLayers} onTogglePanel={() => setShowLayers((v) => !v)} />
         <PropertyPanel collapsed={!showProperties} onTogglePanel={() => setShowProperties((v) => !v)} />
       </div>
 
