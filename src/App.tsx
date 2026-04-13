@@ -3,6 +3,7 @@ import { useDocument } from './pen/state/useDocument';
 import { PenViewer } from './components/Viewer/PenViewer';
 import { Landing } from './components/Landing';
 import { ErrorView } from './components/ErrorView';
+import { Docs } from './components/Docs';
 import { useI18n } from './i18n/I18nContext';
 import type { SupportedLocale } from './i18n/detectLocale';
 import { isShareEnabled, uploadPen, fetchSharedPen } from './utils/shareApi';
@@ -17,6 +18,7 @@ export function App() {
   const { state, loadFile, loadUrl, loadSample, reset } = useDocument();
   const { locale, setLocale, t } = useI18n();
 
+  const [showDocs, setShowDocs] = useState(false);
   const [shareStatus, setShareStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle');
 
   // ?src= または ?id= クエリから自動読み込み
@@ -110,6 +112,13 @@ export function App() {
           </div>
         )}
         <div className="header__links">
+          <button
+            type="button"
+            className="button button--ghost button--sm header__docs-btn"
+            onClick={() => setShowDocs(true)}
+          >
+            Docs
+          </button>
           {/* 言語切替 */}
           <div className="lang-switcher" role="radiogroup" aria-label="Language">
             {LOCALES.map(({ code, label }) => (
@@ -141,7 +150,9 @@ export function App() {
       </header>
 
       <main className="main">
-        {state.status === 'idle' && (
+        {showDocs && <Docs onBack={() => setShowDocs(false)} />}
+
+        {!showDocs && state.status === 'idle' && (
           <Landing
             onFile={(f) => void loadFile(f)}
             onUrl={(url) => void loadUrl(url)}
@@ -149,7 +160,7 @@ export function App() {
           />
         )}
 
-        {state.status === 'loading' && (
+        {!showDocs && state.status === 'loading' && (
           <p className="muted">
             {t('loading')}{' '}
             {state.source.kind === 'file'
@@ -160,7 +171,7 @@ export function App() {
           </p>
         )}
 
-        {state.status === 'error' && (
+        {!showDocs && state.status === 'error' && (
           <ErrorView
             error={state.error}
             source={state.source}
@@ -169,7 +180,7 @@ export function App() {
           />
         )}
 
-        {state.status === 'ready' && <PenViewer doc={state.doc} rawDoc={state.rawDoc} />}
+        {!showDocs && state.status === 'ready' && <PenViewer doc={state.doc} rawDoc={state.rawDoc} />}
       </main>
     </div>
   );
