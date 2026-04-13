@@ -84,7 +84,7 @@ const enContent: VisionContent = {
     title: 'How Pencil Viewer Solves It',
     roles: [
       {
-        role: 'Directors & PMs',
+        role: 'PMs',
         color: 'var(--color-accent)',
         items: [
           'Review wireframe completeness with Five UI States audit',
@@ -180,7 +180,7 @@ const jaContent: VisionContent = {
     title: 'Pencil Viewer \u306e\u89e3\u6c7a\u7b56',
     roles: [
       {
-        role: '\u30c7\u30a3\u30ec\u30af\u30bf\u30fc & PM',
+        role: 'PM',
         color: 'var(--color-accent)',
         items: [
           '5\u3064\u306eUI\u72b6\u614b\u76e3\u67fb\u3067WF\u306e\u5b8c\u5168\u6027\u3092\u30ec\u30d3\u30e5\u30fc',
