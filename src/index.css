@@ -441,8 +441,14 @@ html,
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
   user-select: none;
-  position: relative;
   z-index: 20;
+}
+
+.viewer__body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .viewer__zoom-btn {
@@ -771,11 +777,8 @@ html,
 
 /* --- Property Panel --- */
 .prop-panel {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
   width: 280px;
+  flex-shrink: 0;
   background: var(--color-surface);
   border-left: 1px solid var(--color-border);
   overflow-y: auto;
@@ -1037,15 +1040,11 @@ html,
 
 /* --- Node Tree (Left Sidebar) --- */
 .node-tree {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
   width: 240px;
+  flex-shrink: 0;
   background: var(--color-surface);
   border-right: 1px solid var(--color-border);
   overflow-y: auto;
-  z-index: 10;
   font-size: 12px;
   display: flex;
   flex-direction: column;

@@ -747,43 +747,46 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
           ?
         </button>
       </div>
-      <div
-        ref={containerRef}
-        className="viewer__canvas"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        style={{ cursor }}
-      >
-        <svg
-          ref={svgRef}
-          className="viewer__svg"
-          viewBox={`${currentVb.x} ${currentVb.y} ${currentVb.width} ${currentVb.height}`}
-          preserveAspectRatio="xMidYMid meet"
+      <div className="viewer__body">
+        {showLayers && <NodeTree />}
+        <div
+          ref={containerRef}
+          className="viewer__canvas"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          style={{ cursor }}
         >
-          <CanvasContent />
-          {/* Active frame highlight */}
-          {activeFrameId && frames.map((f) =>
-            f.id === activeFrameId ? (
-              <rect
-                key={`highlight-${f.id}`}
-                x={f.x}
-                y={f.y}
-                width={f.width}
-                height={f.height}
-                fill="none"
-                stroke="#7c3aed"
-                strokeWidth={2 / scale}
-                strokeDasharray={`${6 / scale} ${4 / scale}`}
-                rx={4 / scale}
-                pointerEvents="none"
-              />
-            ) : null,
-          )}
-          <HintLabels vimMode={vimMode} svgScale={scale} cameraCx={camera.cx} cameraCy={camera.cy} viewBox={currentVb} />
-          <MarqueeSelect viewBox={currentVb} svgRef={svgRef} />
-        </svg>
+          <svg
+            ref={svgRef}
+            className="viewer__svg"
+            viewBox={`${currentVb.x} ${currentVb.y} ${currentVb.width} ${currentVb.height}`}
+            preserveAspectRatio="xMidYMid meet"
+          >
+            <CanvasContent />
+            {activeFrameId && frames.map((f) =>
+              f.id === activeFrameId ? (
+                <rect
+                  key={`highlight-${f.id}`}
+                  x={f.x}
+                  y={f.y}
+                  width={f.width}
+                  height={f.height}
+                  fill="none"
+                  stroke="#7c3aed"
+                  strokeWidth={2 / scale}
+                  strokeDasharray={`${6 / scale} ${4 / scale}`}
+                  rx={4 / scale}
+                  pointerEvents="none"
+                />
+              ) : null,
+            )}
+            <HintLabels vimMode={vimMode} svgScale={scale} cameraCx={camera.cx} cameraCy={camera.cy} viewBox={currentVb} />
+            <MarqueeSelect viewBox={currentVb} svgRef={svgRef} />
+          </svg>
+        </div>
+        {showProperties && <PropertyPanel />}
       </div>
 
       {showShortcuts && <ShortcutsDialog onClose={() => setShowShortcuts(false)} />}
@@ -797,8 +800,6 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
           onClose={() => setShowFrameSearch(false)}
         />
       )}
-      {showLayers && <NodeTree />}
-      {showProperties && <PropertyPanel />}
       {showAutoId && <AutoIdDialog onClose={() => setShowAutoId(false)} />}
       {showCommandPalette && (
         <CommandPaletteWrapper
