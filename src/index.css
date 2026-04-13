@@ -1358,6 +1358,32 @@ html,
   color: #dc2626;
 }
 
+/* --- Docs feature cards --- */
+.docs__features {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+.docs__feature-card {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+.docs__feature-card p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+.docs__feature-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
 /* --- Auto ID Dialog --- */
 .auto-id__settings {
   display: grid;

@@ -106,6 +106,19 @@ export function Docs({ onBack, locale }: DocsProps) {
               </li>
             ))}
           </ul>
+
+          <h3>{c.gettingStarted.advancedTitle}</h3>
+          <div className="docs__features">
+            {c.gettingStarted.advancedItems.map((item) => (
+              <div key={item.title} className="docs__feature-card">
+                <span className="docs__feature-icon">{item.icon}</span>
+                <div>
+                  <strong>{item.title}</strong>
+                  <p>{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* Canvas Navigation */}
@@ -211,6 +224,56 @@ export function Docs({ onBack, locale }: DocsProps) {
 
           <h3>{c.shortcuts.vimTitle}</h3>
           <DocsTable data={c.shortcuts.vimTable} />
+        </section>
+
+        {/* Collaborative Editing */}
+        <section id="collab">
+          <h2>{c.collab.title}</h2>
+          <p>{c.collab.intro}</p>
+
+          <h3>{c.collab.p2pTitle}</h3>
+          <ol>
+            {c.collab.p2pSteps.map((step, i) => (
+              <li key={i}>{step}</li>
+            ))}
+          </ol>
+
+          <h3>{c.collab.howItWorksTitle}</h3>
+          <p>{c.collab.howItWorksDesc}</p>
+
+          <h3>{c.collab.noTraceTitle}</h3>
+          <p>{c.collab.noTraceDesc}</p>
+
+          <h3>{c.collab.limitationsTitle}</h3>
+          <ul>
+            {c.collab.limitations.map((lim, i) => (
+              <li key={i}>{lim}</li>
+            ))}
+          </ul>
+        </section>
+
+        {/* API & CLI Integration */}
+        <section id="api-integration">
+          <h2>{c.apiIntegration.title}</h2>
+          <p><strong>{c.apiIntegration.betaNote}</strong></p>
+
+          <h3>{c.apiIntegration.bridgeTitle}</h3>
+          <pre><code>{c.apiIntegration.bridgeSetup}</code></pre>
+
+          <h3>{c.apiIntegration.restTitle}</h3>
+          <DocsTable data={c.apiIntegration.restTable} />
+
+          <h3>{c.apiIntegration.curlTitle}</h3>
+          {c.apiIntegration.curlExamples.map((ex, i) => (
+            <pre key={i}><code>{ex}</code></pre>
+          ))}
+
+          <h3>{c.apiIntegration.mcpTitle}</h3>
+          <p>{c.apiIntegration.mcpDesc}</p>
+          <pre><code>{c.apiIntegration.mcpConfig}</code></pre>
+
+          <h3>{c.apiIntegration.claudeExampleTitle}</h3>
+          <p>{c.apiIntegration.claudeExampleDesc}</p>
         </section>
       </article>
     </div>

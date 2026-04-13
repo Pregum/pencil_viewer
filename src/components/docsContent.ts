@@ -29,6 +29,8 @@ export interface DocsLocale {
     nodeTypesTitle: string;
     nodeTypesIntro: string;
     nodeTypes: { name: string; desc: string }[];
+    advancedTitle: string;
+    advancedItems: { icon: string; title: string; desc: string }[];
   };
 
   canvasNavigation: {
@@ -98,6 +100,35 @@ export interface DocsLocale {
     vimTitle: string;
     vimTable: TableData;
   };
+
+  collab: {
+    title: string;
+    intro: string;
+    p2pTitle: string;
+    p2pSteps: string[];
+    howItWorksTitle: string;
+    howItWorksDesc: string;
+    noTraceTitle: string;
+    noTraceDesc: string;
+    limitationsTitle: string;
+    limitations: string[];
+  };
+
+  apiIntegration: {
+    title: string;
+    betaNote: string;
+    bridgeTitle: string;
+    bridgeSetup: string;
+    restTitle: string;
+    restTable: TableData;
+    curlTitle: string;
+    curlExamples: string[];
+    mcpTitle: string;
+    mcpDesc: string;
+    mcpConfig: string;
+    claudeExampleTitle: string;
+    claudeExampleDesc: string;
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -114,6 +145,8 @@ const en: DocsLocale = {
     { id: 'node-editing', title: 'Node Editing' },
     { id: 'export', title: 'Export' },
     { id: 'shortcuts', title: 'Keyboard Shortcuts' },
+    { id: 'collab', title: 'Collaborative Editing' },
+    { id: 'api-integration', title: 'API & CLI Integration' },
   ],
 
   gettingStarted: {
@@ -141,6 +174,13 @@ const en: DocsLocale = {
       { name: 'Icon Font', desc: 'icon rendered from an icon font' },
       { name: 'Image', desc: 'embedded or referenced bitmap' },
       { name: 'Vector', desc: 'custom vector path' },
+    ],
+    advancedTitle: 'Beyond Viewing',
+    advancedItems: [
+      { icon: '🎨', title: 'Vim-style Editing', desc: 'Navigate and edit with hjkl, EasyMotion hints, text objects — all from your keyboard.' },
+      { icon: '👥', title: 'P2P Collaborative Editing', desc: 'Share a URL, edit together in real-time. No server, no account. Data disappears when everyone leaves.' },
+      { icon: '🤖', title: 'AI Integration (Claude Code)', desc: 'Connect Claude Code via REST API or MCP. Watch AI edits appear live in your browser.' },
+      { icon: '📦', title: 'Export & Save', desc: 'Cmd+S to export edited .pen files. All changes stay local until you choose to share.' },
     ],
   },
 
@@ -344,6 +384,75 @@ const en: DocsLocale = {
       ],
     },
   },
+
+  collab: {
+    title: 'Collaborative Editing',
+    intro:
+      'Pencil Viewer supports real-time collaborative editing directly in the browser with no server required.',
+    p2pTitle: 'P2P Mode',
+    p2pSteps: [
+      'Click the "Collab" button in the toolbar.',
+      'A unique room URL is generated automatically.',
+      'Share the URL with collaborators.',
+      'Others open the link to join the session.',
+      'All changes sync in real-time across participants.',
+    ],
+    howItWorksTitle: 'How It Works',
+    howItWorksDesc:
+      'Collaborative editing is powered by Yjs CRDT combined with WebRTC for peer-to-peer communication. No server stores your design data — synchronization happens directly between connected browsers.',
+    noTraceTitle: 'No Trace, No Server, No Cost',
+    noTraceDesc:
+      'Since data lives only in participant browsers, when everyone leaves the room the data is gone. There is no server to maintain, no storage cost, and no data retention.',
+    limitationsTitle: 'Limitations',
+    limitations: [
+      'All participants must be online simultaneously — there is no offline sync.',
+      'Best for small groups of 5-8 people. Performance may degrade with more participants.',
+      'NAT traversal issues may prevent connections for some network configurations.',
+    ],
+  },
+
+  apiIntegration: {
+    title: 'API & CLI Integration',
+    betaNote:
+      '[BETA] This is an experimental feature. The bridge runs on localhost only and stores data in memory. It is not intended for production use.',
+    bridgeTitle: 'Collab Bridge Setup',
+    bridgeSetup: 'cd tools/collab-bridge && npm install && node index.js',
+    restTitle: 'REST API',
+    restTable: {
+      headers: ['Method', 'Endpoint', 'Description'],
+      rows: [
+        { cols: ['GET', '/status', 'Bridge status'] },
+        { cols: ['GET', '/document', 'Full document JSON'] },
+        { cols: ['GET', '/frames', 'Frame list'] },
+        { cols: ['GET', '/node/:id', 'Read a node'] },
+        { cols: ['PUT', '/node/:id', 'Update a node (body: patch JSON)'] },
+        { cols: ['POST', '/document', 'Set full document'] },
+      ],
+    },
+    curlTitle: 'curl Examples',
+    curlExamples: [
+      'curl http://localhost:4567/frames',
+      "curl -X PUT http://localhost:4567/node/abc123 -H 'Content-Type: application/json' -d '{\"fill\":\"#ff0000\"}'",
+    ],
+    mcpTitle: 'MCP Integration with Claude Code',
+    mcpDesc:
+      'You can connect Collab Bridge to Claude Code via MCP (Model Context Protocol). Add the following to your .mcp.json configuration:',
+    mcpConfig: JSON.stringify(
+      {
+        mcpServers: {
+          'pencil-bridge': {
+            command: 'node',
+            args: ['tools/collab-bridge/index.js'],
+          },
+        },
+      },
+      null,
+      2,
+    ),
+    claudeExampleTitle: 'Claude Code Example',
+    claudeExampleDesc:
+      'With MCP configured, you can give natural language commands such as "change the header color to blue". Claude Code will call update_node via MCP and the change appears in the browser in real-time.',
+  },
 };
 
 /* ------------------------------------------------------------------ */
@@ -360,6 +469,8 @@ const ja: DocsLocale = {
     { id: 'node-editing', title: 'ノード編集' },
     { id: 'export', title: 'エクスポート' },
     { id: 'shortcuts', title: 'キーボードショートカット' },
+    { id: 'collab', title: '共同編集' },
+    { id: 'api-integration', title: 'API & CLI 連携' },
   ],
 
   gettingStarted: {
@@ -387,6 +498,13 @@ const ja: DocsLocale = {
       { name: 'Icon Font', desc: 'アイコンフォントから描画されるアイコン' },
       { name: 'Image', desc: '埋め込みまたは参照されたビットマップ' },
       { name: 'Vector', desc: 'カスタムベクターパス' },
+    ],
+    advancedTitle: 'ビューアーを超えて',
+    advancedItems: [
+      { icon: '🎨', title: 'Vim スタイル編集', desc: 'hjkl 移動、EasyMotion ヒント、テキストオブジェクト — キーボードだけで高速操作。' },
+      { icon: '👥', title: 'P2P 共同編集', desc: 'URL を共有するだけでリアルタイム共同編集。サーバー不要、アカウント不要。全員が離れたらデータは消えます。' },
+      { icon: '🤖', title: 'AI 連携 (Claude Code)', desc: 'REST API または MCP で Claude Code を接続。AI の編集がブラウザにリアルタイム反映。' },
+      { icon: '📦', title: 'エクスポート & 保存', desc: 'Cmd+S で編集済み .pen ファイルをエクスポート。共有するまで全てローカルで完結。' },
     ],
   },
 
@@ -590,6 +708,75 @@ const ja: DocsLocale = {
       ],
     },
   },
+
+  collab: {
+    title: '共同編集',
+    intro:
+      'Pencil Viewer はサーバー不要でブラウザ上のリアルタイム共同編集に対応しています。',
+    p2pTitle: 'P2P モード',
+    p2pSteps: [
+      'ツールバーの「Collab」ボタンをクリックします。',
+      'ルーム URL が自動生成されます。',
+      'URL を共同作業者に共有します。',
+      'リンクを開くとセッションに参加できます。',
+      '全員の変更がリアルタイムで同期されます。',
+    ],
+    howItWorksTitle: '仕組み',
+    howItWorksDesc:
+      '共同編集は Yjs CRDT と WebRTC によるピアツーピア通信で実現されています。サーバーにデザインデータは保存されず、接続中のブラウザ間で直接同期されます。',
+    noTraceTitle: '痕跡なし・サーバーなし・コストなし',
+    noTraceDesc:
+      'データは参加者のブラウザにのみ存在するため、全員がルームを退出するとデータは消えます。サーバー維持費もストレージ費用もデータ保持もありません。',
+    limitationsTitle: '制限事項',
+    limitations: [
+      '全参加者が同時にオンラインである必要があります。オフライン同期はありません。',
+      '5〜8 人程度の小規模グループに最適です。人数が多いとパフォーマンスが低下する可能性があります。',
+      'ネットワーク構成によっては NAT トラバーサルの問題で接続できない場合があります。',
+    ],
+  },
+
+  apiIntegration: {
+    title: 'API & CLI 連携',
+    betaNote:
+      '[BETA] これは実験的機能です。ブリッジは localhost のみで動作し、データはメモリ上にのみ保持されます。本番環境での使用は想定していません。',
+    bridgeTitle: 'Collab Bridge セットアップ',
+    bridgeSetup: 'cd tools/collab-bridge && npm install && node index.js',
+    restTitle: 'REST API',
+    restTable: {
+      headers: ['メソッド', 'エンドポイント', '説明'],
+      rows: [
+        { cols: ['GET', '/status', 'ブリッジの状態'] },
+        { cols: ['GET', '/document', 'ドキュメント全体の JSON'] },
+        { cols: ['GET', '/frames', 'フレーム一覧'] },
+        { cols: ['GET', '/node/:id', 'ノードの読み取り'] },
+        { cols: ['PUT', '/node/:id', 'ノードの更新（ボディ: パッチ JSON）'] },
+        { cols: ['POST', '/document', 'ドキュメント全体を設定'] },
+      ],
+    },
+    curlTitle: 'curl の例',
+    curlExamples: [
+      'curl http://localhost:4567/frames',
+      "curl -X PUT http://localhost:4567/node/abc123 -H 'Content-Type: application/json' -d '{\"fill\":\"#ff0000\"}'",
+    ],
+    mcpTitle: 'Claude Code との MCP 連携',
+    mcpDesc:
+      'MCP（Model Context Protocol）を使って Collab Bridge を Claude Code に接続できます。以下を .mcp.json 設定に追加してください:',
+    mcpConfig: JSON.stringify(
+      {
+        mcpServers: {
+          'pencil-bridge': {
+            command: 'node',
+            args: ['tools/collab-bridge/index.js'],
+          },
+        },
+      },
+      null,
+      2,
+    ),
+    claudeExampleTitle: 'Claude Code の使用例',
+    claudeExampleDesc:
+      'MCP を設定すると「ヘッダーの色を青に変更して」のような自然言語コマンドを実行できます。Claude Code が MCP 経由で update_node を呼び出し、変更がブラウザにリアルタイムで反映されます。',
+  },
 };
 
 /* ------------------------------------------------------------------ */
@@ -606,6 +793,8 @@ const zh: DocsLocale = {
     { id: 'node-editing', title: '节点编辑' },
     { id: 'export', title: '导出' },
     { id: 'shortcuts', title: '键盘快捷键' },
+    { id: 'collab', title: '协同编辑' },
+    { id: 'api-integration', title: 'API 与 CLI 集成' },
   ],
 
   gettingStarted: {
@@ -633,6 +822,13 @@ const zh: DocsLocale = {
       { name: 'Icon Font', desc: '从图标字体渲染的图标' },
       { name: 'Image', desc: '嵌入或引用的位图' },
       { name: 'Vector', desc: '自定义矢量路径' },
+    ],
+    advancedTitle: '超越查看',
+    advancedItems: [
+      { icon: '🎨', title: 'Vim 风格编辑', desc: '使用 hjkl 导航、EasyMotion 提示、文本对象 — 全键盘高效操作。' },
+      { icon: '👥', title: 'P2P 协同编辑', desc: '分享链接即可实时协同编辑。无需服务器、无需账号。所有人离开后数据自动消失。' },
+      { icon: '🤖', title: 'AI 集成 (Claude Code)', desc: '通过 REST API 或 MCP 连接 Claude Code。AI 的编辑实时显示在浏览器中。' },
+      { icon: '📦', title: '导出与保存', desc: 'Cmd+S 导出编辑后的 .pen 文件。所有更改保持本地，直到你选择分享。' },
     ],
   },
 
@@ -835,6 +1031,75 @@ const zh: DocsLocale = {
         { cols: ['N + 动作', '重复动作 N 次'] },
       ],
     },
+  },
+
+  collab: {
+    title: '协同编辑',
+    intro:
+      'Pencil Viewer 支持无需服务器的浏览器端实时协同编辑。',
+    p2pTitle: 'P2P 模式',
+    p2pSteps: [
+      '点击工具栏中的"Collab"按钮。',
+      '系统自动生成唯一的房间 URL。',
+      '将 URL 分享给协作者。',
+      '其他人打开链接即可加入会话。',
+      '所有更改在参与者之间实时同步。',
+    ],
+    howItWorksTitle: '工作原理',
+    howItWorksDesc:
+      '协同编辑基于 Yjs CRDT 和 WebRTC 点对点通信实现。服务器不存储任何设计数据，同步直接在连接的浏览器之间进行。',
+    noTraceTitle: '无痕迹、无服务器、无成本',
+    noTraceDesc:
+      '数据仅存在于参与者的浏览器中，所有人离开房间后数据即消失。无需维护服务器，无存储费用，无数据留存。',
+    limitationsTitle: '限制',
+    limitations: [
+      '所有参与者必须同时在线，不支持离线同步。',
+      '最适合 5-8 人的小型团队。参与者过多可能导致性能下降。',
+      '某些网络配置下可能存在 NAT 穿透问题导致无法连接。',
+    ],
+  },
+
+  apiIntegration: {
+    title: 'API 与 CLI 集成',
+    betaNote:
+      '[BETA] 这是实验性功能。桥接服务仅在 localhost 运行，数据仅保存在内存中，不适用于生产环境。',
+    bridgeTitle: 'Collab Bridge 设置',
+    bridgeSetup: 'cd tools/collab-bridge && npm install && node index.js',
+    restTitle: 'REST API',
+    restTable: {
+      headers: ['方法', '端点', '说明'],
+      rows: [
+        { cols: ['GET', '/status', '桥接服务状态'] },
+        { cols: ['GET', '/document', '完整文档 JSON'] },
+        { cols: ['GET', '/frames', '画框列表'] },
+        { cols: ['GET', '/node/:id', '读取节点'] },
+        { cols: ['PUT', '/node/:id', '更新节点（请求体: 补丁 JSON）'] },
+        { cols: ['POST', '/document', '设置完整文档'] },
+      ],
+    },
+    curlTitle: 'curl 示例',
+    curlExamples: [
+      'curl http://localhost:4567/frames',
+      "curl -X PUT http://localhost:4567/node/abc123 -H 'Content-Type: application/json' -d '{\"fill\":\"#ff0000\"}'",
+    ],
+    mcpTitle: 'Claude Code MCP 集成',
+    mcpDesc:
+      '您可以通过 MCP（模型上下文协议）将 Collab Bridge 连接到 Claude Code。请将以下内容添加到 .mcp.json 配置中:',
+    mcpConfig: JSON.stringify(
+      {
+        mcpServers: {
+          'pencil-bridge': {
+            command: 'node',
+            args: ['tools/collab-bridge/index.js'],
+          },
+        },
+      },
+      null,
+      2,
+    ),
+    claudeExampleTitle: 'Claude Code 示例',
+    claudeExampleDesc:
+      '配置 MCP 后，您可以使用"将标题颜色改为蓝色"等自然语言命令。Claude Code 将通过 MCP 调用 update_node，更改会实时反映在浏览器中。',
   },
 };
 
