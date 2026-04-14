@@ -26,6 +26,15 @@
   "lp.how.step3.title": "以 SVG 查看",
   "lp.how.step3.desc": "缩放、平移、画框导航 — 类 Figma 画布",
 
+  "lp.airev.badge": "✨ NEW",
+  "lp.airev.title": "🤖 AI 设计审查",
+  "lp.airev.tagline": "集成在画布中的 AI 设计审查员。",
+  "lp.airev.desc": "一键发现缺失的 UI 状态、获得即时的一致性和无障碍性反馈,并在不离开查看器的情况下修复问题。",
+  "lp.airev.bullet1": "📋 Five UI States 审计(Empty / Loading / Error / Partial / Ideal)",
+  "lp.airev.bullet2": "✨ 一键修复:AI 以匹配的样式生成缺失的状态",
+  "lp.airev.bullet3": "🔒 无状态、零数据保留、免费额度足以日常使用",
+  "lp.airev.cta": "查看使用方法 →",
+
   "lp.try.title": "立即体验",
 
   "dropzone.active": "拖放到此处",

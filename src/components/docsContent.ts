@@ -142,12 +142,33 @@ export interface DocsLocale {
     restApiExamples: string[];
     mcpToolsTitle: string;
     mcpToolsDesc: string;
-    aiReviewTitle: string;
-    aiReviewDesc: string;
-    aiReviewAccess: string;
-    aiReviewModesTitle: string;
-    aiReviewModesTable: TableData;
-    aiReviewSetup: string;
+  };
+
+  aiReview: {
+    title: string;
+    tagline: string;
+    heroDesc: string;
+    howOpenTitle: string;
+    howOpenDesc: string;
+    howOpenSteps: string[];
+    modesTitle: string;
+    modesIntro: string;
+    modesTable: TableData;
+    repairTitle: string;
+    repairBadge: string;
+    repairDesc: string;
+    repairFlowTitle: string;
+    repairFlowSteps: string[];
+    repairBenefitsTitle: string;
+    repairBenefits: { icon: string; title: string; desc: string }[];
+    privacyTitle: string;
+    privacyDesc: string;
+    costTitle: string;
+    costRows: { label: string; value: string }[];
+    costFootnote: string;
+    setupTitle: string;
+    setupDesc: string;
+    setupCode: string;
   };
 }
 
@@ -159,6 +180,7 @@ const en: DocsLocale = {
   back: 'Back',
   sections: [
     { id: 'getting-started', title: 'Getting Started' },
+    { id: 'ai-review', title: '🤖 AI Design Review ✨' },
     { id: 'canvas-navigation', title: 'Canvas Navigation' },
     { id: 'vim-mode', title: 'Vim Mode' },
     { id: 'command-palette', title: 'Command Palette' },
@@ -495,23 +517,71 @@ const en: DocsLocale = {
     mcpToolsTitle: 'MCP Tools',
     mcpToolsDesc:
       'The following MCP tools are available for design quality workflows: check_ui_states (audit all screens), suggest_missing_states (recommend states to add), and export_design_doc (generate Markdown documentation).',
-    aiReviewTitle: 'AI Design Review [BETA]',
-    aiReviewDesc:
-      'Pencil Viewer integrates with Cloudflare Workers AI (Llama 3.1) to provide AI-powered design analysis. No design data is stored on the server --- the feature is fully stateless and costs $0.',
-    aiReviewAccess:
-      'Open the command palette (Cmd + Shift + P) and run "AI Design Review" to launch the review panel.',
-    aiReviewModesTitle: 'Review Modes',
-    aiReviewModesTable: {
-      headers: ['Mode', 'Description'],
+  },
+
+  aiReview: {
+    title: '🤖 AI Design Review',
+    tagline: 'Your AI design reviewer, built into the canvas.',
+    heroDesc:
+      'Spot missing UI states, get instant feedback on consistency, accessibility, and layout, and fix issues with one click — all without leaving the viewer. Powered by Cloudflare Workers AI (Llama 3.3 70B), fully stateless, with a generous free tier.',
+    howOpenTitle: 'How to open',
+    howOpenDesc:
+      'The AI Review panel is just a keystroke away once you have a .pen file open.',
+    howOpenSteps: [
+      'Open any .pen file (drag & drop, sample, or shared URL)',
+      'Press Cmd + Shift + P to open the command palette',
+      'Type "AI Design Review" and select it',
+      'Choose a review mode and click "Run Review"',
+    ],
+    modesTitle: 'Review Modes',
+    modesIntro: 'Pick the mode that matches what you want feedback on:',
+    modesTable: {
+      headers: ['Mode', 'What it analyzes', 'Best for'],
       rows: [
-        { cols: ['Full Review', 'Comprehensive analysis covering layout, typography, color, and consistency'] },
-        { cols: ['Five UI States', 'Checks coverage of Empty / Loading / Error / Partial / Ideal states'] },
-        { cols: ['Accessibility', 'Evaluates contrast, touch targets, screen reader friendliness, and WCAG compliance'] },
-        { cols: ['Quick Feedback', 'Short, actionable feedback for rapid iteration'] },
+        { cols: ['Full Review', 'Layout, typography, color, consistency, navigation, missing screens', 'Comprehensive design audit before handoff'] },
+        { cols: ['Five UI States', 'Empty / Loading / Error / Partial / Ideal coverage per screen', 'Catching missing edge-case screens'] },
+        { cols: ['Accessibility', 'Contrast, touch targets, text size, WCAG compliance', 'Ensuring inclusive design'] },
+        { cols: ['Quick Feedback', '3–5 actionable bullet points', 'Rapid iteration during early sketches'] },
       ],
     },
-    aiReviewSetup:
-      'This feature requires a Cloudflare Workers AI backend. See workers/ai-review/README.md for setup instructions.',
+    repairTitle: '✨ Five UI States Auto-Repair',
+    repairBadge: 'Killer feature',
+    repairDesc:
+      'When the Five UI States review finds a screen missing an Empty / Loading / Error / Partial state, the panel surfaces "🔧 Repair Candidates" — a row of one-click buttons. Click + Empty State on Home, and within seconds the AI generates a brand-new frame in the same visual style as the original (same colors, fonts, layout tokens) and drops it in your canvas right next to the source.',
+    repairFlowTitle: 'How the repair flow works',
+    repairFlowSteps: [
+      'Run AI Review in Five UI States mode',
+      'For each screen, the panel lists missing states with + buttons',
+      'Click a button — the AI receives the source frame, generates the new state, returns valid JSON',
+      'The new frame is appended to your document at offset (x + width + 60), undoably',
+      'The camera auto-pans to the new frame so you can immediately review it',
+      'Press Cmd+Z anytime to undo, or refine the frame with the property panel',
+    ],
+    repairBenefitsTitle: 'Why this matters',
+    repairBenefits: [
+      { icon: '🎯', title: 'Consistent style', desc: 'AI re-uses your existing $bg, $primary, $text design tokens, so the new state visually matches the original screen perfectly.' },
+      { icon: '⚡', title: 'Seconds, not hours', desc: 'A single Empty/Loading/Error placeholder normally takes 5–10 minutes to design. The AI gives you a working baseline in 3–5 seconds.' },
+      { icon: '↩️', title: 'Fully undoable', desc: 'Every generation pushes an undo checkpoint, so you can experiment freely. Cmd+Z reverts the addition.' },
+      { icon: '🔒', title: 'Stateless & private', desc: 'Your design is sent to the AI worker, processed in-memory, and never stored. No database, no logs, no training data.' },
+    ],
+    privacyTitle: '🔒 Privacy & Statelessness',
+    privacyDesc:
+      'The AI Review backend is a single Cloudflare Worker that proxies your design payload to Workers AI and returns the response. It has no database, no KV, no R2, no logs of design content. Once your request finishes, nothing remains. CORS is locked to the production origin so even your Worker URL cannot be hot-linked from arbitrary sites.',
+    costTitle: '💰 Cost transparency',
+    costRows: [
+      { label: 'Workers Plan', value: 'Free tier works (Workers Paid not required)' },
+      { label: 'Model', value: '@cf/meta/llama-3.3-70b-instruct-fp8-fast' },
+      { label: 'Free tier', value: '10,000 neurons / day (≈ 50–125 reviews depending on size)' },
+      { label: 'Beyond free tier', value: '$0.293 per 1M input tokens, $2.253 per 1M output tokens' },
+      { label: 'Typical monthly cost', value: '$0 for personal use, well under $5 for active OSS projects' },
+    ],
+    costFootnote:
+      'Tip: Set a Spend Limit in your Cloudflare dashboard if you want a hard cap, or simply rely on the daily free quota.',
+    setupTitle: '🚀 Self-hosting (for forks)',
+    setupDesc:
+      'AI Review is opt-in. The viewer works completely without it — the panel only appears when VITE_AI_REVIEW_URL is set at build time. To enable it on your own fork, deploy the included Worker:',
+    setupCode:
+      '# 1. Deploy the Worker\ncd workers/ai-review\ncp wrangler.toml.example wrangler.toml\nnpm install\nnpx wrangler login\nnpx wrangler deploy\n\n# 2. Set the URL as a GitHub Actions variable\ngh variable set VITE_AI_REVIEW_URL --body "https://pencil-ai-review.YOUR.workers.dev"\n\n# 3. Trigger a rebuild\ngit commit --allow-empty -m "ci: enable AI Review"\ngit push',
   },
 };
 
@@ -523,6 +593,7 @@ const ja: DocsLocale = {
   back: '戻る',
   sections: [
     { id: 'getting-started', title: 'はじめに' },
+    { id: 'ai-review', title: '🤖 AI デザインレビュー ✨' },
     { id: 'canvas-navigation', title: 'キャンバス操作' },
     { id: 'vim-mode', title: 'Vim モード' },
     { id: 'command-palette', title: 'コマンドパレット' },
@@ -859,23 +930,71 @@ const ja: DocsLocale = {
     mcpToolsTitle: 'MCP ツール',
     mcpToolsDesc:
       'デザイン品質ワークフロー用の MCP ツール: check_ui_states（全画面監査）、suggest_missing_states（追加すべき状態の提案）、export_design_doc（Markdown ドキュメント生成）。',
-    aiReviewTitle: 'AI デザインレビュー [BETA]',
-    aiReviewDesc:
-      'Pencil Viewer は Cloudflare Workers AI（Llama 3.1）と連携し、AI によるデザイン分析を提供します。デザインデータはサーバーに保存されません。完全にステートレスで $0 コストです。',
-    aiReviewAccess:
-      'コマンドパレット (Cmd + Shift + P) を開き「AI Design Review」を実行してレビューパネルを起動します。',
-    aiReviewModesTitle: 'レビューモード',
-    aiReviewModesTable: {
-      headers: ['モード', '説明'],
+  },
+
+  aiReview: {
+    title: '🤖 AI デザインレビュー',
+    tagline: 'AI デザインレビュアーが、ビューアの中に常駐。',
+    heroDesc:
+      '不足している UI ステート、レイアウト・一貫性・アクセシビリティの問題を AI が即座に指摘し、ワンクリックで修復まで完結します。Cloudflare Workers AI（Llama 3.3 70B)を使用、完全ステートレスで、無料枠内で個人利用ならほぼ無料で使えます。',
+    howOpenTitle: '起動方法',
+    howOpenDesc:
+      '.pen ファイルを開いた状態で、キーボードショートカット 1 つでパネルが開きます。',
+    howOpenSteps: [
+      '任意の .pen ファイルを開く(ドラッグ & ドロップ / サンプル / 共有 URL のいずれか)',
+      'Cmd + Shift + P でコマンドパレットを開く',
+      '「AI Design Review」と入力して選択',
+      'モードを選んで「レビュー実行」をクリック',
+    ],
+    modesTitle: 'レビューモード',
+    modesIntro: '何のフィードバックが欲しいかでモードを選びます:',
+    modesTable: {
+      headers: ['モード', '分析対象', '向いている用途'],
       rows: [
-        { cols: ['フルレビュー', 'レイアウト、タイポグラフィ、色、一貫性を包括的に分析'] },
-        { cols: ['Five UI States', 'Empty / Loading / Error / Partial / Ideal 状態のカバレッジを確認'] },
-        { cols: ['アクセシビリティ', 'コントラスト、タッチターゲット、スクリーンリーダー対応、WCAG 準拠を評価'] },
-        { cols: ['クイックフィードバック', '素早い反復のための短く実用的なフィードバック'] },
+        { cols: ['総合レビュー', 'レイアウト・タイポ・色・一貫性・ナビゲーション・欠落画面', 'ハンドオフ前の総合監査'] },
+        { cols: ['Five UI States', '画面ごとの Empty / Loading / Error / Partial / Ideal カバー率', 'エッジケース画面の見落とし検出'] },
+        { cols: ['アクセシビリティ', 'コントラスト・タッチターゲット・テキストサイズ・WCAG 準拠', 'インクルーシブデザインの確認'] },
+        { cols: ['クイック', '3〜5 個の実用的な改善ポイント', '初期スケッチでの素早いフィードバック'] },
       ],
     },
-    aiReviewSetup:
-      'この機能には Cloudflare Workers AI バックエンドが必要です。セットアップ手順は workers/ai-review/README.md を参照してください。',
+    repairTitle: '✨ Five UI States 自動修復',
+    repairBadge: 'キラー機能',
+    repairDesc:
+      'Five UI States モードで「ある画面に Empty / Loading / Error / Partial が欠けている」と検出されると、パネル下部に「🔧 修復候補」セクションが現れます。Home の「+ 空状態」ボタンをクリックすると、AI が**元と同じビジュアルスタイル**(同じカラートークン・フォント・レイアウト変数)で新しいフレームを数秒で生成し、元フレームの右隣に追加します。',
+    repairFlowTitle: '修復フローの仕組み',
+    repairFlowSteps: [
+      'Five UI States モードで AI レビューを実行',
+      '画面ごとに不足している state を + ボタンで一覧表示',
+      'ボタンをクリック → AI が元フレームを受け取り、新 state を生成、有効な JSON を返す',
+      '生成されたフレームがドキュメントに追加される(座標 = 元の x + width + 60、Undo 可能)',
+      'カメラが新フレームに自動移動して、すぐに結果を確認できる',
+      'いつでも Cmd+Z で取り消し、またはプロパティパネルで微調整',
+    ],
+    repairBenefitsTitle: 'なぜ便利か',
+    repairBenefits: [
+      { icon: '🎯', title: 'スタイルが揃う', desc: '元のドキュメントの $bg / $primary / $text などの変数を AI が再利用するので、新フレームが既存画面と完璧にマッチします。' },
+      { icon: '⚡', title: '時間ではなく秒', desc: 'Empty / Loading / Error の placeholder を 1 つ作るのに通常 5〜10 分かかりますが、AI なら 3〜5 秒で叩き台ができます。' },
+      { icon: '↩️', title: '完全 Undo 可', desc: '生成のたびに Undo チェックポイントが積まれるので、自由に試せます。気に入らなければ Cmd+Z で元通り。' },
+      { icon: '🔒', title: 'ステートレス & プライベート', desc: 'デザインデータは Worker のメモリ上で処理されるだけで、保存・ログ・学習データには使われません。' },
+    ],
+    privacyTitle: '🔒 プライバシーとステートレス性',
+    privacyDesc:
+      'AI Review バックエンドは Cloudflare Worker 1 つだけで、リクエストを Workers AI にプロキシして応答を返すだけ。データベースも KV も R2 もログもありません。リクエストが終われば何も残りません。CORS は本家オリジンに固定されているので、Worker URL を任意のサイトから叩くこともできません。',
+    costTitle: '💰 コスト透明性',
+    costRows: [
+      { label: 'Workers Plan', value: 'Free プランで動作可(Workers Paid は不要)' },
+      { label: 'モデル', value: '@cf/meta/llama-3.3-70b-instruct-fp8-fast' },
+      { label: '無料枠', value: '10,000 neurons / 日(画面サイズに応じて 50〜125 リクエスト)' },
+      { label: '無料枠超過後', value: '入力 100 万 token あたり $0.293、出力 100 万 token あたり $2.253' },
+      { label: '想定月額', value: '個人利用なら $0、活発な OSS でも $5 未満が現実的' },
+    ],
+    costFootnote:
+      'コスト上限を厳格にしたい場合は、Cloudflare ダッシュボードで Spend Limit を設定するか、無料枠内で運用してください。',
+    setupTitle: '🚀 セルフホスティング(fork する人向け)',
+    setupDesc:
+      'AI Review はオプション機能です。VITE_AI_REVIEW_URL がビルド時に未設定なら、AI Review パネルは表示されません。fork したインスタンスで有効化したい場合、付属の Worker をデプロイしてください:',
+    setupCode:
+      '# 1. Worker をデプロイ\ncd workers/ai-review\ncp wrangler.toml.example wrangler.toml\nnpm install\nnpx wrangler login\nnpx wrangler deploy\n\n# 2. URL を GitHub Actions Variable として設定\ngh variable set VITE_AI_REVIEW_URL --body "https://pencil-ai-review.YOUR.workers.dev"\n\n# 3. 空コミットで再ビルド\ngit commit --allow-empty -m "ci: enable AI Review"\ngit push',
   },
 };
 
@@ -887,6 +1006,7 @@ const zh: DocsLocale = {
   back: '返回',
   sections: [
     { id: 'getting-started', title: '快速入门' },
+    { id: 'ai-review', title: '🤖 AI 设计审查 ✨' },
     { id: 'canvas-navigation', title: '画布导航' },
     { id: 'vim-mode', title: 'Vim 模式' },
     { id: 'command-palette', title: '命令面板' },
@@ -1223,23 +1343,71 @@ const zh: DocsLocale = {
     mcpToolsTitle: 'MCP 工具',
     mcpToolsDesc:
       '可用于设计质量工作流的 MCP 工具：check_ui_states（审计所有画面）、suggest_missing_states（建议需要添加的状态）、export_design_doc（生成 Markdown 文档）。',
-    aiReviewTitle: 'AI 设计审查 [BETA]',
-    aiReviewDesc:
-      'Pencil Viewer 集成了 Cloudflare Workers AI（Llama 3.1），提供 AI 驱动的设计分析。不会在服务器上存储任何设计数据，完全无状态，$0 成本。',
-    aiReviewAccess:
-      '打开命令面板 (Cmd + Shift + P) 并运行"AI Design Review"以启动审查面板。',
-    aiReviewModesTitle: '审查模式',
-    aiReviewModesTable: {
-      headers: ['模式', '说明'],
+  },
+
+  aiReview: {
+    title: '🤖 AI 设计审查',
+    tagline: '集成在画布中的 AI 设计审查员。',
+    heroDesc:
+      '一键发现缺失的 UI 状态，获得关于一致性、可访问性、布局的即时反馈，并在不离开查看器的情况下修复问题。由 Cloudflare Workers AI（Llama 3.3 70B）提供支持，完全无状态，免费额度内可日常使用。',
+    howOpenTitle: '打开方法',
+    howOpenDesc:
+      '只需打开 .pen 文件，按一个快捷键即可启动 AI 审查面板。',
+    howOpenSteps: [
+      '打开任意 .pen 文件（拖放、示例或共享 URL）',
+      '按 Cmd + Shift + P 打开命令面板',
+      '输入 "AI Design Review" 并选择',
+      '选择审查模式并点击"运行审查"',
+    ],
+    modesTitle: '审查模式',
+    modesIntro: '根据您想要的反馈类型选择模式：',
+    modesTable: {
+      headers: ['模式', '分析内容', '适用场景'],
       rows: [
-        { cols: ['全面审查', '涵盖布局、排版、颜色和一致性的综合设计分析'] },
-        { cols: ['Five UI States', '检查 Empty / Loading / Error / Partial / Ideal 状态的覆盖情况'] },
-        { cols: ['无障碍性', '评估对比度、触摸目标、屏幕阅读器友好性和 WCAG 合规性'] },
-        { cols: ['快速反馈', '用于快速迭代的简短可操作反馈'] },
+        { cols: ['全面审查', '布局、排版、颜色、一致性、导航、缺失画面', '交付前的全面设计审计'] },
+        { cols: ['Five UI States', '每个画面的 Empty / Loading / Error / Partial / Ideal 覆盖情况', '检测缺失的边缘情况画面'] },
+        { cols: ['无障碍性', '对比度、触摸目标、文字大小、WCAG 合规', '确保包容性设计'] },
+        { cols: ['快速反馈', '3-5 个可操作要点', '早期草图阶段的快速迭代'] },
       ],
     },
-    aiReviewSetup:
-      '此功能需要 Cloudflare Workers AI 后端。有关设置说明，请参阅 workers/ai-review/README.md。',
+    repairTitle: '✨ Five UI States 自动修复',
+    repairBadge: '杀手级功能',
+    repairDesc:
+      'Five UI States 模式发现某个画面缺少 Empty / Loading / Error / Partial 状态时，面板下方会显示「🔧 修复候选」一栏。点击「+ 空状态」按钮，AI 会在数秒内以与原始画面相同的视觉样式（同样的颜色、字体、布局变量）生成一个全新的画面，并放置在原始画面的右侧。',
+    repairFlowTitle: '修复流程的工作原理',
+    repairFlowSteps: [
+      '运行 Five UI States 模式的 AI 审查',
+      '面板按画面列出缺失的状态，每个状态对应一个 + 按钮',
+      '点击按钮 → AI 接收原始画面、生成新状态、返回有效的 JSON',
+      '新画面以坐标 (x + width + 60) 添加到文档中（可撤销）',
+      '相机自动平移到新画面，立即查看结果',
+      '随时可以 Cmd+Z 撤销，或在属性面板中微调',
+    ],
+    repairBenefitsTitle: '为什么这很重要',
+    repairBenefits: [
+      { icon: '🎯', title: '风格一致', desc: 'AI 会复用现有的 $bg / $primary / $text 设计令牌，使新状态在视觉上与原始画面完美匹配。' },
+      { icon: '⚡', title: '秒级而非小时级', desc: '设计一个 Empty/Loading/Error placeholder 通常需要 5-10 分钟。AI 在 3-5 秒内提供一个可用的基线。' },
+      { icon: '↩️', title: '完全可撤销', desc: '每次生成都会推送一个撤销检查点，您可以放心试验。Cmd+Z 即可撤销。' },
+      { icon: '🔒', title: '无状态且私密', desc: '设计数据被发送到 AI worker，仅在内存中处理，从不存储。无数据库、无日志、无训练数据。' },
+    ],
+    privacyTitle: '🔒 隐私与无状态',
+    privacyDesc:
+      'AI 审查后端只是一个 Cloudflare Worker，将您的设计载荷代理到 Workers AI 并返回响应。它没有数据库、KV、R2，也没有设计内容的日志。请求完成后，什么都不会保留。CORS 限制为生产源，因此即使您的 Worker URL 也不能从任意网站调用。',
+    costTitle: '💰 成本透明',
+    costRows: [
+      { label: 'Workers 计划', value: '免费套餐即可（无需 Workers Paid）' },
+      { label: '模型', value: '@cf/meta/llama-3.3-70b-instruct-fp8-fast' },
+      { label: '免费额度', value: '每天 10,000 neurons（约 50-125 次审查，取决于规模）' },
+      { label: '超出免费额度', value: '每 100 万输入 token $0.293，每 100 万输出 token $2.253' },
+      { label: '典型月度成本', value: '个人使用 $0，活跃 OSS 项目远低于 $5' },
+    ],
+    costFootnote:
+      '提示：如果您想要硬性上限，请在 Cloudflare 仪表板中设置 Spend Limit，或者只依赖每日免费配额。',
+    setupTitle: '🚀 自托管（fork 用户）',
+    setupDesc:
+      'AI 审查是可选的。如果构建时未设置 VITE_AI_REVIEW_URL，查看器可以在没有它的情况下完全工作 - 面板不会显示。要在自己的 fork 上启用，请部署随附的 Worker:',
+    setupCode:
+      '# 1. 部署 Worker\ncd workers/ai-review\ncp wrangler.toml.example wrangler.toml\nnpm install\nnpx wrangler login\nnpx wrangler deploy\n\n# 2. 设置 URL 为 GitHub Actions 变量\ngh variable set VITE_AI_REVIEW_URL --body "https://pencil-ai-review.YOUR.workers.dev"\n\n# 3. 触发重建\ngit commit --allow-empty -m "ci: enable AI Review"\ngit push',
   },
 };
 

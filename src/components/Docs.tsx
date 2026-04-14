@@ -121,6 +121,75 @@ export function Docs({ onBack, locale }: DocsProps) {
           </div>
         </section>
 
+        {/* AI Design Review — featured section */}
+        <section id="ai-review" className="docs__section--featured">
+          <div className="docs__hero">
+            <h2>{c.aiReview.title}</h2>
+            <p className="docs__hero-tagline">{c.aiReview.tagline}</p>
+            <p className="docs__hero-desc">{c.aiReview.heroDesc}</p>
+          </div>
+
+          <h3>{c.aiReview.howOpenTitle}</h3>
+          <p>{c.aiReview.howOpenDesc}</p>
+          <ol className="docs__steps">
+            {c.aiReview.howOpenSteps.map((step, i) => (
+              <li key={i}>{step}</li>
+            ))}
+          </ol>
+
+          <h3>{c.aiReview.modesTitle}</h3>
+          <p>{c.aiReview.modesIntro}</p>
+          <DocsTable data={c.aiReview.modesTable} />
+
+          <div className="docs__killer-feature">
+            <h3>
+              {c.aiReview.repairTitle}
+              <span className="docs__badge docs__badge--accent">{c.aiReview.repairBadge}</span>
+            </h3>
+            <p>{c.aiReview.repairDesc}</p>
+
+            <h4>{c.aiReview.repairFlowTitle}</h4>
+            <ol className="docs__steps">
+              {c.aiReview.repairFlowSteps.map((step, i) => (
+                <li key={i}>{step}</li>
+              ))}
+            </ol>
+
+            <h4>{c.aiReview.repairBenefitsTitle}</h4>
+            <div className="docs__features">
+              {c.aiReview.repairBenefits.map((b) => (
+                <div key={b.title} className="docs__feature-card">
+                  <span className="docs__feature-icon">{b.icon}</span>
+                  <div>
+                    <strong>{b.title}</strong>
+                    <p>{b.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <h3>{c.aiReview.privacyTitle}</h3>
+          <p>{c.aiReview.privacyDesc}</p>
+
+          <h3>{c.aiReview.costTitle}</h3>
+          <table className="docs__table">
+            <tbody>
+              {c.aiReview.costRows.map((row, i) => (
+                <tr key={i}>
+                  <th>{row.label}</th>
+                  <td>{row.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p><em>{c.aiReview.costFootnote}</em></p>
+
+          <h3>{c.aiReview.setupTitle}</h3>
+          <p>{c.aiReview.setupDesc}</p>
+          <pre><code>{c.aiReview.setupCode}</code></pre>
+        </section>
+
         {/* Canvas Navigation */}
         <section id="canvas-navigation">
           <h2>{c.canvasNavigation.title}</h2>
@@ -295,13 +364,6 @@ export function Docs({ onBack, locale }: DocsProps) {
 
           <h3>{c.designQuality.mcpToolsTitle}</h3>
           <p>{c.designQuality.mcpToolsDesc}</p>
-
-          <h3>{c.designQuality.aiReviewTitle}</h3>
-          <p>{c.designQuality.aiReviewDesc}</p>
-          <p>{c.designQuality.aiReviewAccess}</p>
-          <h4>{c.designQuality.aiReviewModesTitle}</h4>
-          <DocsTable data={c.designQuality.aiReviewModesTable} />
-          <p><em>{c.designQuality.aiReviewSetup}</em></p>
         </section>
       </article>
     </div>

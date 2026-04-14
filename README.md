@@ -8,8 +8,25 @@
 
 ---
 
+## ✨ Featured: AI Design Review
+
+> **Your AI design reviewer, built into the canvas.** Spot missing UI states, get instant feedback on consistency and accessibility, and **fix issues with one click** — without leaving the viewer.
+
+| | |
+|---|---|
+| 🤖 **Powered by** | Cloudflare Workers AI (Llama 3.3 70B) |
+| 📋 **Modes** | Full Review · Five UI States · Accessibility · Quick |
+| ✨ **Killer feature** | One-click "Repair Candidates" — AI generates the missing Empty / Loading / Error / Partial frame in your existing design tokens |
+| 🔒 **Privacy** | Stateless: no DB, no logs, no training data |
+| 💰 **Cost** | $0 in the free tier (~50–125 reviews/day), no Workers Paid required |
+
+**Try it:** Open any `.pen` file → `Cmd + Shift + P` → "AI Design Review" → choose "Five UI States" → click `+ Empty State` on a screen with missing coverage. The AI generates a new frame in matching style and drops it next to the original.
+
+→ See the in-app **Docs** page for the full guide, or [`workers/ai-review/README.md`](./workers/ai-review/README.md) for self-hosting.
+
 ## Features
 
+- 🤖 **AI Design Review** ✨ — Cloudflare Workers AI (Llama 3.3 70B) powered. Full / Five UI States / Accessibility / Quick modes. **One-click repair** of missing UI states with style-matching auto-generation. Stateless, free tier covers daily use.
 - **3 ways to load files** --- drag & drop, `?src=<url>` query, or bundled samples
 - **Full node support** --- rectangle, ellipse, line, polygon, path, text, frame (flex layout), group, icon_font (Material Symbols + Lucide)
 - **Paint & effects** --- solid color, linear/radial gradients, image fills, blur, drop shadow
@@ -30,7 +47,6 @@
 - **Frame search with minimap** --- Cmd+P with category labels, distance sorting, minimap preview
 - **Auto ID** --- batch rename frames with prefix/suffix (Cmd+I)
 - **Edit animation** --- scanner + pulse glow effect when nodes are edited via MCP
-- **AI Design Review** --- Cloudflare Workers AI (Llama 3.1) powered design analysis. Four modes: full review, Five UI States, accessibility, and quick feedback. Stateless, $0 cost.
 - **Five UI States Audit** --- automated design quality check for Empty/Loading/Error/Partial/Ideal states per screen
 - **Design Doc Export** --- generate Markdown design documents with component structure, UI state coverage, and design tokens
 - **Vision page** --- product vision and use-case documentation for PMs, designers, and engineers
@@ -117,28 +133,61 @@ cd tools/collab-bridge && npm start
 
 Once running, Claude Code (or any HTTP client) can `GET` / `POST` against `http://localhost:<port>` to query nodes, push edits, and trigger edit animations. See [`tools/collab-bridge/README.md`](./tools/collab-bridge/README.md) for the full API reference and setup instructions.
 
-### AI Design Review [BETA]
+### AI Design Review
 
-Pencil Viewer integrates with Cloudflare Workers AI (Llama 3.1) to provide AI-powered design analysis directly from the canvas. This feature is **entirely optional** --- the viewer works fully without it.
+> **The killer feature.** Pencil Viewer has a built-in AI design reviewer that runs on Cloudflare Workers AI (Llama 3.3 70B). It can analyze your screens for missing UI states, accessibility issues, and design consistency — and **fix them in one click**.
 
-**Setup:**
+#### How to use
+
+1. Open any `.pen` file (drag & drop, sample, or shared URL)
+2. Press `Cmd + Shift + P` to open the command palette
+3. Run **"AI Design Review"**
+4. Choose a mode and click **"Run Review"**
+
+#### Review modes
+
+| Mode | What it analyzes | Best for |
+|---|---|---|
+| **Full Review** | Layout, typography, color, consistency, navigation, missing screens | Comprehensive audit before handoff |
+| **Five UI States** | Empty / Loading / Error / Partial / Ideal coverage per screen | Catching edge-case screens |
+| **Accessibility** | Contrast, touch targets, text size, WCAG compliance | Inclusive design review |
+| **Quick Feedback** | 3–5 actionable bullet points | Rapid iteration during early sketches |
+
+#### ✨ Five UI States Auto-Repair (Killer feature)
+
+When the **Five UI States** review finds a screen missing an Empty / Loading / Error / Partial state, the panel surfaces **"🔧 Repair Candidates"** — a row of one-click buttons. Click `+ Empty State` on Home, and within seconds the AI generates a brand-new frame **in the same visual style as the original** (same colors, fonts, layout tokens) and drops it in your canvas right next to the source.
+
+- 🎯 **Style-matching** — AI re-uses your existing `$bg`, `$primary`, `$text` design tokens
+- ⚡ **Seconds, not hours** — A single Empty/Loading/Error placeholder takes 3–5 seconds vs 5–10 minutes by hand
+- ↩️ **Fully undoable** — Cmd+Z reverts the addition
+- 🔒 **Stateless & private** — Your design is processed in-memory, never stored
+
+#### Setup (self-hosting)
+
+This feature is **entirely optional** — the viewer works fully without it. The AI Review panel only appears when `VITE_AI_REVIEW_URL` is set at build time. To enable it on your fork:
 
 ```bash
-cd workers/ai-review && cp wrangler.toml.example wrangler.toml && npm install && npx wrangler deploy
+# 1. Deploy the Worker
+cd workers/ai-review
+cp wrangler.toml.example wrangler.toml
+npm install
+npx wrangler login
+npx wrangler deploy
+
+# 2. Set the URL in your repo
+gh variable set VITE_AI_REVIEW_URL --body "https://pencil-ai-review.YOUR.workers.dev"
+
+# 3. Trigger a rebuild
+git commit --allow-empty -m "ci: enable AI Review"
+git push
 ```
 
-Then set `VITE_AI_REVIEW_URL` in your repository variables (or `.env`) before building the frontend.
-
-**Review Modes:**
-
-| Mode | Description |
+| Item | Cost |
 |---|---|
-| Full Review | Comprehensive design analysis covering layout, typography, color, and consistency |
-| Five UI States | Checks coverage of Empty / Loading / Error / Partial / Ideal states |
-| Accessibility | Evaluates contrast, touch targets, screen reader friendliness, and WCAG compliance |
-| Quick Feedback | Short, actionable feedback for rapid iteration |
-
-> **Note:** This feature is optional, costs $0 (Cloudflare Workers AI free tier), and is fully stateless --- no design data is stored on the server.
+| Workers Plan | Free tier works (Workers Paid not required) |
+| Free quota | 10,000 neurons / day (~50–125 reviews) |
+| Beyond free | $0.293 / 1M input tokens · $2.253 / 1M output tokens |
+| **Typical monthly cost** | **$0** for personal use |
 
 ## License
 
@@ -152,8 +201,25 @@ Then set `VITE_AI_REVIEW_URL` in your repository variables (or `.env`) before bu
 >
 > 完全にブラウザ上で動作。サーバー不要。ホスティング無料。
 
+## ✨ 注目機能: AI デザインレビュー
+
+> **AI デザインレビュアーが、ビューアの中に常駐。** 不足している UI ステートを検出、一貫性・アクセシビリティの問題を即座に指摘し、**ワンクリックで修復**まで完結します — ビューアから離れることなく。
+
+| | |
+|---|---|
+| 🤖 **使用モデル** | Cloudflare Workers AI (Llama 3.3 70B) |
+| 📋 **モード** | 総合レビュー · Five UI States · アクセシビリティ · クイック |
+| ✨ **キラー機能** | ワンクリック「修復候補」 — AI が既存のデザイントークンを使って Empty / Loading / Error / Partial フレームを自動生成 |
+| 🔒 **プライバシー** | ステートレス: DB なし、ログなし、学習データに使われない |
+| 💰 **コスト** | 無料枠で $0(1 日 50〜125 リクエスト相当)、Workers Paid 不要 |
+
+**試し方:** 任意の `.pen` ファイルを開く → `Cmd + Shift + P` → 「AI Design Review」 → 「Five UI States」モード → 不足してる画面の `+ 空状態` ボタンをクリック。AI が同じスタイルで新しいフレームを生成し、元の右隣に配置します。
+
+→ 詳しい使い方は アプリ内の **Docs** ページを開くか、[`workers/ai-review/README.md`](./workers/ai-review/README.md) を参照。
+
 ## 特徴
 
+- 🤖 **AI デザインレビュー** ✨ --- Cloudflare Workers AI(Llama 3.3 70B)を使用。総合 / Five UI States / アクセシビリティ / クイック の 4 モード。**ワンクリックで欠けた UI ステートをスタイル一致で自動生成**。ステートレス、無料枠で日常利用十分。
 - **3 つのファイル読み込み方法** --- ドラッグ & ドロップ / `?src=<url>` クエリ / バンドルサンプル
 - **全主要ノード対応** --- rectangle / ellipse / line / polygon / path / text / frame(flex レイアウト) / group / icon_font(Material Symbols + Lucide)
 - **塗り & 効果** --- ソリッド色 / 線形・放射グラデーション / 画像パターン / ぼかし / ドロップシャドウ
@@ -174,7 +240,6 @@ Then set `VITE_AI_REVIEW_URL` in your repository variables (or `.env`) before bu
 - **フレーム検索 + ミニマップ** --- Cmd+P でカテゴリラベル、距離順ソート、ミニマッププレビュー
 - **Auto ID** --- フレームの一括リネーム(プレフィクス / サフィックス指定、Cmd+I)
 - **編集アニメーション** --- MCP 経由でノード編集時にスキャナー + パルスグローエフェクト
-- **AI デザインレビュー** --- Cloudflare Workers AI（Llama 3.1）によるデザイン分析。4 つのモード：フルレビュー、Five UI States、アクセシビリティ、クイックフィードバック。ステートレス、$0 コスト。
 - **Five UI States 監査** --- 各画面の Empty/Loading/Error/Partial/Ideal 状態を自動チェックするデザイン品質監査
 - **デザインドキュメントエクスポート** --- コンポーネント構造、UI 状態カバレッジ、デザイントークンを含む Markdown デザインドキュメントを生成
 - **ビジョンページ** --- PM・デザイナー・エンジニア向けのプロダクトビジョンとユースケースドキュメント
@@ -271,8 +336,25 @@ cd workers/ai-review && cp wrangler.toml.example wrangler.toml && npm install &&
 >
 > 完全在浏览器中运行。无需服务器。免费托管。
 
+## ✨ 重点功能：AI 设计审查
+
+> **集成在画布中的 AI 设计审查员。** 一键发现缺失的 UI 状态、获得即时的一致性和无障碍性反馈,并在不离开查看器的情况下**一键修复**。
+
+| | |
+|---|---|
+| 🤖 **使用模型** | Cloudflare Workers AI (Llama 3.3 70B) |
+| 📋 **模式** | 全面审查 · Five UI States · 无障碍性 · 快速反馈 |
+| ✨ **杀手级功能** | 一键"修复候选" — AI 使用现有设计令牌自动生成 Empty / Loading / Error / Partial 画面 |
+| 🔒 **隐私** | 无状态:无数据库、无日志、不用于训练数据 |
+| 💰 **成本** | 免费额度内 $0(每天约 50-125 次审查)、无需 Workers Paid |
+
+**试用方法：** 打开任何 `.pen` 文件 → `Cmd + Shift + P` → "AI Design Review" → 选择 "Five UI States" → 点击缺失画面上的 `+ 空状态` 按钮。AI 会以匹配的样式生成新画面并放置在原始画面右侧。
+
+→ 详情请查看应用内 **Docs** 页面,或参阅 [`workers/ai-review/README.md`](./workers/ai-review/README.md)。
+
 ## 功能
 
+- 🤖 **AI 设计审查** ✨ --- Cloudflare Workers AI（Llama 3.3 70B）驱动的设计分析。全面审查 / Five UI States / 无障碍性 / 快速反馈 四种模式。**一键修复缺失的 UI 状态,自动匹配视觉样式**。无状态,免费额度足以日常使用。
 - **3 种文件加载方式** --- 拖放 / `?src=<url>` 查询参数 / 内置示例
 - **全节点支持** --- rectangle / ellipse / line / polygon / path / text / frame（flex 布局）/ group / icon_font（Material Symbols + Lucide）
 - **填充与特效** --- 纯色 / 线性渐变 / 径向渐变 / 图像填充 / 模糊 / 阴影
@@ -293,7 +375,6 @@ cd workers/ai-review && cp wrangler.toml.example wrangler.toml && npm install &&
 - **画框搜索 + 小地图** --- Cmd+P 带分类标签、距离排序、小地图预览
 - **Auto ID** --- 批量重命名画框（前缀/后缀，Cmd+I）
 - **编辑动画** --- 通过 MCP 编辑节点时触发扫描线 + 脉冲辉光效果
-- **AI 设计审查** --- Cloudflare Workers AI（Llama 3.1）驱动的设计分析。四种模式：全面审查、Five UI States、无障碍性、快速反馈。无状态，$0 成本。
 - **Five UI States 审计** --- 自动检查每个画面的 Empty/Loading/Error/Partial/Ideal 状态，进行设计质量审计
 - **设计文档导出** --- 生成包含组件结构、UI 状态覆盖率和设计令牌的 Markdown 设计文档
 - **愿景页面** --- 面向产品经理、设计师和工程师的产品愿景与用例文档

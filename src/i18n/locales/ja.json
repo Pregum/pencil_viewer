@@ -26,6 +26,15 @@
   "lp.how.step3.title": "SVG で表示",
   "lp.how.step3.desc": "ズーム・パン・フレームナビ — Figma ライクなキャンバス",
 
+  "lp.airev.badge": "✨ NEW",
+  "lp.airev.title": "🤖 AI デザインレビュー",
+  "lp.airev.tagline": "AI デザインレビュアーが、ビューアの中に常駐。",
+  "lp.airev.desc": "不足している UI ステートを検出、一貫性・アクセシビリティの問題を即座に指摘し、ワンクリックで修復まで完結 — ビューアから離れることなく。",
+  "lp.airev.bullet1": "📋 Five UI States 監査(Empty / Loading / Error / Partial / Ideal)",
+  "lp.airev.bullet2": "✨ ワンクリック修復:AI がトンマナを揃えて欠けた state を生成",
+  "lp.airev.bullet3": "🔒 ステートレス、データ保存なし、無料枠で日常利用十分",
+  "lp.airev.cta": "使い方を見る →",
+
   "lp.try.title": "今すぐ試す",
 
   "dropzone.active": "ここにドロップ",

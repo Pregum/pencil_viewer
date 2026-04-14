@@ -49,6 +49,48 @@ export function Landing({
         <a href="#try" className="lp__cta">{t('lp.cta')} &darr;</a>
       </section>
 
+      {/* --- Featured: AI Design Review --- */}
+      <section className="lp__airev-banner">
+        <div className="lp__airev-content">
+          <span className="lp__airev-badge">{t('lp.airev.badge')}</span>
+          <h2 className="lp__airev-title">{t('lp.airev.title')}</h2>
+          <p className="lp__airev-tagline">{t('lp.airev.tagline')}</p>
+          <p className="lp__airev-desc">{t('lp.airev.desc')}</p>
+          <ul className="lp__airev-bullets">
+            <li>{t('lp.airev.bullet1')}</li>
+            <li>{t('lp.airev.bullet2')}</li>
+            <li>{t('lp.airev.bullet3')}</li>
+          </ul>
+          <a href="#try" className="lp__airev-cta">{t('lp.airev.cta')}</a>
+        </div>
+        <div className="lp__airev-visual" aria-hidden="true">
+          <svg viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg">
+            {/* Original screen */}
+            <rect x="20" y="30" width="120" height="180" rx="12" fill="#1C1C1C" stroke="#7c3aed" strokeWidth="1.5" />
+            <rect x="32" y="42" width="60" height="8" rx="2" fill="#FFFFFF" opacity="0.9" />
+            <rect x="32" y="58" width="96" height="40" rx="4" fill="#7c3aed" opacity="0.4" />
+            <rect x="32" y="106" width="96" height="14" rx="2" fill="#FFFFFF" opacity="0.2" />
+            <rect x="32" y="126" width="96" height="14" rx="2" fill="#FFFFFF" opacity="0.2" />
+            <rect x="32" y="146" width="64" height="14" rx="2" fill="#FFFFFF" opacity="0.2" />
+            {/* Arrow */}
+            <path d="M150 120 L180 120" stroke="#a855f7" strokeWidth="2" markerEnd="url(#arrow)" />
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                <path d="M0 0 L10 5 L0 10 z" fill="#a855f7" />
+              </marker>
+            </defs>
+            {/* AI generated empty state */}
+            <rect x="190" y="30" width="120" height="180" rx="12" fill="#1C1C1C" stroke="#a855f7" strokeWidth="1.5" strokeDasharray="4 3" />
+            <rect x="202" y="42" width="60" height="8" rx="2" fill="#FFFFFF" opacity="0.9" />
+            <text x="250" y="120" fontSize="32" textAnchor="middle">📭</text>
+            <rect x="218" y="138" width="64" height="6" rx="1" fill="#FFFFFF" opacity="0.5" />
+            <rect x="226" y="160" width="48" height="20" rx="10" fill="#7c3aed" />
+            {/* Sparkle */}
+            <text x="295" y="48" fontSize="18">✨</text>
+          </svg>
+        </div>
+      </section>
+
       {/* --- Features --- */}
       <section className="lp__features">
         {(['drag', 'render', 'privacy', 'mobile', 'token', 'oss'] as const).map((key) => (

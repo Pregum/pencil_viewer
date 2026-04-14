@@ -26,6 +26,15 @@
   "lp.how.step3.title": "View as SVG",
   "lp.how.step3.desc": "zoom, pan, frame nav — Figma-like canvas",
 
+  "lp.airev.badge": "✨ NEW",
+  "lp.airev.title": "🤖 AI Design Review",
+  "lp.airev.tagline": "Your AI design reviewer, built into the canvas.",
+  "lp.airev.desc": "Spot missing UI states, get instant feedback on consistency and accessibility, and fix issues with one click — without leaving the viewer.",
+  "lp.airev.bullet1": "📋 Five UI States audit (Empty / Loading / Error / Partial / Ideal)",
+  "lp.airev.bullet2": "✨ One-click repair: AI generates missing states in matching style",
+  "lp.airev.bullet3": "🔒 Stateless, zero data retention, free tier covers daily use",
+  "lp.airev.cta": "How to use →",
+
   "lp.try.title": "Try it now",
 
   "dropzone.active": "Drop here",
