@@ -43,41 +43,23 @@ interface RepairRequest {
   offsetX?: number;
 }
 
-/** フレーム情報を抽出（AI に渡すコンテキスト） */
+/** フレーム情報を抽出（AI に渡すコンテキスト — 簡潔に） */
 function extractFrameInfo(nodes: PenNode[]): string {
-  const frames: string[] = [];
-
-  function walk(node: PenNode, depth: number, parentName: string) {
-    if (depth > 3) return; // 深さ制限
-    const name = node.name ?? node.id;
-    const w = typeof node.width === 'number' ? node.width : node.width;
-    const h = typeof node.height === 'number' ? node.height : node.height;
-
-    if (node.type === 'frame' && typeof node.width === 'number' && node.width >= 100) {
-      const children = node.children ?? [];
-      const childTypes = children.map(c => c.type).join(', ');
-      const childNames = children.slice(0, 10).map(c => c.name ?? c.type).join(', ');
-      const layout = node.layout ?? 'none';
-      frames.push(`- ${name} (${w}×${h}, layout:${layout}, children: [${childNames}])`);
-    }
-
-    if (node.type === 'text' && node.content && depth <= 2) {
-      const content = (node.content as string).slice(0, 50);
-      frames.push(`  - text: "${content}" (in ${parentName})`);
-    }
-
-    if (node.children) {
-      for (const child of node.children) {
-        walk(child, depth + 1, name);
-      }
-    }
-  }
+  const lines: string[] = [];
 
   for (const node of nodes) {
-    walk(node, 0, 'root');
+    if (node.type !== 'frame' || typeof node.width !== 'number' || node.width < 100) continue;
+    const name = node.name ?? node.id;
+    const w = node.width;
+    const h = typeof node.height === 'number' ? node.height : '?';
+    const childCount = node.children?.length ?? 0;
+    const layout = node.layout ?? 'none';
+    // 子の名前を最大5個
+    const childNames = (node.children ?? []).slice(0, 5).map(c => c.name ?? c.type).join(', ');
+    lines.push(`- ${name} (${w}×${h}, ${layout}, ${childCount} children: ${childNames})`);
   }
 
-  return frames.join('\n');
+  return lines.join('\n');
 }
 
 /** Five UI States のパターン検出 */
@@ -392,17 +374,23 @@ export default {
         return Response.json({ error: 'Invalid request: children array required' }, { status: 400, headers: cors });
       }
 
-      // Build context for AI
+      // Build context for AI — truncate to fit context window
       const frameInfo = extractFrameInfo(children);
       const stateAnalysis = detectStates(children);
 
-      const userMessage = `## Screen Structure
-${frameInfo}
+      // Llama 3.1 8B has ~8k context. Keep user message under ~3000 chars
+      const MAX_FRAME_INFO = 2000;
+      const truncatedFrameInfo = frameInfo.length > MAX_FRAME_INFO
+        ? frameInfo.slice(0, MAX_FRAME_INFO) + `\n... (${children.length} total frames, truncated)`
+        : frameInfo;
 
-## Five UI States Analysis (auto-detected)
+      const userMessage = `## Screens (${children.filter(n => n.type === 'frame').length} total)
+${truncatedFrameInfo}
+
+## Five UI States
 ${stateAnalysis}
 
-Please review this design.`;
+Review this design.`;
 
       const systemPrompt = getSystemPrompt(mode, locale);
 
@@ -412,7 +400,7 @@ Please review this design.`;
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage },
         ],
-        max_tokens: 2048,
+        max_tokens: 1024,
       });
 
       return Response.json({
