@@ -547,6 +547,104 @@ html,
   margin: 0 6px;
 }
 
+/* ======== Color Picker popover ======== */
+.color-picker {
+  width: 232px;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.06);
+  padding: 10px;
+  z-index: 1000;
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: inherit;
+}
+.color-picker__sl {
+  position: relative;
+  width: 212px;
+  height: 140px;
+  border-radius: 4px;
+  cursor: crosshair;
+  touch-action: none;
+  overflow: hidden;
+}
+.color-picker__sl-cursor {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.4);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.color-picker__hue {
+  position: relative;
+  width: 212px;
+  height: 12px;
+  margin-top: 10px;
+  border-radius: 6px;
+  background: linear-gradient(to right,
+    #f00 0%, #ff0 16.66%, #0f0 33.33%,
+    #0ff 50%, #00f 66.66%, #f0f 83.33%, #f00 100%);
+  cursor: pointer;
+  touch-action: none;
+}
+.color-picker__hue-cursor {
+  position: absolute;
+  top: -2px;
+  width: 8px;
+  height: 16px;
+  border-radius: 3px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.4);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.color-picker__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.color-picker__swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border, #e5e7eb);
+}
+.color-picker__hex {
+  flex: 1;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px;
+  background: var(--color-canvas, #f9fafb);
+  color: var(--color-text, #111827);
+  text-transform: uppercase;
+}
+.color-picker__hex:focus { outline: 2px solid var(--color-accent, #4F46E5); outline-offset: -1px; }
+.color-picker__presets {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  margin-top: 10px;
+}
+.color-picker__preset {
+  width: 100%;
+  height: 20px;
+  padding: 0;
+  border-radius: 3px;
+  border: 1px solid rgba(0,0,0,.1);
+  cursor: pointer;
+}
+.color-picker__preset:hover {
+  transform: scale(1.1);
+}
+
 /* Ruler wrapper: ルーラー ON のときキャンバスを 24px 分オフセット */
 .viewer__canvas-wrap {
   position: absolute;
@@ -1123,6 +1221,21 @@ html,
   padding: 2px;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+/* カスタムカラーピッカー用スウォッチボタン */
+.prop-panel__color-swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  background-clip: padding-box;
+}
+.prop-panel__color-swatch:hover {
+  border-color: var(--color-accent, #4F46E5);
 }
 
 .prop-panel__color-label {
