@@ -6,6 +6,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { PenDocument, PenNode, FrameNode } from '../types';
 import { duplicateNode } from '../../components/Viewer/ExtraCommands';
 
+/** アクティブな作成ツール。'select' 以外を選ぶとドラッグでシェイプが生成される */
+export type ActiveTool = 'select' | 'rectangle' | 'ellipse' | 'line' | 'text' | 'frame';
+
 export interface EditorState {
   doc: PenDocument;
   /** レイアウト計算前の元 doc（エクスポート用） */
@@ -15,6 +18,10 @@ export interface EditorState {
   selectedNodeIds: Set<string>;
   /** vim insert mode（テキスト編集中） */
   insertMode: boolean;
+  /** 現在選択中のツール（デフォルトは select） */
+  activeTool: ActiveTool;
+  /** インラインテキスト編集中のノードID（dblclick で設定、Esc/Blur で解除） */
+  editingNodeId: string | null;
 }
 
 /** ドキュメントツリー内のノードを再帰的に更新 */
@@ -66,15 +73,28 @@ interface EditorContextValue {
   updateNode: (nodeId: string, patch: Partial<PenNode>) => void;
   selectedNode: PenNode | null;
   selectMultiple: (nodeIds: string[]) => void;
+  /** Shift+クリック用: 選択セットをトグル */
+  toggleSelectNode: (nodeId: string) => void;
   enterInsertMode: () => void;
   exitInsertMode: () => void;
   /** Undo 履歴に積まずにノード更新（ドラッグ中の中間更新用） */
   updateNodeSilent: (nodeId: string, patch: Partial<PenNode>) => void;
+  /** 複数ノードを undo なしで一括更新 */
+  updateManySilent: (patches: Array<{ nodeId: string; patch: Partial<PenNode> }>) => void;
   /** Undo 用: 現在の doc を明示的に undo スタックに積む */
   pushUndoCheckpoint: () => void;
   deleteNode: (nodeId: string) => void;
   /** ドキュメントの children を直接差し替える（undo 付き） */
   replaceDocChildren: (children: PenNode[]) => void;
+  /** 新しいノードをトップレベルに追加して選択する（undo 付き） */
+  addNode: (node: PenNode) => void;
+  /** Alt+ドラッグ複製用: トップレベル指定 IDs をクローン追加して選択、開始位置を返す */
+  cloneNodesAtTop: (ids: string[]) => Array<{ id: string; x0: number; y0: number; w: number; h: number }>;
+  /** アクティブツールを切り替える */
+  setActiveTool: (tool: ActiveTool) => void;
+  /** インラインテキスト編集の開始/終了 */
+  beginEditing: (nodeId: string) => void;
+  endEditing: () => void;
   exportPen: (fileName?: string) => void;
   undo: () => void;
   redo: () => void;
@@ -93,7 +113,19 @@ export function EditorProvider({
   rawDoc?: PenDocument;
   children: React.ReactNode;
 }) {
-  const [state, setState] = useState<EditorState>({ doc, rawDoc: rawDoc ?? doc, selectedNodeId: null, selectedNodeIds: new Set(), insertMode: false });
+  const [state, setState] = useState<EditorState>({
+    doc,
+    rawDoc: rawDoc ?? doc,
+    selectedNodeId: null,
+    selectedNodeIds: new Set(),
+    insertMode: false,
+    activeTool: 'select',
+    editingNodeId: null,
+  });
+
+  /** 同期的に最新 state を参照したいコールバック（cloneNodesAtTop など）用 */
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   // Undo/Redo stacks store both doc and rawDoc snapshots
   const undoStack = useRef<{ doc: PenDocument; rawDoc: PenDocument }[]>([]);
@@ -101,6 +133,8 @@ export function EditorProvider({
 
   // Internal clipboard for Cmd+C / Cmd+V of nodes
   const clipboardRef = useRef<PenNode | null>(null);
+  // スタイルクリップボード (Cmd+Alt+C / Cmd+Alt+V)
+  const styleClipboardRef = useRef<Partial<PenNode> | null>(null);
 
   const pushUndo = useCallback((prevDoc: PenDocument, prevRawDoc: PenDocument) => {
     undoStack.current = [...undoStack.current.slice(-(MAX_UNDO - 1)), { doc: prevDoc, rawDoc: prevRawDoc }];
@@ -116,6 +150,27 @@ export function EditorProvider({
     (nodeIds: string[]) => setState((s) => ({ ...s, selectedNodeIds: new Set(nodeIds), selectedNodeId: nodeIds[0] ?? null })),
     [],
   );
+
+  /** Shift+クリック: 選択セットにトグル追加 */
+  const toggleSelectNode = useCallback((nodeId: string) => {
+    setState((s) => {
+      // 現在の選択を multi set に正規化（selectedNodeId も含める）
+      const current = new Set(s.selectedNodeIds);
+      if (s.selectedNodeId) current.add(s.selectedNodeId);
+
+      if (current.has(nodeId)) {
+        current.delete(nodeId);
+      } else {
+        current.add(nodeId);
+      }
+      const arr = Array.from(current);
+      return {
+        ...s,
+        selectedNodeIds: current,
+        selectedNodeId: arr[arr.length - 1] ?? null,
+      };
+    });
+  }, []);
 
   const enterInsertMode = useCallback(() => {
     setState((s) => ({ ...s, insertMode: true }));
@@ -147,6 +202,22 @@ export function EditorProvider({
         doc: updateNodeInDoc(s.doc, nodeId, patch),
         rawDoc: updateNodeInDoc(s.rawDoc, nodeId, patch),
       }));
+    },
+    [],
+  );
+
+  /** 複数ノードをまとめて undo なしで更新（マルチ選択ドラッグ用） */
+  const updateManySilent = useCallback(
+    (patches: Array<{ nodeId: string; patch: Partial<PenNode> }>) => {
+      setState((s) => {
+        let nextDoc = s.doc;
+        let nextRaw = s.rawDoc;
+        for (const { nodeId, patch } of patches) {
+          nextDoc = updateNodeInDoc(nextDoc, nodeId, patch);
+          nextRaw = updateNodeInDoc(nextRaw, nodeId, patch);
+        }
+        return { ...s, doc: nextDoc, rawDoc: nextRaw };
+      });
     },
     [],
   );
@@ -200,6 +271,69 @@ export function EditorProvider({
     [pushUndo],
   );
 
+  const addNode = useCallback(
+    (node: PenNode) => {
+      setState((s) => {
+        pushUndo(s.doc, s.rawDoc);
+        return {
+          ...s,
+          doc: { ...s.doc, children: [...s.doc.children, node] },
+          rawDoc: { ...s.rawDoc, children: [...s.rawDoc.children, node] },
+          selectedNodeId: node.id,
+          selectedNodeIds: new Set(),
+        };
+      });
+    },
+    [pushUndo],
+  );
+
+  /**
+   * Alt+ドラッグ複製用: トップレベルの指定ノードを同位置でクローンしてドキュメントに追加、
+   * 返り値としてクローン ID と開始位置を返す。呼び出し側は multiStart にセットして
+   * そのまま updateManySilent で移動させる想定。
+   */
+  const cloneNodesAtTop = useCallback(
+    (ids: string[]): Array<{ id: string; x0: number; y0: number; w: number; h: number }> => {
+      const idSet = new Set(ids);
+      const originals = stateRef.current.doc.children.filter((n) => idSet.has(n.id));
+      if (originals.length === 0) return [];
+      const clones: PenNode[] = originals.map((n) => ({
+        ...(n as object),
+        id: `${n.id}_copy_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      } as PenNode));
+      setState((s) => {
+        pushUndo(s.doc, s.rawDoc);
+        return {
+          ...s,
+          doc: { ...s.doc, children: [...s.doc.children, ...clones] },
+          rawDoc: { ...s.rawDoc, children: [...s.rawDoc.children, ...clones] },
+          selectedNodeId: clones[0].id,
+          selectedNodeIds: new Set(clones.map((c) => c.id)),
+        };
+      });
+      return clones.map((c) => ({
+        id: c.id,
+        x0: c.x ?? 0,
+        y0: c.y ?? 0,
+        w: typeof (c as { width?: unknown }).width === 'number' ? (c as { width: number }).width : 0,
+        h: typeof (c as { height?: unknown }).height === 'number' ? (c as { height: number }).height : 0,
+      }));
+    },
+    [pushUndo],
+  );
+
+  const setActiveTool = useCallback((tool: ActiveTool) => {
+    setState((s) => (s.activeTool === tool ? s : { ...s, activeTool: tool }));
+  }, []);
+
+  const beginEditing = useCallback((nodeId: string) => {
+    setState((s) => ({ ...s, editingNodeId: nodeId, selectedNodeId: nodeId, selectedNodeIds: new Set(), insertMode: true }));
+  }, []);
+
+  const endEditing = useCallback(() => {
+    setState((s) => (s.editingNodeId === null ? s : { ...s, editingNodeId: null, insertMode: false }));
+  }, []);
+
   const undo = useCallback(() => {
     if (undoStack.current.length === 0) return;
     setState((s) => {
@@ -244,8 +378,13 @@ export function EditorProvider({
         e.preventDefault();
         redo();
       }
-      const tag = (e.target as HTMLElement).tagName;
-      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      const target = e.target as HTMLElement;
+      const tag = target.tagName;
+      const isInput =
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        target.isContentEditable === true;
       // Escape: exit insert mode + blur input, then deselect
       if (e.key === 'Escape') {
         setState((s) => {
@@ -368,6 +507,53 @@ export function EditorProvider({
         return;
       }
 
+      // Cmd+Alt+C: Copy style (fill/stroke/effect 等) only
+      if (mod && e.altKey && (e.key === 'c' || e.key === 'C' || e.key === 'ç')) {
+        e.preventDefault();
+        setState((s) => {
+          if (!s.selectedNodeId) return s;
+          const node = findNode(s.doc.children, s.selectedNodeId);
+          if (!node) return s;
+          const src = node as Record<string, unknown>;
+          const style: Partial<PenNode> = {};
+          const keys: (keyof PenNode | string)[] = [
+            'fill', 'stroke', 'effect', 'cornerRadius', 'opacity',
+            'rotation', 'fontFamily', 'fontSize', 'fontWeight',
+            'letterSpacing', 'lineHeight', 'textAlign',
+          ];
+          for (const k of keys) {
+            if (src[k as string] !== undefined) {
+              (style as Record<string, unknown>)[k as string] = src[k as string];
+            }
+          }
+          styleClipboardRef.current = style;
+          return s;
+        });
+        return;
+      }
+
+      // Cmd+Alt+V: Paste style onto selected
+      if (mod && e.altKey && (e.key === 'v' || e.key === 'V' || e.key === '√')) {
+        e.preventDefault();
+        const style = styleClipboardRef.current;
+        if (!style) return;
+        setState((s) => {
+          const ids = s.selectedNodeIds.size > 0
+            ? Array.from(s.selectedNodeIds)
+            : s.selectedNodeId ? [s.selectedNodeId] : [];
+          if (ids.length === 0) return s;
+          pushUndo(s.doc, s.rawDoc);
+          let nextDoc = s.doc;
+          let nextRaw = s.rawDoc;
+          for (const id of ids) {
+            nextDoc = updateNodeInDoc(nextDoc, id, style);
+            nextRaw = updateNodeInDoc(nextRaw, id, style);
+          }
+          return { ...s, doc: nextDoc, rawDoc: nextRaw };
+        });
+        return;
+      }
+
       // Cmd+C: Copy selected node to internal clipboard (not system clipboard for node data)
       if (mod && !e.shiftKey && e.key === 'c') {
         e.preventDefault();
@@ -474,8 +660,8 @@ export function EditorProvider({
   const canRedo = redoStack.current.length > 0;
 
   const value = useMemo(
-    () => ({ state, selectNode, selectMultiple, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
-    [state, selectNode, selectMultiple, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, selectedNode, exportPen, undo, redo, canUndo, canRedo],
+    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, addNode, cloneNodesAtTop, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
+    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, addNode, cloneNodesAtTop, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;

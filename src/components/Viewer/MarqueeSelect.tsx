@@ -67,6 +67,8 @@ export function MarqueeSelect({ svgRef }: Props) {
       if (e.button !== 0 || e.altKey || e.metaKey || e.ctrlKey) return;
       // タッチでは範囲選択を無効化(閲覧メインの操作感を優先、ドラッグはパンに割り当てる)
       if (e.pointerType === 'touch') return;
+      // シェイプ作成ツール選択中はマーキー無効（ShapeCreator に譲る）
+      if (state.activeTool !== 'select') return;
       const svg = svgRef.current;
       if (!svg) return;
 
@@ -90,7 +92,7 @@ export function MarqueeSelect({ svgRef }: Props) {
       setDragging(true);
       setMarquee(null);
     },
-    [svgRef],
+    [svgRef, state.activeTool],
   );
 
   const handlePointerMove = useCallback(

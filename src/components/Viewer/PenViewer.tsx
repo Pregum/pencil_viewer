@@ -25,6 +25,10 @@ import { ContextMenu } from './ContextMenu';
 import { AIReviewPanel } from './AIReviewPanel';
 import { isAIReviewEnabled } from '../../utils/aiReview';
 import { ZoomInput } from './ZoomInput';
+import { Toolbar } from './Toolbar';
+import { ShapeCreator } from './ShapeCreator';
+import { ToolShortcuts } from './ToolShortcuts';
+import { SnapGuides } from './SnapGuides';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -661,6 +665,8 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
     <EditorProvider doc={doc} rawDoc={rawDoc}>
     <div className="viewer">
       <div className="viewer__toolbar">
+        <Toolbar />
+        <span className="viewer__separator" />
         <button
           type="button"
           className="viewer__zoom-btn"
@@ -803,6 +809,8 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             )}
             <HintLabels vimMode={vimMode} svgScale={scale} cameraCx={camera.cx} cameraCy={camera.cy} viewBox={currentVb} />
             <MarqueeSelect viewBox={currentVb} svgRef={svgRef} />
+            <ShapeCreator svgRef={svgRef} />
+            <SnapGuides svgScale={scale} />
             <EditAnimation />
           </svg>
         </div>
@@ -846,6 +854,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
       <VimTextObjects vimMode={vimMode} />
       {vimMode && <VimBadge />}
       <ContextMenu />
+      <ToolShortcuts />
     </div>
     </EditorProvider>
   );
