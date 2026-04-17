@@ -32,6 +32,7 @@ import { SnapGuides } from './SnapGuides';
 import { DistanceMeasure } from './DistanceMeasure';
 import { AlignToolbar } from './AlignToolbar';
 import { Rulers } from './Rulers';
+import { PagesPanel } from './PagesPanel';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -142,6 +143,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const [vimMode, setVimMode] = useState(false);
   const [showLayers, setShowLayers] = useState(true);
   const [showProperties, setShowProperties] = useState(true);
+  const [showPages, setShowPages] = useState(true);
   const [showRulers, setShowRulers] = useState(false);
   const [clientSize, setClientSize] = useState({ width: 0, height: 0 });
 
@@ -795,7 +797,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
           ?
         </button>
       </div>
-      <div className="viewer__body">
+      <div className={`viewer__body${showPages ? ' viewer__body--has-pages' : ' viewer__body--has-pages-collapsed'}`}>
         <div className={`viewer__canvas-wrap${showRulers ? ' viewer__canvas-wrap--rulers' : ''}`}>
           {showRulers && (
             <Rulers
@@ -846,6 +848,11 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
           </svg>
         </div>
         </div>
+        <PagesPanel
+          collapsed={!showPages}
+          onTogglePanel={() => setShowPages((v) => !v)}
+          onZoomToPage={(p) => zoomToFrame(p)}
+        />
         <NodeTree collapsed={!showLayers} onTogglePanel={() => setShowLayers((v) => !v)} />
         <PropertyPanel collapsed={!showProperties} onTogglePanel={() => setShowProperties((v) => !v)} />
       </div>
