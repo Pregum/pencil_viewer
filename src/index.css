@@ -808,6 +808,20 @@ html,
 }
 
 /* --- Shortcuts table --- */
+.shortcuts-group {
+  margin-bottom: 16px;
+}
+.shortcuts-group:last-child { margin-bottom: 0; }
+.shortcuts-group__title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-accent, #4F46E5);
+  padding: 4px 0 6px;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  margin-bottom: 4px;
+}
 .shortcuts-table {
   width: 100%;
   border-collapse: collapse;
