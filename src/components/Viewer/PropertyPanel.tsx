@@ -324,6 +324,136 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
         </div>
       )}
 
+      {/* Layout Grids (frame only) */}
+      {n.type === 'frame' && (() => {
+        const grids = ((n as { layoutGrids?: unknown }).layoutGrids as Array<Record<string, unknown>> | undefined) ?? [];
+        const updateGrids = (next: Array<Record<string, unknown>>) => {
+          patch({ layoutGrids: next } as unknown as Partial<PenNode>);
+        };
+        const addGrid = (pattern: 'columns' | 'rows' | 'grid') => {
+          const preset = pattern === 'grid'
+            ? { pattern, size: 8, color: '#F472B6', opacity: 0.15, visible: true }
+            : {
+              pattern,
+              count: pattern === 'columns' ? 12 : 6,
+              gutter: 16,
+              offset: 24,
+              alignment: 'stretch',
+              color: '#F472B6',
+              opacity: 0.15,
+              visible: true,
+            };
+          updateGrids([...grids, preset]);
+        };
+        return (
+          <div className="prop-panel__section">
+            <div className="prop-panel__title">Layout Grids ({grids.length})</div>
+            <div className="auto-layout__row">
+              <button type="button" className="auto-layout__btn auto-layout__btn--sm" onClick={() => addGrid('columns')}>+ Col</button>
+              <button type="button" className="auto-layout__btn auto-layout__btn--sm" onClick={() => addGrid('rows')}>+ Row</button>
+              <button type="button" className="auto-layout__btn auto-layout__btn--sm" onClick={() => addGrid('grid')}>+ Grid</button>
+            </div>
+            {grids.map((g, idx) => (
+              <div key={idx} className="layout-grid-item">
+                <div className="layout-grid-item__row">
+                  <span className="layout-grid-item__label">{String(g.pattern)}</span>
+                  <button
+                    type="button"
+                    className="layout-grid-item__toggle"
+                    title={g.visible === false ? 'Show' : 'Hide'}
+                    onClick={() => {
+                      const next = [...grids];
+                      next[idx] = { ...g, visible: g.visible === false };
+                      updateGrids(next);
+                    }}
+                  >
+                    {g.visible === false ? '◯' : '●'}
+                  </button>
+                  <button
+                    type="button"
+                    className="layout-grid-item__delete"
+                    title="Remove grid"
+                    onClick={() => {
+                      const next = grids.filter((_, i) => i !== idx);
+                      updateGrids(next);
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="layout-grid-item__row">
+                  {g.pattern !== 'grid' && (
+                    <>
+                      <input
+                        type="number"
+                        className="layout-grid-item__input"
+                        placeholder="count"
+                        value={(g.count as number | undefined) ?? 12}
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value, 10);
+                          if (!isNaN(v)) {
+                            const next = [...grids];
+                            next[idx] = { ...g, count: Math.max(1, v) };
+                            updateGrids(next);
+                          }
+                        }}
+                        title="Count"
+                      />
+                      <input
+                        type="number"
+                        className="layout-grid-item__input"
+                        placeholder="gutter"
+                        value={(g.gutter as number | undefined) ?? 16}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          if (!isNaN(v)) {
+                            const next = [...grids];
+                            next[idx] = { ...g, gutter: Math.max(0, v) };
+                            updateGrids(next);
+                          }
+                        }}
+                        title="Gutter"
+                      />
+                      <input
+                        type="number"
+                        className="layout-grid-item__input"
+                        placeholder="offset"
+                        value={(g.offset as number | undefined) ?? 24}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          if (!isNaN(v)) {
+                            const next = [...grids];
+                            next[idx] = { ...g, offset: Math.max(0, v) };
+                            updateGrids(next);
+                          }
+                        }}
+                        title="Offset"
+                      />
+                    </>
+                  )}
+                  {g.pattern === 'grid' && (
+                    <input
+                      type="number"
+                      className="layout-grid-item__input"
+                      value={(g.size as number | undefined) ?? 8}
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value);
+                        if (!isNaN(v)) {
+                          const next = [...grids];
+                          next[idx] = { ...g, size: Math.max(2, v) };
+                          updateGrids(next);
+                        }
+                      }}
+                      title="Cell size"
+                    />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Constraints (子要素が absolute 配置される親内で有効) */}
       {(() => {
         const cs = (n as { constraints?: { horizontal?: string; vertical?: string } }).constraints;

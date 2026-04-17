@@ -14,6 +14,7 @@ import {
   resolvePartialStroke,
 } from './paint';
 import { PenNodeView } from './PenNode';
+import { LayoutGridOverlay } from '../../components/Viewer/LayoutGridOverlay';
 
 export function Frame({ node }: { node: FrameNode }) {
   const registry = usePaintRegistry() ?? undefined;
@@ -88,6 +89,8 @@ export function Frame({ node }: { node: FrameNode }) {
           )}
         </>
       )}
+      {/* Layout grids は背景 fill の直後、children の前に配置 */}
+      <LayoutGridOverlay frame={node} />
       {node.children?.map((child) => <PenNodeView key={child.id} node={child} />)}
     </g>
   );
