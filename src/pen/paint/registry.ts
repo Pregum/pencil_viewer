@@ -34,8 +34,11 @@ export type FilterRef = {
 };
 
 export interface PaintRegistry {
-  /** ノード ID + fill index → paint ref ID(gradient/image 用) */
-  fillMap: Map<string, string>;
+  /**
+   * ノード ID → 各 fill index の paint ref ID（gradient/image のみ登録、solid は null）。
+   * 配列長 = fill 配列の長さ（単一 fill なら length=1）
+   */
+  fillMap: Map<string, (string | null)[]>;
   /** ノード ID + stroke → paint ref ID */
   strokeMap: Map<string, string>;
   /** ノード ID → filter ID */
@@ -59,19 +62,29 @@ export function buildPaintRegistry(doc: PenDocument): PaintRegistry {
 function walkNode(node: PenNode, registry: PaintRegistry): void {
   const nodeId = (node as { id: string }).id;
 
-  // fill
+  // fill: 配列なら各 index を個別登録（gradient/image のみ、solid は null）
   const fill = (node as { fill?: Fills }).fill;
   if (fill) {
-    const single = pickStructuredFill(fill);
-    if (single) {
-      const id = `fill-${nodeId}`;
-      registry.fillMap.set(nodeId, id);
-      registry.paints.push({
-        kind: single.type === 'gradient' ? 'gradient' : 'image',
-        id,
-        def: single,
-      });
-    }
+    const list: Fill[] = Array.isArray(fill) ? fill : [fill];
+    const entries: (string | null)[] = [];
+    list.forEach((f, i) => {
+      if (!f || typeof f === 'string') {
+        entries.push(null);
+        return;
+      }
+      if (f.type === 'gradient' || f.type === 'image') {
+        const id = `fill-${nodeId}-${i}`;
+        registry.paints.push({
+          kind: f.type,
+          id,
+          def: f,
+        });
+        entries.push(id);
+      } else {
+        entries.push(null);
+      }
+    });
+    registry.fillMap.set(nodeId, entries);
   }
   // stroke
   const stroke = (node as { stroke?: { fill?: Fills } }).stroke;
