@@ -87,15 +87,23 @@ export function Image({ node }: { node: ImageNode }) {
           </clipPath>
         </defs>
       )}
-      <image
-        href={safeUrl}
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        preserveAspectRatio="xMidYMid slice"
-        clipPath={clipId ? `url(#${clipId})` : undefined}
-      />
+      {(() => {
+        const ox = (node as { imageOffsetX?: number }).imageOffsetX ?? 0;
+        const oy = (node as { imageOffsetY?: number }).imageOffsetY ?? 0;
+        const scale = (node as { imageScale?: number }).imageScale ?? 1;
+        const cropped = ox !== 0 || oy !== 0 || scale !== 1;
+        return (
+          <image
+            href={safeUrl}
+            x={cropped ? x + ox : x}
+            y={cropped ? y + oy : y}
+            width={cropped ? width * scale : width}
+            height={cropped ? height * scale : height}
+            preserveAspectRatio="xMidYMid slice"
+            clipPath={clipId ? `url(#${clipId})` : undefined}
+          />
+        );
+      })()}
     </g>
   );
 }

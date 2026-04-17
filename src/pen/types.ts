@@ -183,6 +183,11 @@ interface NodeBase extends Position {
    */
   mask?: boolean;
   /**
+   * Prototype: Present モードでこのノードをタップしたときに遷移する対象 frame の ID。
+   * Figma の Prototype Connection 相当。editor 拡張。
+   */
+  onTap?: string;
+  /**
    * Pencil 拡張: `"absolute"` のとき、親が flex レイアウトでもこの子は
    * flex flow から外れ、自分の `x`/`y` がそのまま使われる。
    */
@@ -308,6 +313,11 @@ export interface ImageNode extends GraphicsBase {
   url?: string;
   cornerRadius?: number | [number, number, number, number];
   clip?: boolean;
+  /** Crop image: 画像自身のオフセット（node 枠内でのピクセル単位）。クリップは node 枠で行う */
+  imageOffsetX?: number;
+  imageOffsetY?: number;
+  /** 画像のスケール（1=原寸、1.5=拡大して切り抜き等） */
+  imageScale?: number;
 }
 
 /**

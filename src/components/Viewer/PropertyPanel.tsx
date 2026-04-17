@@ -705,6 +705,74 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
         return null;
       })()}
 
+      {/* Image crop (image 選択時のみ) */}
+      {n.type === 'image' && (() => {
+        const ix = (n as { imageOffsetX?: number }).imageOffsetX ?? 0;
+        const iy = (n as { imageOffsetY?: number }).imageOffsetY ?? 0;
+        const is = (n as { imageScale?: number }).imageScale ?? 1;
+        return (
+          <div className="prop-panel__section">
+            <div className="prop-panel__title">Image Crop</div>
+            <div className="auto-layout__row auto-layout__row--nums">
+              <div className="auto-layout__num-field">
+                <label>Offset X</label>
+                <input type="number" value={ix} onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  if (!isNaN(v)) patchInput({ imageOffsetX: v } as Partial<PenNode>);
+                }} />
+              </div>
+              <div className="auto-layout__num-field">
+                <label>Offset Y</label>
+                <input type="number" value={iy} onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  if (!isNaN(v)) patchInput({ imageOffsetY: v } as Partial<PenNode>);
+                }} />
+              </div>
+              <div className="auto-layout__num-field">
+                <label>Scale</label>
+                <input type="number" step={0.1} value={is} onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  if (!isNaN(v)) patchInput({ imageScale: Math.max(0.1, v) } as Partial<PenNode>);
+                }} />
+              </div>
+            </div>
+            <button
+              type="button"
+              className="auto-layout__btn auto-layout__btn--sm"
+              style={{ marginTop: 6 }}
+              onClick={() => patch({ imageOffsetX: 0, imageOffsetY: 0, imageScale: 1 } as Partial<PenNode>)}
+            >
+              Reset crop
+            </button>
+          </div>
+        );
+      })()}
+
+      {/* Prototype: onTap (遷移先フレーム) */}
+      {(() => {
+        const topFrames = state.doc.children.filter((c) => c.type === 'frame') as Array<PenNode & { name?: string }>;
+        if (topFrames.length === 0) return null;
+        const currentTap = (n as { onTap?: string }).onTap;
+        return (
+          <div className="prop-panel__section">
+            <div className="prop-panel__title">Prototype</div>
+            <div className="auto-layout__num-field">
+              <label>On tap → Frame</label>
+              <select
+                className="prop-panel__select"
+                value={currentTap ?? ''}
+                onChange={(e) => patch({ onTap: e.target.value || undefined } as Partial<PenNode>)}
+              >
+                <option value="">(no link)</option>
+                {topFrames.map((f) => (
+                  <option key={f.id} value={f.id}>{f.name ?? f.id}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Node ID (read-only) */}
       <div className="prop-panel__section">
         <div className="prop-panel__title">Node ID</div>

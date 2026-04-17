@@ -275,6 +275,97 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
     setActiveFrameId(target.id);
   }, [presentMode, presentIdx, frames, zoomToRect]);
 
+  // Present モード時に onTap 付きノードをクリックで遷移
+  useEffect(() => {
+    if (!presentMode) return;
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    // node tree から id → onTap を引く
+    const tapMap = new Map<string, string>();
+    const walk = (nodes: PenNode[]) => {
+      for (const n of nodes) {
+        const t = (n as { onTap?: string }).onTap;
+        if (t) tapMap.set(n.id, t);
+        const children = (n as { children?: PenNode[] }).children;
+        if (children) walk(children);
+      }
+    };
+    walk(doc.children);
+    if (tapMap.size === 0) return;
+
+    const onClick = (e: PointerEvent) => {
+      // クリックされた DOM target から SVG <g> を辿り、対応するノード ID を探す
+      let el: Element | null = e.target as Element;
+      while (el) {
+        // SelectableNode 由来の <title> などから推定しづらいので、
+        // data 属性で記録するのが確実。SelectableNode は title しか埋めてないので
+        // 代替として元ノードツリーを「点在判定」で検索する。
+        el = el.parentElement as Element | null;
+      }
+      // SVG 座標に変換して doc を走査し、クリック点を含むノードを探す
+      const ctm = svg.getScreenCTM();
+      if (!ctm) return;
+      const x = (e.clientX - ctm.e) / ctm.a;
+      const y = (e.clientY - ctm.f) / ctm.d;
+      // top-level から逆順（前面優先）で探す
+      const findHit = (nodes: PenNode[]): string | null => {
+        for (let i = nodes.length - 1; i >= 0; i--) {
+          const n = nodes[i];
+          const nx = n.x ?? 0;
+          const ny = n.y ?? 0;
+          const nw = typeof (n as { width?: unknown }).width === 'number' ? (n as { width: number }).width : 0;
+          const nh = typeof (n as { height?: unknown }).height === 'number' ? (n as { height: number }).height : 0;
+          if (nw > 0 && nh > 0 && x >= nx && x <= nx + nw && y >= ny && y <= ny + nh) {
+            // children から先にヒットしたら優先
+            const children = (n as { children?: PenNode[] }).children;
+            if (children) {
+              // frame の場合は子のローカル座標に変換
+              const localX = x - nx;
+              const localY = y - ny;
+              const hit = (function findLocal(ns: PenNode[]): string | null {
+                for (let j = ns.length - 1; j >= 0; j--) {
+                  const m = ns[j];
+                  const mx = m.x ?? 0;
+                  const my = m.y ?? 0;
+                  const mw = typeof (m as { width?: unknown }).width === 'number' ? (m as { width: number }).width : 0;
+                  const mh = typeof (m as { height?: unknown }).height === 'number' ? (m as { height: number }).height : 0;
+                  if (mw > 0 && mh > 0 && localX >= mx && localX <= mx + mw && localY >= my && localY <= my + mh) {
+                    const gc = (m as { children?: PenNode[] }).children;
+                    if (gc) {
+                      // さらに深く探す
+                      const deeper = findLocal(gc);
+                      if (deeper && tapMap.has(deeper)) return deeper;
+                    }
+                    if (tapMap.has(m.id)) return m.id;
+                  }
+                }
+                return null;
+              })(children);
+              if (hit) return hit;
+            }
+            if (tapMap.has(n.id)) return n.id;
+          }
+        }
+        return null;
+      };
+      const hitId = findHit(doc.children);
+      if (hitId) {
+        const target = tapMap.get(hitId);
+        if (target) {
+          const idx = frames.findIndex((f) => f.id === target);
+          if (idx >= 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            setPresentIdx(idx);
+          }
+        }
+      }
+    };
+    svg.addEventListener('pointerdown', onClick as EventListener, true);
+    return () => svg.removeEventListener('pointerdown', onClick as EventListener, true);
+  }, [presentMode, doc.children, frames, svgRef]);
+
   // Present モード時のフレーム遷移 & 終了キー
   useEffect(() => {
     if (!presentMode) return;
