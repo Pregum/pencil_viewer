@@ -16,6 +16,7 @@ import {
 } from './paint';
 import { PenNodeView } from './PenNode';
 import { LayoutGridOverlay } from '../../components/Viewer/LayoutGridOverlay';
+import { isCornerRadiusArray, roundedRectPath } from './roundedRectPath';
 
 export function Frame({ node }: { node: FrameNode }) {
   const registry = usePaintRegistry() ?? undefined;
@@ -30,8 +31,10 @@ export function Frame({ node }: { node: FrameNode }) {
 
   const fillLayers = resolveFillLayers(node.fill, ctx);
   const filter = resolveFilter(ctx);
-  // cornerRadius をクランプ（Pencil: min(r, w/2, h/2) で pill 形状を実現）
-  const rawRx = typeof node.cornerRadius === 'number' ? node.cornerRadius : undefined;
+  // cornerRadius: number (従来, 全 4 角共通) or [nw, ne, se, sw]
+  const rawCr = node.cornerRadius;
+  const crArr = isCornerRadiusArray(rawCr) ? rawCr : null;
+  const rawRx = typeof rawCr === 'number' ? rawCr : undefined;
   const rx = rawRx != null && width != null && height != null
     ? Math.min(rawRx, (width) / 2, (height) / 2)
     : rawRx;
@@ -52,12 +55,27 @@ export function Frame({ node }: { node: FrameNode }) {
       {clipId && width != null && height != null && (
         <defs>
           <clipPath id={clipId}>
-            <rect x={0} y={0} width={width} height={height} rx={rx} ry={rx} />
+            {crArr ? (
+              <path d={roundedRectPath(0, 0, width, height, crArr)} />
+            ) : (
+              <rect x={0} y={0} width={width} height={height} rx={rx} ry={rx} />
+            )}
           </clipPath>
         </defs>
       )}
-      {/* 背景 fill レイヤー群（配列順に composite） */}
-      {width != null && height != null && fillLayers.map((l, i) => (
+      {/* 背景 fill レイヤー群（配列順に composite） — cornerRadius 配列なら <path>、通常は <rect> */}
+      {width != null && height != null && crArr && fillLayers.map((l, i) => (
+        <path
+          key={`bg-${i}`}
+          d={roundedRectPath(0, 0, width, height, crArr)}
+          fill={l.paint}
+          fillOpacity={l.opacity !== 1 ? l.opacity : undefined}
+          stroke={i === fillLayers.length - 1 && !isPartial ? strokeColor : 'none'}
+          strokeWidth={i === fillLayers.length - 1 && !isPartial ? strokeWidth : 0}
+          style={l.blendMode ? ({ mixBlendMode: l.blendMode } as CSSProperties) : undefined}
+        />
+      ))}
+      {width != null && height != null && !crArr && fillLayers.map((l, i) => (
         <rect
           key={`bg-${i}`}
           x={0}
@@ -75,17 +93,26 @@ export function Frame({ node }: { node: FrameNode }) {
       ))}
       {/* fill が全く無いが stroke だけある場合 */}
       {width != null && height != null && fillLayers.length === 0 && strokeWidth > 0 && !isPartial && strokeColor !== 'none' && (
-        <rect
-          x={0}
-          y={0}
-          width={width}
-          height={height}
-          rx={rx}
-          ry={rx}
-          fill="none"
-          stroke={strokeColor}
-          strokeWidth={strokeWidth}
-        />
+        crArr ? (
+          <path
+            d={roundedRectPath(0, 0, width, height, crArr)}
+            fill="none"
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+          />
+        ) : (
+          <rect
+            x={0}
+            y={0}
+            width={width}
+            height={height}
+            rx={rx}
+            ry={rx}
+            fill="none"
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+          />
+        )
       )}
       {/* 部分ボーダー: 各辺を個別の line で描画 */}
       {isPartial && partial && width != null && height != null && strokeColor !== 'none' && (
