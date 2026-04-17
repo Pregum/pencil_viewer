@@ -922,17 +922,41 @@ export function EditorProvider({
         return;
       }
 
-      // Arrow keys (non-vim mode): move selected node by 1px (Shift: 10px)
-      // Only when not in vim mode (vim uses h/j/k/l instead).
-      // We check if vim mode is off by looking for the vim badge absence in the DOM.
-      // A simpler approach: always handle arrow keys here since vim uses h/j/k/l, not arrows.
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && !mod) {
+      // Arrow keys:
+      //   - 素のみ / Shift = ナッジ移動 (1px / 10px)
+      //   - Cmd/Ctrl = リサイズ (1px / 10px)
+      // vim mode は h/j/k/l を使うので矢印と競合しない
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         setState((s) => {
           if (!s.selectedNodeId) return s;
           const node = findNode(s.doc.children, s.selectedNodeId);
           if (!node) return s;
           e.preventDefault();
           const step = e.shiftKey ? 10 : 1;
+
+          if (mod) {
+            // --- リサイズ ---
+            const curW = typeof (node as { width?: unknown }).width === 'number' ? (node as { width: number }).width : 0;
+            const curH = typeof (node as { height?: unknown }).height === 'number' ? (node as { height: number }).height : 0;
+            let dw = 0;
+            let dh = 0;
+            if (e.key === 'ArrowLeft') dw = -step;
+            if (e.key === 'ArrowRight') dw = step;
+            if (e.key === 'ArrowUp') dh = -step;
+            if (e.key === 'ArrowDown') dh = step;
+            const patch: Record<string, number> = {};
+            if (dw !== 0) patch.width = Math.max(1, curW + dw);
+            if (dh !== 0) patch.height = Math.max(1, curH + dh);
+            if (Object.keys(patch).length === 0) return s;
+            pushUndo(s.doc, s.rawDoc);
+            return {
+              ...s,
+              doc: updateNodeInDoc(s.doc, s.selectedNodeId, patch as Partial<PenNode>),
+              rawDoc: updateNodeInDoc(s.rawDoc, s.selectedNodeId, patch as Partial<PenNode>),
+            };
+          }
+
+          // --- ナッジ ---
           let dx = 0;
           let dy = 0;
           if (e.key === 'ArrowLeft') dx = -step;
