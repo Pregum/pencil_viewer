@@ -7,6 +7,7 @@ import {
   resolveStrokeWidth,
   resolveStrokeAttrs,
 } from './paint';
+import { isCornerRadiusArray, roundedRectPath } from './roundedRectPath';
 
 export function Rectangle({ node }: { node: RectangleNode }) {
   const registry = usePaintRegistry() ?? undefined;
@@ -15,7 +16,9 @@ export function Rectangle({ node }: { node: RectangleNode }) {
   const y = node.y ?? 0;
   const width = typeof node.width === 'number' ? node.width : 0;
   const height = typeof node.height === 'number' ? node.height : 0;
-  const rawRx = typeof node.cornerRadius === 'number' ? node.cornerRadius : undefined;
+  const rawCr = node.cornerRadius;
+  const asArray = isCornerRadiusArray(rawCr) ? rawCr : null;
+  const rawRx = typeof rawCr === 'number' ? rawCr : undefined;
   const rx = rawRx != null ? Math.min(rawRx, width / 2, height / 2) : rawRx;
 
   const layers = resolveFillLayers(node.fill, ctx);
@@ -36,8 +39,45 @@ export function Rectangle({ node }: { node: RectangleNode }) {
   const strokeRx = rx != null
     ? Math.max(0, align === 'inside' ? rx - sw2 : align === 'outside' ? rx + sw2 : rx)
     : undefined;
+  const strokeCrArray = asArray
+    ? (asArray.map((r) => Math.max(0, align === 'inside' ? r - sw2 : align === 'outside' ? r + sw2 : r)) as [number, number, number, number])
+    : null;
 
   const hasStroke = strokeWidth > 0 && strokeColor !== 'none';
+
+  // cornerRadius が [nw, ne, se, sw] の配列なら path で描画
+  if (asArray) {
+    const fillPath = roundedRectPath(x, y, width, height, asArray);
+    const strokePath = roundedRectPath(
+      strokeRect.x,
+      strokeRect.y,
+      strokeRect.w,
+      strokeRect.h,
+      strokeCrArray ?? asArray,
+    );
+    return (
+      <g filter={filter}>
+        {layers.map((l, i) => (
+          <path
+            key={i}
+            d={fillPath}
+            fill={l.paint}
+            fillOpacity={l.opacity !== 1 ? l.opacity : undefined}
+          />
+        ))}
+        {hasStroke && (
+          <path
+            d={strokePath}
+            fill="none"
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+            {...strokeAttrs}
+          />
+        )}
+      </g>
+    );
+  }
+
   // 中央整列かつ fill 単一なら 1 要素 <rect> で最適化
   if (layers.length <= 1 && (align === 'center' || !hasStroke)) {
     const fillPaint = layers[0]?.paint ?? 'none';
