@@ -810,6 +810,75 @@ html,
   font-family: system-ui, sans-serif;
 }
 
+/* ======== Comment Popup ======== */
+.comment-popup {
+  width: 260px;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0,0,0,.15), 0 2px 6px rgba(0,0,0,.08);
+  padding: 10px;
+  z-index: 1000;
+  font-size: 12px;
+  font-family: inherit;
+}
+.comment-popup__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--color-text-muted, #9CA3AF);
+  margin-bottom: 6px;
+}
+.comment-popup__resolved {
+  background: #DCFCE7;
+  color: #166534;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+.comment-popup__input {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 4px;
+  background: var(--color-canvas, #f9fafb);
+  font-family: inherit;
+  font-size: 12px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+.comment-popup__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 6px;
+}
+.comment-popup__btn {
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 4px;
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #111827);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.comment-popup__btn:hover { background: var(--color-canvas, #f9fafb); }
+.comment-popup__btn--primary {
+  background: var(--color-accent, #4F46E5);
+  color: #fff;
+  border-color: var(--color-accent, #4F46E5);
+}
+.comment-popup__btn--primary:hover { background: #4338CA; color: #fff; }
+.comment-popup__btn--danger {
+  color: #DC2626;
+  border-color: #FCA5A5;
+}
+.comment-popup__btn--danger:hover { background: #FEF2F2; }
+
 /* ======== Dev Inspect Panel ======== */
 .dev-inspect {
   position: fixed;
@@ -1532,6 +1601,9 @@ html,
 .viewer__canvas[data-tool="note"],
 .viewer__canvas[data-tool="pen"] {
   cursor: crosshair;
+}
+.viewer__canvas[data-tool="comment"] {
+  cursor: cell;
 }
 .viewer__canvas[data-tool="text"] {
   cursor: text;

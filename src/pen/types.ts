@@ -416,4 +416,19 @@ export interface PenDocument {
   fonts?: unknown;
   /** 名前付きスタイル (Figma Styles)。editor 拡張 */
   styles?: NamedStyle[];
+  /** Comment mode で付けたピン + コメント。editor 拡張 */
+  comments?: DocComment[];
+}
+
+export interface DocComment {
+  id: string;
+  /** SVG 座標系でのピン位置 */
+  x: number;
+  y: number;
+  /** 本文（複数行可） */
+  text: string;
+  /** 作成時刻 ISO */
+  createdAt: string;
+  /** 解決済みマーク */
+  resolved?: boolean;
 }

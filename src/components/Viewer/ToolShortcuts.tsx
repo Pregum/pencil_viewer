@@ -20,6 +20,7 @@ const TOOL_KEYS: Record<string, ActiveTool> = {
   f: 'frame',
   n: 'note',
   p: 'pen',
+  c: 'comment',
 };
 
 export function ToolShortcuts() {

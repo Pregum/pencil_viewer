@@ -3,7 +3,7 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import type { PenDocument, PenNode, FrameNode, NamedStyle, ColorStyle, TextStyle, EffectStyle } from '../types';
+import type { PenDocument, PenNode, FrameNode, NamedStyle, ColorStyle, TextStyle, EffectStyle, DocComment } from '../types';
 import { duplicateNode } from '../../components/Viewer/ExtraCommands';
 import { booleanOperation, type BoolOp } from '../renderer/booleanOps';
 import { flattenToPath, outlineStroke } from '../renderer/flatten';
@@ -16,7 +16,7 @@ export interface VariableDef {
 }
 
 /** アクティブな作成ツール。'select' 以外を選ぶとドラッグでシェイプが生成される */
-export type ActiveTool = 'select' | 'rectangle' | 'ellipse' | 'line' | 'text' | 'frame' | 'note' | 'pen';
+export type ActiveTool = 'select' | 'rectangle' | 'ellipse' | 'line' | 'text' | 'frame' | 'note' | 'pen' | 'comment';
 
 export interface EditorState {
   doc: PenDocument;
@@ -125,6 +125,10 @@ interface EditorContextValue {
   flattenSelection: () => void;
   /** 選択ノードの stroke を path 化して置換 */
   outlineStrokeSelected: () => void;
+  /** Comments */
+  addComment: (x: number, y: number, text: string) => string;
+  updateComment: (id: string, patch: Partial<DocComment>) => void;
+  removeComment: (id: string) => void;
   /** 変数の追加/更新 */
   upsertVariable: (name: string, def: VariableDef) => void;
   /** 変数を削除 */
@@ -585,6 +589,51 @@ export function EditorProvider({
         nextRaw = updateNodeInDoc(nextRaw, id, patch);
       }
       return { ...s, doc: nextDoc, rawDoc: nextRaw };
+    });
+  }, [pushUndo]);
+
+  /** Comments */
+  const addComment = useCallback((x: number, y: number, text: string): string => {
+    const id = `comment_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const c: DocComment = {
+      id, x, y, text,
+      createdAt: new Date().toISOString(),
+    };
+    setState((s) => {
+      pushUndo(s.doc, s.rawDoc);
+      const next = [...(s.doc.comments ?? []), c];
+      return {
+        ...s,
+        doc: { ...s.doc, comments: next },
+        rawDoc: { ...s.rawDoc, comments: next },
+      };
+    });
+    return id;
+  }, [pushUndo]);
+
+  const updateComment = useCallback((id: string, patch: Partial<DocComment>) => {
+    setState((s) => {
+      const list = s.doc.comments ?? [];
+      if (!list.find((c) => c.id === id)) return s;
+      pushUndo(s.doc, s.rawDoc);
+      const next = list.map((c) => (c.id === id ? { ...c, ...patch } : c));
+      return {
+        ...s,
+        doc: { ...s.doc, comments: next },
+        rawDoc: { ...s.rawDoc, comments: next },
+      };
+    });
+  }, [pushUndo]);
+
+  const removeComment = useCallback((id: string) => {
+    setState((s) => {
+      pushUndo(s.doc, s.rawDoc);
+      const next = (s.doc.comments ?? []).filter((c) => c.id !== id);
+      return {
+        ...s,
+        doc: { ...s.doc, comments: next },
+        rawDoc: { ...s.rawDoc, comments: next },
+      };
     });
   }, [pushUndo]);
 
@@ -1302,8 +1351,8 @@ export function EditorProvider({
   const canRedo = redoStack.current.length > 0;
 
   const value = useMemo(
-    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, applyBooleanOp, upsertStyle, removeStyle, applyStyleToSelection, flattenSelection, outlineStrokeSelected, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
-    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, applyBooleanOp, upsertStyle, removeStyle, applyStyleToSelection, flattenSelection, outlineStrokeSelected, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
+    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, applyBooleanOp, upsertStyle, removeStyle, applyStyleToSelection, flattenSelection, outlineStrokeSelected, addComment, updateComment, removeComment, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
+    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, applyBooleanOp, upsertStyle, removeStyle, applyStyleToSelection, flattenSelection, outlineStrokeSelected, addComment, updateComment, removeComment, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;
