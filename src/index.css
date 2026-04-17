@@ -467,6 +467,24 @@ html,
   color: #fff;
   border: 1px solid transparent;
 }
+
+/* Grid Snap トグル */
+.grid-snap {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.grid-snap__size {
+  width: 44px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 4px;
+  background: var(--color-canvas, #f9fafb);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  text-align: center;
+}
 .viewer__ai-btn:hover {
   background: linear-gradient(135deg, #4338CA 0%, #9333EA 100%);
   color: #fff;

@@ -29,6 +29,9 @@ export interface EditorState {
   activeTool: ActiveTool;
   /** インラインテキスト編集中のノードID（dblclick で設定、Esc/Blur で解除） */
   editingNodeId: string | null;
+  /** Grid Snap: ON のとき位置/サイズを gridSize (px) にラウンドする */
+  gridSnap: boolean;
+  gridSize: number;
 }
 
 /** ドキュメントツリー内のノードを再帰的に更新 */
@@ -101,6 +104,9 @@ interface EditorContextValue {
   addNode: (node: PenNode) => void;
   /** Alt+ドラッグ複製用: トップレベル指定 IDs をクローン追加して選択、開始位置を返す */
   cloneNodesAtTop: (ids: string[]) => Array<{ id: string; x0: number; y0: number; w: number; h: number }>;
+  /** Grid snap のトグルとサイズ変更 */
+  setGridSnap: (enabled: boolean) => void;
+  setGridSize: (size: number) => void;
   /** 変数の追加/更新 */
   upsertVariable: (name: string, def: VariableDef) => void;
   /** 変数を削除 */
@@ -144,6 +150,8 @@ export function EditorProvider({
     insertMode: false,
     activeTool: 'select',
     editingNodeId: null,
+    gridSnap: false,
+    gridSize: 8,
   });
 
   /** 同期的に最新 state を参照したいコールバック（cloneNodesAtTop など）用 */
@@ -477,6 +485,15 @@ export function EditorProvider({
       };
     });
   }, [pushUndo]);
+
+  const setGridSnap = useCallback((enabled: boolean) => {
+    setState((s) => (s.gridSnap === enabled ? s : { ...s, gridSnap: enabled }));
+  }, []);
+
+  const setGridSize = useCallback((size: number) => {
+    const v = Math.max(1, Math.round(size));
+    setState((s) => (s.gridSize === v ? s : { ...s, gridSize: v }));
+  }, []);
 
   const renameVariable = useCallback((oldName: string, newName: string) => {
     if (!newName || oldName === newName) return;
@@ -959,8 +976,8 @@ export function EditorProvider({
   const canRedo = redoStack.current.length > 0;
 
   const value = useMemo(
-    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
-    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
+    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
+    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;

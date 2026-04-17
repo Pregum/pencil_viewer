@@ -195,6 +195,16 @@ export function ShapeCreator({ svgRef }: Props) {
         const d = defaultSize(tool);
         rect = { x: startPoint.current.x, y: startPoint.current.y, ...d };
       }
+      // Grid snap: 作成時に位置/サイズを gridSize にラウンド
+      if (state.gridSnap && state.gridSize > 0) {
+        const g = state.gridSize;
+        const rx = Math.round(rect.x / g) * g;
+        const ry = Math.round(rect.y / g) * g;
+        const rw = Math.max(g, Math.round(rect.width / g) * g);
+        const rh = Math.max(rect.height === 0 ? 0 : g, Math.round(rect.height / g) * g);
+        rect = { x: rx, y: ry, width: rw, height: rh };
+      }
+
       const node = buildNode(tool, rect);
       if (node) {
         addNode(node);

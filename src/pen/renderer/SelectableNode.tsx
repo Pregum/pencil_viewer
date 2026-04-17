@@ -260,6 +260,13 @@ export function SelectableNode({ node, children }: Props) {
         else dx = 0;
       }
 
+      // Grid Snap: dx/dy を gridSize の倍数にラウンド（dragStart からの移動量ベース）
+      const gridSize = state.gridSnap ? state.gridSize : 0;
+      if (gridSize > 0 && isDragging.current) {
+        dx = Math.round(dx / gridSize) * gridSize;
+        dy = Math.round(dy / gridSize) * gridSize;
+      }
+
       if (isDragging.current) {
         // スナップ: 画面上 6px 相当の閾値を SVG 座標に変換
         const ctm = svg.getScreenCTM();
@@ -403,11 +410,32 @@ export function SelectableNode({ node, children }: Props) {
           threshold,
         );
 
+        // Grid Snap: width/height を gridSize にラウンド
+        const gsize = state.gridSnap ? state.gridSize : 0;
+        let finalX = snapped.x;
+        let finalY = snapped.y;
+        let finalW = snapped.width;
+        let finalH = snapped.height;
+        if (gsize > 0) {
+          if (h.includes('e')) finalW = Math.max(gsize, Math.round(finalW / gsize) * gsize);
+          if (h.includes('s')) finalH = Math.max(gsize, Math.round(finalH / gsize) * gsize);
+          if (h.includes('w')) {
+            const snappedX = Math.round(finalX / gsize) * gsize;
+            finalW = Math.max(gsize, finalW + (finalX - snappedX));
+            finalX = snappedX;
+          }
+          if (h.includes('n')) {
+            const snappedY = Math.round(finalY / gsize) * gsize;
+            finalH = Math.max(gsize, finalH + (finalY - snappedY));
+            finalY = snappedY;
+          }
+        }
+
         updateNodeSilent(node.id, {
-          x: Math.round(snapped.x),
-          y: Math.round(snapped.y),
-          width: Math.round(snapped.width),
-          height: Math.round(snapped.height),
+          x: Math.round(finalX),
+          y: Math.round(finalY),
+          width: Math.round(finalW),
+          height: Math.round(finalH),
         } as Partial<PenNode>);
 
         // 子ノードに constraints を適用
