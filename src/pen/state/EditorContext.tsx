@@ -29,6 +29,8 @@ export interface EditorState {
   activeTool: ActiveTool;
   /** インラインテキスト編集中のノードID（dblclick で設定、Esc/Blur で解除） */
   editingNodeId: string | null;
+  /** ペンツールの path 編集モードのノード ID（dblclick で path を開くとセット） */
+  editingPathId: string | null;
   /** Grid Snap: ON のとき位置/サイズを gridSize (px) にラウンドする */
   gridSnap: boolean;
   gridSize: number;
@@ -126,6 +128,9 @@ interface EditorContextValue {
   /** インラインテキスト編集の開始/終了 */
   beginEditing: (nodeId: string) => void;
   endEditing: () => void;
+  /** path 編集モードの開始/終了（ペンツール拡張） */
+  beginPathEditing: (nodeId: string) => void;
+  endPathEditing: () => void;
   exportPen: (fileName?: string) => void;
   undo: () => void;
   redo: () => void;
@@ -152,6 +157,7 @@ export function EditorProvider({
     insertMode: false,
     activeTool: 'select',
     editingNodeId: null,
+    editingPathId: null,
     gridSnap: false,
     gridSize: 8,
   });
@@ -654,6 +660,14 @@ export function EditorProvider({
     setState((s) => (s.editingNodeId === null ? s : { ...s, editingNodeId: null, insertMode: false }));
   }, []);
 
+  const beginPathEditing = useCallback((nodeId: string) => {
+    setState((s) => ({ ...s, editingPathId: nodeId, selectedNodeId: nodeId, selectedNodeIds: new Set() }));
+  }, []);
+
+  const endPathEditing = useCallback(() => {
+    setState((s) => (s.editingPathId === null ? s : { ...s, editingPathId: null }));
+  }, []);
+
   const undo = useCallback(() => {
     if (undoStack.current.length === 0) return;
     setState((s) => {
@@ -1093,8 +1107,8 @@ export function EditorProvider({
   const canRedo = redoStack.current.length > 0;
 
   const value = useMemo(
-    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
-    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
+    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
+    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;

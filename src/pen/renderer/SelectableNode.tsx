@@ -17,7 +17,7 @@ interface Props {
 const HANDLE_SIZE = 8;
 
 export function SelectableNode({ node, children }: Props) {
-  const { state, selectNode, toggleSelectNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, beginEditing, cloneNodesAtTop } = useEditor();
+  const { state, selectNode, toggleSelectNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, beginEditing, beginPathEditing, cloneNodesAtTop } = useEditor();
   const isLocked = (node as { locked?: boolean }).locked === true;
   const isSelected = state.selectedNodeId === node.id && !isLocked;
   const isMultiSelected = state.selectedNodeIds.has(node.id) && !isLocked;
@@ -72,11 +72,21 @@ export function SelectableNode({ node, children }: Props) {
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
+    if (isLocked) return;
     // text / note ノードはダブルクリックでインライン編集
-    if ((node.type !== 'text' && node.type !== 'note') || isLocked) return;
-    e.stopPropagation();
-    e.preventDefault();
-    beginEditing(node.id);
+    if (node.type === 'text' || node.type === 'note') {
+      e.stopPropagation();
+      e.preventDefault();
+      beginEditing(node.id);
+      return;
+    }
+    // path はダブルクリックで path 編集モード
+    if (node.type === 'path') {
+      e.stopPropagation();
+      e.preventDefault();
+      beginPathEditing(node.id);
+      return;
+    }
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {
