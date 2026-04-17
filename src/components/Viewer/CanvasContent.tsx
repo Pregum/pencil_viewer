@@ -5,12 +5,12 @@
 
 import { useMemo } from 'react';
 import { useEditor } from '../../pen/state/EditorContext';
-import { PenNodeView } from '../../pen/renderer/PenNode';
 import { buildPaintRegistry } from '../../pen/paint/registry';
 import { Defs } from '../../pen/paint/Defs';
 import { PaintRegistryProvider } from '../../pen/paint/PaintContext';
 import { resolveRefs } from '../../pen/refs';
 import { substituteVariables } from '../../pen/variables';
+import { renderMaskedChildren } from '../../pen/renderer/MaskedChildren';
 
 export function CanvasContent() {
   const { state, selectNode } = useEditor();
@@ -34,9 +34,7 @@ export function CanvasContent() {
       />
       <Defs registry={registry} />
       <PaintRegistryProvider value={registry}>
-        {doc.children.map((node) => (
-          <PenNodeView key={node.id} node={node} />
-        ))}
+        {renderMaskedChildren(doc.children)}
       </PaintRegistryProvider>
     </>
   );

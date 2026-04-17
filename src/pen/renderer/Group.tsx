@@ -1,5 +1,5 @@
 import type { GroupNode } from '../types';
-import { PenNodeView } from './PenNode';
+import { renderMaskedChildren } from './MaskedChildren';
 
 export function Group({ node }: { node: GroupNode }) {
   const x = node.x ?? 0;
@@ -8,7 +8,7 @@ export function Group({ node }: { node: GroupNode }) {
   const transform = x === 0 && y === 0 ? undefined : `translate(${x} ${y})`;
   return (
     <g transform={transform} opacity={opacity}>
-      {node.children?.map((child) => <PenNodeView key={child.id} node={child} />)}
+      {node.children && renderMaskedChildren(node.children)}
     </g>
   );
 }
