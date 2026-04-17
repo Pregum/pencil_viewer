@@ -29,6 +29,7 @@ import { Toolbar } from './Toolbar';
 import { ShapeCreator } from './ShapeCreator';
 import { ToolShortcuts } from './ToolShortcuts';
 import { SnapGuides } from './SnapGuides';
+import { DistanceMeasure } from './DistanceMeasure';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -811,6 +812,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             <MarqueeSelect viewBox={currentVb} svgRef={svgRef} />
             <ShapeCreator svgRef={svgRef} />
             <SnapGuides svgScale={scale} />
+            <DistanceMeasure svgRef={svgRef} svgScale={scale} />
             <EditAnimation />
           </svg>
         </div>
