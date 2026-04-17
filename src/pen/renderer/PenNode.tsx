@@ -18,8 +18,10 @@ import { Note } from './Note';
 import { Connection } from './Connection';
 import { Unsupported } from './Unsupported';
 import { SelectableNode } from './SelectableNode';
+import { TextEditor } from '../../components/Viewer/TextEditor';
+import { useEditor } from '../state/EditorContext';
 
-function renderNode(node: PenNode) {
+function renderNode(node: PenNode, editingNodeId: string | null) {
   switch (node.type) {
     case 'rectangle':
       return <Rectangle node={node} />;
@@ -32,7 +34,7 @@ function renderNode(node: PenNode) {
     case 'path':
       return <Path node={node} />;
     case 'text':
-      return <Text node={node} />;
+      return editingNodeId === node.id ? <TextEditor node={node} /> : <Text node={node} />;
     case 'frame':
       return <Frame node={node} />;
     case 'group':
@@ -70,9 +72,10 @@ function renderNode(node: PenNode) {
 }
 
 export function PenNodeView({ node }: { node: PenNode }) {
+  const { state } = useEditor();
   return (
     <SelectableNode node={node}>
-      {renderNode(node)}
+      {renderNode(node, state.editingNodeId)}
     </SelectableNode>
   );
 }
