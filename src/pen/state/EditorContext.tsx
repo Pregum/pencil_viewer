@@ -3,7 +3,7 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import type { PenDocument, PenNode, FrameNode } from '../types';
+import type { PenDocument, PenNode, FrameNode, NamedStyle, ColorStyle, TextStyle, EffectStyle } from '../types';
 import { duplicateNode } from '../../components/Viewer/ExtraCommands';
 import { booleanOperation, type BoolOp } from '../renderer/booleanOps';
 
@@ -116,6 +116,10 @@ interface EditorContextValue {
   toggleMaskSelected: () => void;
   /** 選択ノードに boolean 演算を適用し、結果の path ノードで置換 */
   applyBooleanOp: (op: 'union' | 'subtract' | 'intersect' | 'exclude') => void;
+  /** Named Styles */
+  upsertStyle: (style: NamedStyle) => void;
+  removeStyle: (id: string) => void;
+  applyStyleToSelection: (styleId: string) => void;
   /** 変数の追加/更新 */
   upsertVariable: (name: string, def: VariableDef) => void;
   /** 変数を削除 */
@@ -515,6 +519,70 @@ export function EditorProvider({
    * - 囲む Frame は選択セットの bbox にフィット、layout='none'
    * - 子ノードの x/y は Frame 内座標系に変換
    */
+  /** Named Styles */
+  const upsertStyle = useCallback((style: NamedStyle) => {
+    setState((s) => {
+      pushUndo(s.doc, s.rawDoc);
+      const existing = (s.doc.styles ?? []).filter((x) => x.id !== style.id);
+      const next = [...existing, style];
+      return {
+        ...s,
+        doc: { ...s.doc, styles: next },
+        rawDoc: { ...s.rawDoc, styles: next },
+      };
+    });
+  }, [pushUndo]);
+
+  const removeStyle = useCallback((id: string) => {
+    setState((s) => {
+      pushUndo(s.doc, s.rawDoc);
+      const next = (s.doc.styles ?? []).filter((x) => x.id !== id);
+      return {
+        ...s,
+        doc: { ...s.doc, styles: next },
+        rawDoc: { ...s.rawDoc, styles: next },
+      };
+    });
+  }, [pushUndo]);
+
+  const applyStyleToSelection = useCallback((styleId: string) => {
+    setState((s) => {
+      const ids = s.selectedNodeIds.size > 0
+        ? Array.from(s.selectedNodeIds)
+        : s.selectedNodeId ? [s.selectedNodeId] : [];
+      if (ids.length === 0) return s;
+      const style = (s.doc.styles ?? []).find((x) => x.id === styleId);
+      if (!style) return s;
+      pushUndo(s.doc, s.rawDoc);
+      let patch: Partial<PenNode>;
+      if (style.type === 'color') {
+        // color style は fill に適用（stroke はユーザ操作で決める）
+        patch = { fill: (style as ColorStyle).value } as Partial<PenNode>;
+      } else if (style.type === 'text') {
+        const t = style as TextStyle;
+        const p: Record<string, unknown> = {};
+        if (t.fontFamily !== undefined) p.fontFamily = t.fontFamily;
+        if (t.fontSize !== undefined) p.fontSize = t.fontSize;
+        if (t.fontWeight !== undefined) p.fontWeight = t.fontWeight;
+        if (t.lineHeight !== undefined) p.lineHeight = t.lineHeight;
+        if (t.letterSpacing !== undefined) p.letterSpacing = t.letterSpacing;
+        if (t.textAlign !== undefined) p.textAlign = t.textAlign;
+        if (t.fill !== undefined) p.fill = t.fill;
+        patch = p as Partial<PenNode>;
+      } else {
+        // effect style
+        patch = { effect: (style as EffectStyle).effects } as Partial<PenNode>;
+      }
+      let nextDoc = s.doc;
+      let nextRaw = s.rawDoc;
+      for (const id of ids) {
+        nextDoc = updateNodeInDoc(nextDoc, id, patch);
+        nextRaw = updateNodeInDoc(nextRaw, id, patch);
+      }
+      return { ...s, doc: nextDoc, rawDoc: nextRaw };
+    });
+  }, [pushUndo]);
+
   const applyBooleanOp = useCallback((op: BoolOp) => {
     setState((s) => {
       const ids = s.selectedNodeIds.size >= 2
@@ -1171,8 +1239,8 @@ export function EditorProvider({
   const canRedo = redoStack.current.length > 0;
 
   const value = useMemo(
-    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, applyBooleanOp, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
-    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, applyBooleanOp, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
+    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, applyBooleanOp, upsertStyle, removeStyle, applyStyleToSelection, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
+    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, applyBooleanOp, upsertStyle, removeStyle, applyStyleToSelection, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;

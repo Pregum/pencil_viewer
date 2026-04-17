@@ -375,6 +375,37 @@ export type PenNode =
   | NoteNode
   | UnsupportedNode;
 
+/**
+ * Figma の Styles 相当。Variables とは別の概念で、名前付きの
+ * プロパティセット（Color / Text / Effect）を保存しノードから参照する。
+ * editor 拡張 — .pen 仕様外だが passthrough で保存される。
+ */
+export interface ColorStyle {
+  id: string;
+  type: 'color';
+  name: string;
+  value: Color;
+}
+export interface TextStyle {
+  id: string;
+  type: 'text';
+  name: string;
+  fontFamily?: string;
+  fontSize?: number;
+  fontWeight?: string;
+  lineHeight?: number;
+  letterSpacing?: number;
+  textAlign?: 'left' | 'center' | 'right' | 'justify';
+  fill?: Color;
+}
+export interface EffectStyle {
+  id: string;
+  type: 'effect';
+  name: string;
+  effects: Effects;
+}
+export type NamedStyle = ColorStyle | TextStyle | EffectStyle;
+
 export interface PenDocument {
   version: string;
   children: PenNode[];
@@ -383,4 +414,6 @@ export interface PenDocument {
   variables?: unknown;
   imports?: unknown;
   fonts?: unknown;
+  /** 名前付きスタイル (Figma Styles)。editor 拡張 */
+  styles?: NamedStyle[];
 }
