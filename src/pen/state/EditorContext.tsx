@@ -129,6 +129,12 @@ interface EditorContextValue {
   addComment: (x: number, y: number, text: string) => string;
   updateComment: (id: string, patch: Partial<DocComment>) => void;
   removeComment: (id: string) => void;
+  /**
+   * 子ノードが親 frame/group の bbox 外にはみ出ていれば、top-level に昇格する
+   * (world 座標を保ったまま)。Figma の "drag out of frame → detach" 相当。
+   * 何もしなかった場合は false。
+   */
+  detachFromParentIfOutside: (nodeId: string) => boolean;
   /** 変数の追加/更新 */
   upsertVariable: (name: string, def: VariableDef) => void;
   /** 変数を削除 */
@@ -590,6 +596,85 @@ export function EditorProvider({
       }
       return { ...s, doc: nextDoc, rawDoc: nextRaw };
     });
+  }, [pushUndo]);
+
+  /** 指定ノードの親チェーン（root → 直接の親）を返す。見つからなければ null */
+  const findParentChain = (nodes: PenNode[], targetId: string, chain: PenNode[] = []): PenNode[] | null => {
+    for (const n of nodes) {
+      if (n.id === targetId) return chain;
+      const children = (n as { children?: PenNode[] }).children;
+      if (children) {
+        const r = findParentChain(children, targetId, [...chain, n]);
+        if (r) return r;
+      }
+    }
+    return null;
+  };
+
+  /** 親 frame/group の bbox 外に出ていれば top-level に昇格 */
+  const detachFromParentIfOutside = useCallback((nodeId: string): boolean => {
+    let detached = false;
+    setState((s) => {
+      const chain = findParentChain(s.doc.children, nodeId);
+      if (!chain || chain.length === 0) return s; // すでに top-level
+      const directParent = chain[chain.length - 1];
+      // 親 chain の world offset を計算
+      const parentOffX = chain.reduce((sum, a) => sum + (a.x ?? 0), 0);
+      const parentOffY = chain.reduce((sum, a) => sum + (a.y ?? 0), 0);
+      const parentW = typeof (directParent as { width?: unknown }).width === 'number' ? (directParent as { width: number }).width : 0;
+      const parentH = typeof (directParent as { height?: unknown }).height === 'number' ? (directParent as { height: number }).height : 0;
+      if (parentW <= 0 || parentH <= 0) return s;
+      // 対象ノードを取得
+      const node = findNode(s.doc.children, nodeId);
+      if (!node) return s;
+      const nLocalX = node.x ?? 0;
+      const nLocalY = node.y ?? 0;
+      const nW = typeof (node as { width?: unknown }).width === 'number' ? (node as { width: number }).width : 0;
+      const nH = typeof (node as { height?: unknown }).height === 'number' ? (node as { height: number }).height : 0;
+      // node の世界座標での center
+      const worldNodeX = parentOffX + nLocalX;
+      const worldNodeY = parentOffY + nLocalY;
+      const nodeCenterX = worldNodeX + nW / 2;
+      const nodeCenterY = worldNodeY + nH / 2;
+      // 親の world bbox（親 chain の offset は自身を含まないので加算）
+      const parentWorldX = parentOffX;
+      const parentWorldY = parentOffY;
+      const inside =
+        nodeCenterX >= parentWorldX &&
+        nodeCenterX <= parentWorldX + parentW &&
+        nodeCenterY >= parentWorldY &&
+        nodeCenterY <= parentWorldY + parentH;
+      if (inside) return s;
+
+      // 外に出ている → detach
+      detached = true;
+      pushUndo(s.doc, s.rawDoc);
+      // 親から除去 + top-level に world 座標で追加
+      const promoted: PenNode = {
+        ...(node as object),
+        x: worldNodeX,
+        y: worldNodeY,
+      } as PenNode;
+      const removeFromParent = (nodes: PenNode[]): PenNode[] =>
+        nodes.map((nn) => {
+          const kids = (nn as { children?: PenNode[] }).children;
+          if (kids) {
+            if (kids.some((k) => k.id === nodeId)) {
+              return { ...(nn as object), children: kids.filter((k) => k.id !== nodeId) } as PenNode;
+            }
+            return { ...(nn as object), children: removeFromParent(kids) } as PenNode;
+          }
+          return nn;
+        });
+      const nextDocChildren = [...removeFromParent(s.doc.children), promoted];
+      const nextRawChildren = [...removeFromParent(s.rawDoc.children), promoted];
+      return {
+        ...s,
+        doc: { ...s.doc, children: nextDocChildren },
+        rawDoc: { ...s.rawDoc, children: nextRawChildren },
+      };
+    });
+    return detached;
   }, [pushUndo]);
 
   /** Comments */
@@ -1351,8 +1436,8 @@ export function EditorProvider({
   const canRedo = redoStack.current.length > 0;
 
   const value = useMemo(
-    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, applyBooleanOp, upsertStyle, removeStyle, applyStyleToSelection, flattenSelection, outlineStrokeSelected, addComment, updateComment, removeComment, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
-    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, applyBooleanOp, upsertStyle, removeStyle, applyStyleToSelection, flattenSelection, outlineStrokeSelected, addComment, updateComment, removeComment, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
+    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, applyBooleanOp, upsertStyle, removeStyle, applyStyleToSelection, flattenSelection, outlineStrokeSelected, addComment, updateComment, removeComment, detachFromParentIfOutside, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
+    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, applyBooleanOp, upsertStyle, removeStyle, applyStyleToSelection, flattenSelection, outlineStrokeSelected, addComment, updateComment, removeComment, detachFromParentIfOutside, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;

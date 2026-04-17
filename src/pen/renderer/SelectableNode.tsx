@@ -17,7 +17,7 @@ interface Props {
 const HANDLE_SIZE = 8;
 
 export function SelectableNode({ node, children }: Props) {
-  const { state, selectNode, toggleSelectNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, beginEditing, beginPathEditing, cloneNodesAtTop } = useEditor();
+  const { state, selectNode, toggleSelectNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, beginEditing, beginPathEditing, cloneNodesAtTop, detachFromParentIfOutside } = useEditor();
   const isLocked = (node as { locked?: boolean }).locked === true;
   const isSelected = state.selectedNodeId === node.id && !isLocked;
   const isMultiSelected = state.selectedNodeIds.has(node.id) && !isLocked;
@@ -484,6 +484,7 @@ export function SelectableNode({ node, children }: Props) {
   );
 
   const handlePointerUp = useCallback(() => {
+    const wasDragging = isDragging.current;
     if (isDragging.current || isResizing.current) {
       // ドラッグ/リサイズ終了時にガイドを消去
       window.dispatchEvent(new CustomEvent<SnapGuide[]>('pencil-snap-guides', { detail: [] }));
@@ -494,7 +495,17 @@ export function SelectableNode({ node, children }: Props) {
     isRotating.current = false;
     isRadiusing.current = false;
     setActivityLabel(null);
-  }, []);
+
+    // ドラッグ終了時: 子ノードが親 frame の外に出ていれば top-level に昇格
+    // Figma の "drag out of frame → detach" 相当
+    if (wasDragging) {
+      if (multiStart.current.length > 1) {
+        for (const m of multiStart.current) detachFromParentIfOutside(m.id);
+      } else {
+        detachFromParentIfOutside(node.id);
+      }
+    }
+  }, [detachFromParentIfOutside, node.id]);
 
   // Resize handle positions
   const handles = isSelected && width > 0 && height > 0
