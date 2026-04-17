@@ -57,6 +57,12 @@ const PEN_ICON = (
   </svg>
 );
 
+const COMMENT_ICON = (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+    <path d="M2 3C2 2.44772 2.44772 2 3 2H13C13.5523 2 14 2.44772 14 3V10C14 10.5523 13.5523 11 13 11H7L4 14V11H3C2.44772 11 2 10.5523 2 10V3Z" stroke="currentColor" strokeWidth="1.2" fill="none" />
+  </svg>
+);
+
 const FRAME_ICON = (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
     <path d="M4 1V15M12 1V15M1 4H15M1 12H15" stroke="currentColor" strokeWidth="1.2" />
@@ -72,6 +78,7 @@ const TOOLS: ToolDef[] = [
   { tool: 'text', label: 'Text (T)', shortcut: 'T', icon: TEXT_ICON },
   { tool: 'note', label: 'Note (N)', shortcut: 'N', icon: NOTE_ICON },
   { tool: 'pen', label: 'Pen (P)', shortcut: 'P', icon: PEN_ICON },
+  { tool: 'comment', label: 'Comment (C)', shortcut: 'C', icon: COMMENT_ICON },
 ];
 
 export function Toolbar() {
