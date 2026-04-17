@@ -547,6 +547,36 @@ html,
   margin: 0 6px;
 }
 
+/* Ruler wrapper: ルーラー ON のときキャンバスを 24px 分オフセット */
+.viewer__canvas-wrap {
+  position: absolute;
+  inset: 0;
+}
+.viewer__canvas-wrap--rulers {
+  padding-top: 24px;
+  padding-left: 24px;
+}
+.viewer__canvas-wrap--rulers .viewer__canvas {
+  inset: 24px 0 0 24px;
+}
+.viewer__ruler {
+  position: absolute;
+  z-index: 15;
+  pointer-events: none;
+  user-select: none;
+}
+.viewer__ruler--h { top: 0; }
+.viewer__ruler--v { left: 0; }
+.viewer__ruler-corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: var(--color-surface, #fff);
+  border-right: 1px solid var(--color-border, #e5e7eb);
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  z-index: 16;
+}
+
 .viewer__canvas {
   position: absolute;
   inset: 0;
