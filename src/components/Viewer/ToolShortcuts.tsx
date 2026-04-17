@@ -22,9 +22,30 @@ const TOOL_KEYS: Record<string, ActiveTool> = {
 };
 
 export function ToolShortcuts() {
-  const { state, setActiveTool } = useEditor();
+  const { state, setActiveTool, setGridSnap } = useEditor();
 
-  // キーボードショートカット
+  // 修飾キー付きショートカット
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isInput =
+        tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable === true;
+      const mod = e.metaKey || e.ctrlKey;
+
+      // Cmd+' で Grid Snap トグル
+      if (mod && !e.altKey && !e.shiftKey && e.key === "'") {
+        if (isInput) return;
+        e.preventDefault();
+        setGridSnap(!state.gridSnap);
+        return;
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [state.gridSnap, setGridSnap]);
+
+  // ツール切替キー
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;

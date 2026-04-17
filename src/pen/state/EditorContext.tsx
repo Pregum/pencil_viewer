@@ -107,6 +107,8 @@ interface EditorContextValue {
   /** Grid snap のトグルとサイズ変更 */
   setGridSnap: (enabled: boolean) => void;
   setGridSize: (size: number) => void;
+  /** 選択ノードを Frame で囲む (Opt+Cmd+G / Figma の "Frame Selection") */
+  wrapSelectionInFrame: () => void;
   /** 変数の追加/更新 */
   upsertVariable: (name: string, def: VariableDef) => void;
   /** 変数を削除 */
@@ -495,6 +497,68 @@ export function EditorProvider({
     setState((s) => (s.gridSize === v ? s : { ...s, gridSize: v }));
   }, []);
 
+  /**
+   * 選択ノード群をトップレベルの新規 Frame で囲む。
+   * Figma の Opt+Cmd+G "Frame Selection" と同等。
+   * - トップレベルの兄弟ノードのみを対象（階層跨ぎはサポートしない）
+   * - 囲む Frame は選択セットの bbox にフィット、layout='none'
+   * - 子ノードの x/y は Frame 内座標系に変換
+   */
+  const wrapSelectionInFrame = useCallback(() => {
+    setState((s) => {
+      const ids = s.selectedNodeIds.size > 0
+        ? Array.from(s.selectedNodeIds)
+        : (s.selectedNodeId ? [s.selectedNodeId] : []);
+      if (ids.length === 0) return s;
+      const idSet = new Set(ids);
+      const selected = s.doc.children.filter((n) => idSet.has(n.id));
+      const rest = s.doc.children.filter((n) => !idSet.has(n.id));
+      if (selected.length === 0) return s;
+
+      // bbox 計算
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const n of selected) {
+        const x0 = n.x ?? 0;
+        const y0 = n.y ?? 0;
+        const w = typeof (n as { width?: unknown }).width === 'number' ? (n as { width: number }).width : 0;
+        const h = typeof (n as { height?: unknown }).height === 'number' ? (n as { height: number }).height : 0;
+        minX = Math.min(minX, x0);
+        minY = Math.min(minY, y0);
+        maxX = Math.max(maxX, x0 + w);
+        maxY = Math.max(maxY, y0 + h);
+      }
+      if (!isFinite(minX) || !isFinite(minY)) return s;
+
+      const frame: FrameNode = {
+        type: 'frame',
+        id: `frame_${Date.now()}`,
+        name: 'Frame',
+        x: Math.round(minX),
+        y: Math.round(minY),
+        width: Math.round(Math.max(1, maxX - minX)),
+        height: Math.round(Math.max(1, maxY - minY)),
+        layout: 'none',
+        fill: '#FFFFFF',
+        stroke: { thickness: 1, fill: '#E5E7EB' },
+        children: selected.map((n) => ({
+          ...(n as object),
+          x: (n.x ?? 0) - minX,
+          y: (n.y ?? 0) - minY,
+        } as PenNode)),
+      };
+
+      pushUndo(s.doc, s.rawDoc);
+      const newChildren = [...rest, frame];
+      return {
+        ...s,
+        doc: { ...s.doc, children: newChildren },
+        rawDoc: { ...s.rawDoc, children: newChildren },
+        selectedNodeId: frame.id,
+        selectedNodeIds: new Set(),
+      };
+    });
+  }, [pushUndo]);
+
   const renameVariable = useCallback((oldName: string, newName: string) => {
     if (!newName || oldName === newName) return;
     setState((s) => {
@@ -641,6 +705,35 @@ export function EditorProvider({
         tag === 'TEXTAREA' ||
         tag === 'SELECT' ||
         target.isContentEditable === true;
+
+      // Opt+Cmd+G: 選択ノード群を Frame で囲む（Figma の Frame Selection）
+      if (mod && e.altKey && (e.key === 'g' || e.key === 'G' || e.key === '©')) {
+        if (!isInput) {
+          e.preventDefault();
+          wrapSelectionInFrame();
+          return;
+        }
+      }
+
+      // Figma 準拠: 0-9 数字キーで選択ノードの opacity を設定
+      //   1=10%, 2=20%, ..., 9=90%, 0=100%
+      //   修飾キー無し / input フォーカス外でのみ作動、vim mode では数字は count として解釈されるので除外
+      if (!mod && !e.altKey && !e.shiftKey && !isInput && /^[0-9]$/.test(e.key)) {
+        setState((s) => {
+          if (!s.selectedNodeId) return s;
+          // vim 等で数字カウントを使う仕組みには触らない（vim 側で preventDefault 済み）
+          const digit = parseInt(e.key, 10);
+          const targetOpacity = digit === 0 ? 1 : digit / 10;
+          e.preventDefault();
+          pushUndo(s.doc, s.rawDoc);
+          return {
+            ...s,
+            doc: updateNodeInDoc(s.doc, s.selectedNodeId, { opacity: targetOpacity } as Partial<PenNode>),
+            rawDoc: updateNodeInDoc(s.rawDoc, s.selectedNodeId, { opacity: targetOpacity } as Partial<PenNode>),
+          };
+        });
+        return;
+      }
 
       // Cmd+Alt+K: 選択ノードをコンポーネント化
       if (mod && e.altKey && (e.key === 'k' || e.key === 'K' || e.key === '˚')) {
@@ -976,7 +1069,7 @@ export function EditorProvider({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo, deleteNode, pushUndo, findSiblings, reorderSelected, createComponent]);
+  }, [undo, redo, deleteNode, pushUndo, findSiblings, reorderSelected, createComponent, wrapSelectionInFrame]);
 
   const selectedNode = useMemo(
     () =>
@@ -1000,8 +1093,8 @@ export function EditorProvider({
   const canRedo = redoStack.current.length > 0;
 
   const value = useMemo(
-    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
-    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
+    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
+    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;
