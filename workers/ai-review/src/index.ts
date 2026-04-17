@@ -43,6 +43,18 @@ interface RepairRequest {
   offsetX?: number;
 }
 
+interface GenerateRequest {
+  /** モード識別子: body.mode === 'generate' のとき生成 API */
+  mode: 'generate';
+  /** ユーザ入力プロンプト。例: "モバイルのログイン画面" */
+  prompt: string;
+  /** 配置 X 座標（既存ページ群の右隣に並べるため） */
+  offsetX?: number;
+  /** フレームの種類（サイズのプリセット） */
+  kind?: 'mobile' | 'tablet' | 'desktop';
+  locale?: 'en' | 'ja' | 'zh';
+}
+
 /** フレーム情報を抽出（AI に渡すコンテキスト — 簡潔に） */
 function extractFrameInfo(nodes: PenNode[]): string {
   const lines: string[] = [];
@@ -249,6 +261,51 @@ function extractJson(text: string): string | null {
   return null;
 }
 
+/**
+ * Figma ライクな "AI デザイン生成" プロンプト。
+ * ユーザの自由入力 (例: "モバイルのログイン画面") から .pen 形式の Frame を直接 JSON で吐かせる。
+ */
+function getGenerateSystemPrompt(kind: 'mobile' | 'tablet' | 'desktop', locale: string): string {
+  const dims = {
+    mobile: { w: 375, h: 812 },
+    tablet: { w: 768, h: 1024 },
+    desktop: { w: 1440, h: 900 },
+  }[kind];
+  const lang = locale === 'ja' ? 'Japanese (日本語)' : locale === 'zh' ? 'Chinese (中文)' : 'English';
+
+  return `You are a UI designer AI. You output ONLY raw JSON — no markdown, no code fences, no commentary.
+
+TASK: Generate a ${kind} screen (${dims.w}×${dims.h}) matching the user's request.
+
+OUTPUT SHAPE:
+- Root: a single frame node with type="frame", width=${dims.w}, height=${dims.h}
+- Root frame must have: id, name, width=${dims.w}, height=${dims.h}, fill (hex like "#FFFFFF"), layout="vertical" or "none", children
+- Children: use type "frame" (for containers/cards/buttons) or type "text" (for labels)
+- DO NOT use types "button", "rectangle", "ellipse", "line" — use "frame" with fill + cornerRadius instead
+- Text children need: id, type="text", content, fontSize (14-32), fill (hex), x, y
+
+LAYOUT RULES:
+- Each child must have x, y, width, height fields (numbers in px, relative to root frame's top-left)
+- Space children realistically: header ~60px tall at top, form fields ~48px tall with 16px gap, CTA button 48px tall
+- Padding ~24px from frame edges
+- Use gray/muted colors: #111827 for text, #F9FAFB for backgrounds, #E5E7EB for borders, #4F46E5 for accents
+- Text fontSize: 28 for titles, 16 for body, 14 for captions
+
+CONTENT RULES:
+- ALL visible text content must be in ${lang}
+- Keep it minimal: 5-12 children total in the root frame (don't overdo it)
+- Make the design realistic and useful, not abstract
+
+OUTPUT CONSTRAINTS:
+1. Output ONE JSON object starting with { and ending with } — nothing before or after
+2. Only use these fields: type, id, name, x, y, width, height, fill, stroke, content, fontSize, fontWeight, cornerRadius, children, layout, gap, padding
+3. Max 2 levels of nesting (root → child → grandchild)
+4. Total output under 2500 characters
+5. id fields must be unique strings (e.g. "title_1", "btn_login")
+
+Output the JSON for the requested design now:`;
+}
+
 /** 生成された frame の最低限のバリデーション */
 function validateRepairedFrame(node: unknown): node is PenNode {
   if (!node || typeof node !== 'object') return false;
@@ -288,7 +345,71 @@ export default {
     }
 
     try {
-      const body = await request.json() as ReviewRequest | RepairRequest;
+      const body = await request.json() as ReviewRequest | RepairRequest | GenerateRequest;
+
+      // --- Generate endpoint (AI design from prompt) ---
+      if ('mode' in body && body.mode === 'generate') {
+        const gen = body as GenerateRequest;
+        const { prompt, locale = 'ja', kind = 'mobile', offsetX = 0 } = gen;
+
+        if (typeof prompt !== 'string' || prompt.trim().length === 0) {
+          return Response.json({ error: 'prompt is required' }, { status: 400, headers: cors });
+        }
+        if (prompt.length > 500) {
+          return Response.json({ error: 'prompt too long (max 500 chars)' }, { status: 400, headers: cors });
+        }
+
+        const systemPrompt = getGenerateSystemPrompt(kind, locale);
+        const userMessage = `User request: ${prompt.trim()}\n\nNow output the JSON for this design.`;
+
+        const result = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage },
+          ],
+          max_tokens: 4096,
+          temperature: 0.5,
+        });
+
+        const rawAny = (result as { response?: unknown }).response;
+        let raw: string;
+        if (typeof rawAny === 'string') raw = rawAny;
+        else if (rawAny && typeof rawAny === 'object') raw = JSON.stringify(rawAny);
+        else raw = JSON.stringify(result);
+
+        const jsonStr = extractJson(raw);
+        if (!jsonStr) {
+          return Response.json({ error: 'AI did not return valid JSON', raw: raw.slice(0, 500) }, { status: 502, headers: cors });
+        }
+
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(jsonStr);
+        } catch (e) {
+          return Response.json({ error: `JSON parse failed: ${String(e)}`, raw: jsonStr.slice(0, 500) }, { status: 502, headers: cors });
+        }
+
+        if (!validateRepairedFrame(parsed)) {
+          return Response.json({ error: 'AI output failed validation', raw: jsonStr.slice(0, 500) }, { status: 502, headers: cors });
+        }
+
+        // 配置を強制: offsetX, y=0 で新規ページとして配置
+        const generated = parsed as PenNode & { x?: number; y?: number; name?: string };
+        generated.x = offsetX;
+        generated.y = 0;
+        if (!generated.name) generated.name = prompt.trim().slice(0, 40);
+
+        return Response.json({
+          node: generated,
+          meta: {
+            mode: 'generate',
+            kind,
+            locale,
+            prompt: prompt.trim(),
+            model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+          },
+        }, { headers: cors });
+      }
 
       // --- Repair (state generation) endpoint ---
       // body に `frame` と `state` があれば repair モード

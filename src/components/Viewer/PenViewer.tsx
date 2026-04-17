@@ -24,6 +24,8 @@ import { useBridge } from '../../collab/useBridge';
 import { ContextMenu } from './ContextMenu';
 import { AIReviewPanel } from './AIReviewPanel';
 import { isAIReviewEnabled } from '../../utils/aiReview';
+import { AIGeneratorPanel } from './AIGeneratorPanel';
+import { isAIGenerateEnabled } from '../../utils/aiGenerate';
 import { ZoomInput } from './ZoomInput';
 import { Toolbar } from './Toolbar';
 import { ShapeCreator } from './ShapeCreator';
@@ -140,6 +142,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showUIStates, setShowUIStates] = useState(false);
   const [showAIReview, setShowAIReview] = useState(false);
+  const [showAIGenerate, setShowAIGenerate] = useState(false);
   const [vimMode, setVimMode] = useState(false);
   const [showLayers, setShowLayers] = useState(true);
   const [showProperties, setShowProperties] = useState(true);
@@ -579,6 +582,12 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         // Cmd+; でルーラー表示トグル（Cmd+R はブラウザ予約のため避ける）
         e.preventDefault();
         setShowRulers((v) => !v);
+      } else if (mod && (e.key === 'k' || e.key === 'K')) {
+        // Cmd+K で AI Design Generator を開く
+        if (isAIGenerateEnabled()) {
+          e.preventDefault();
+          setShowAIGenerate((v) => !v);
+        }
       } else if (mod && e.key === '0') {
         e.preventDefault();
         resetView();
@@ -771,6 +780,19 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         <span style={{ flex: 1 }} />
         <AlignToolbar />
         <span className="viewer__separator" />
+        {isAIGenerateEnabled() && (
+          <>
+            <button
+              type="button"
+              className="viewer__zoom-btn viewer__ai-btn"
+              title="AI Design Generator (Cmd+K)"
+              onClick={() => setShowAIGenerate(true)}
+            >
+              🪄 AI
+            </button>
+            <span className="viewer__separator" />
+          </>
+        )}
         <CollabBar
           collab={collab}
           bridge={bridge}
@@ -871,6 +893,12 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
       {showAutoId && <AutoIdDialog onClose={() => setShowAutoId(false)} />}
       {showUIStates && <UIStatesPanel onClose={() => setShowUIStates(false)} locale="ja" />}
       {showAIReview && <AIReviewPanel onClose={() => setShowAIReview(false)} locale="ja" />}
+      {showAIGenerate && (
+        <AIGeneratorPanel
+          onClose={() => setShowAIGenerate(false)}
+          onZoomToNode={(r) => zoomToRect(r)}
+        />
+      )}
       {showCommandPalette && (
         <CommandPaletteWrapper
           baseCommands={[
@@ -879,6 +907,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             { id: 'auto-id', label: 'Auto ID / Rename Frames', shortcut: 'Cmd+I', action: () => setShowAutoId(true) },
             { id: 'ui-states', label: 'Five UI States Audit', action: () => setShowUIStates(true) },
             ...(isAIReviewEnabled() ? [{ id: 'ai-review', label: '🤖 AI Design Review', action: () => setShowAIReview(true) }] : []),
+            ...(isAIGenerateEnabled() ? [{ id: 'ai-generate', label: '🪄 AI Design Generator', shortcut: 'Cmd+K', action: () => setShowAIGenerate(true) }] : []),
             { id: 'fit-view', label: 'Fit to View', shortcut: 'Cmd+0', action: resetView },
             { id: 'zoom-100', label: 'Zoom to 100%', shortcut: 'Cmd+1', action: zoomTo100 },
             { id: 'shortcuts', label: 'Show Keyboard Shortcuts', shortcut: 'Cmd+/', action: () => setShowShortcuts(true) },

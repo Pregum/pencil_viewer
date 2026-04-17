@@ -457,6 +457,20 @@ html,
 .viewer__tool-btn > svg {
   display: block;
 }
+.viewer__ai-btn {
+  width: auto;
+  padding: 0 10px;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #4F46E5 0%, #A855F7 100%);
+  color: #fff;
+  border: 1px solid transparent;
+}
+.viewer__ai-btn:hover {
+  background: linear-gradient(135deg, #4338CA 0%, #9333EA 100%);
+  color: #fff;
+}
 
 .viewer__body {
   flex: 1;
@@ -546,6 +560,173 @@ html,
   background: var(--color-border);
   margin: 0 6px;
 }
+
+/* ======== AI Design Generator ======== */
+.ai-gen {
+  width: min(680px, 94vw);
+  max-width: 680px;
+}
+.ai-gen__notice {
+  padding: 12px 14px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  background: #FFFBEB;
+  color: #92400E;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.ai-gen__notice code {
+  background: rgba(0,0,0,.08);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+}
+.ai-gen__form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ai-gen__prompt {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 6px;
+  background: var(--color-canvas, #f9fafb);
+  color: var(--color-text, #111827);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.ai-gen__prompt:focus {
+  outline: 2px solid var(--color-accent, #4F46E5);
+  outline-offset: -1px;
+}
+.ai-gen__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ai-gen__kind {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-muted, #9CA3AF);
+}
+.ai-gen__kind select {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 4px;
+  background: var(--color-surface, #fff);
+  font-family: inherit;
+  font-size: 12px;
+}
+.ai-gen__count {
+  margin-left: auto;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--color-text-muted, #9CA3AF);
+}
+.ai-gen__submit {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: var(--color-accent, #4F46E5);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ai-gen__submit:hover:not(:disabled) { background: #4338CA; }
+.ai-gen__submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ai-gen__error {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid #FCA5A5;
+  background: #FEF2F2;
+  color: #991B1B;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.ai-gen__error-hint {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #7F1D1D;
+  opacity: 0.8;
+}
+.ai-gen__section {
+  margin-top: 16px;
+}
+.ai-gen__section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #9CA3AF);
+  margin-bottom: 6px;
+}
+.ai-gen__examples {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 6px;
+}
+.ai-gen__example {
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 6px;
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #111827);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.ai-gen__example:hover:not(:disabled) {
+  border-color: var(--color-accent, #4F46E5);
+  background: var(--color-accent-soft, #EEF2FF);
+}
+.ai-gen__example:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ai-gen__example-kind {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--color-accent-soft, #EEF2FF);
+  color: var(--color-accent, #4F46E5);
+}
+.ai-gen__history {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 11px;
+}
+.ai-gen__history li {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  color: var(--color-text, #111827);
+}
+.ai-gen__history li:last-child { border-bottom: none; }
+.ai-gen__history-info {
+  color: var(--color-text-muted, #9CA3AF);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+.ai-gen__history-err { color: #991B1B; }
 
 /* ======== Color Picker popover ======== */
 .color-picker {
