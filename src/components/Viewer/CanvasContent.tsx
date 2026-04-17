@@ -10,12 +10,13 @@ import { buildPaintRegistry } from '../../pen/paint/registry';
 import { Defs } from '../../pen/paint/Defs';
 import { PaintRegistryProvider } from '../../pen/paint/PaintContext';
 import { resolveRefs } from '../../pen/refs';
+import { substituteVariables } from '../../pen/variables';
 
 export function CanvasContent() {
   const { state, selectNode } = useEditor();
-  // ref ノード（コンポーネントインスタンス）を live に展開してから描画する。
-  // reusable なノードや ref ノードが無い場合は何もしない（no-op）。
-  const doc = useMemo(() => resolveRefs(state.doc), [state.doc]);
+  // ref ノード展開 → 変数置換を live に適用してから描画。
+  // どちらも存在しない場合は no-op。
+  const doc = useMemo(() => substituteVariables(resolveRefs(state.doc)), [state.doc]);
   const registry = useMemo(() => buildPaintRegistry(doc), [doc]);
 
   return (

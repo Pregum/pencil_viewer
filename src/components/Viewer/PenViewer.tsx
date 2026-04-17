@@ -29,6 +29,7 @@ import { isAIGenerateEnabled } from '../../utils/aiGenerate';
 import { FloatingTextToolbar } from './FloatingTextToolbar';
 import { ImageDropHandler } from './ImageDropHandler';
 import { FindReplaceDialog } from './FindReplaceDialog';
+import { VariablesPanel } from './VariablesPanel';
 import { ZoomInput } from './ZoomInput';
 import { Toolbar } from './Toolbar';
 import { ShapeCreator } from './ShapeCreator';
@@ -154,6 +155,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const [showComponents, setShowComponents] = useState(true);
   const [showRulers, setShowRulers] = useState(false);
   const [showFindReplace, setShowFindReplace] = useState(false);
+  const [showVariables, setShowVariables] = useState(false);
   const [presentMode, setPresentMode] = useState(false);
   const [presentIdx, setPresentIdx] = useState(0);
   const [clientSize, setClientSize] = useState({ width: 0, height: 0 });
@@ -960,6 +962,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
           onFocusNode={(r) => zoomToRect(r)}
         />
       )}
+      {showVariables && <VariablesPanel onClose={() => setShowVariables(false)} />}
       {showCommandPalette && (
         <CommandPaletteWrapper
           baseCommands={[
@@ -967,6 +970,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             { id: 'frame-search', label: 'Search Frames', shortcut: 'Cmd+P', action: () => setShowFrameSearch(true) },
             { id: 'auto-id', label: 'Auto ID / Rename Frames', shortcut: 'Cmd+I', action: () => setShowAutoId(true) },
             { id: 'ui-states', label: 'Five UI States Audit', action: () => setShowUIStates(true) },
+            { id: 'variables', label: '🎨 Variables (Design Tokens)', action: () => setShowVariables(true) },
             ...(isAIReviewEnabled() ? [{ id: 'ai-review', label: '🤖 AI Design Review', action: () => setShowAIReview(true) }] : []),
             ...(isAIGenerateEnabled() ? [{ id: 'ai-generate', label: '🪄 AI Design Generator', shortcut: 'Cmd+K', action: () => setShowAIGenerate(true) }] : []),
             { id: 'fit-view', label: 'Fit to View', shortcut: 'Cmd+0', action: resetView },
