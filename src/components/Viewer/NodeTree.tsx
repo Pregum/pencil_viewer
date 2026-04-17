@@ -48,19 +48,26 @@ function collectAncestorIds(nodes: PenNode[], targetId: string): Set<string> {
 function NodeItem({
   node,
   depth,
+  index,
+  parentId,
   selectedId,
   selectedIds,
   expandedIds,
   onSelect,
   onToggle,
+  onReorder,
 }: {
   node: PenNode;
   depth: number;
+  index: number;
+  /** null = トップレベル（doc.children 直下） */
+  parentId: string | null;
   selectedId: string | null;
   selectedIds: Set<string>;
   expandedIds: Set<string>;
   onSelect: (id: string) => void;
   onToggle: (id: string) => void;
+  onReorder: (parentId: string | null, fromIdx: number, toIdx: number) => void;
 }) {
   const isSelected = selectedId === node.id;
   const isMulti = selectedIds.has(node.id);
@@ -70,6 +77,8 @@ function NodeItem({
   const name = (node as { name?: string }).name ?? node.id;
   const typeIcon = TYPE_ICONS[node.type] ?? '?';
 
+  const [dropPos, setDropPos] = useState<'above' | 'below' | null>(null);
+
   const handleToggle = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -78,13 +87,53 @@ function NodeItem({
     [node.id, onToggle],
   );
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData('application/pencil-layer', JSON.stringify({ parentId, fromIdx: index, nodeId: node.id }));
+    e.dataTransfer.effectAllowed = 'move';
+    e.stopPropagation();
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    setDropPos(e.clientY < midY ? 'above' : 'below');
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDragLeave = () => setDropPos(null);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const pos = dropPos;
+    setDropPos(null);
+    const raw = e.dataTransfer.getData('application/pencil-layer');
+    if (!raw) return;
+    try {
+      const payload = JSON.parse(raw) as { parentId: string | null; fromIdx: number; nodeId: string };
+      if (payload.nodeId === node.id) return;
+      // 異なる親間での移動は未対応（同一親内のみ並び替え）
+      if (payload.parentId !== parentId) return;
+      const toIdx = pos === 'below' ? index + 1 : index;
+      onReorder(parentId, payload.fromIdx, toIdx);
+    } catch {
+      /* ignore */
+    }
+  };
+
   return (
     <div>
       <div
         data-node-id={node.id}
-        className={`node-tree__item ${isSelected ? 'node-tree__item--selected' : ''} ${isMulti && !isSelected ? 'node-tree__item--multi' : ''}`}
+        draggable
+        className={`node-tree__item ${isSelected ? 'node-tree__item--selected' : ''} ${isMulti && !isSelected ? 'node-tree__item--multi' : ''} ${dropPos ? `node-tree__item--drop-${dropPos}` : ''}`}
         style={{ paddingLeft: 8 + depth * 16 }}
         onClick={() => onSelect(node.id)}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         {hasKids ? (
           <span className="node-tree__toggle" onClick={handleToggle}>
@@ -101,16 +150,19 @@ function NodeItem({
         </span>
       </div>
       {expanded &&
-        children.map((child) => (
+        children.map((child, i) => (
           <NodeItem
             key={child.id}
             node={child}
             depth={depth + 1}
+            index={i}
+            parentId={node.id}
             selectedId={selectedId}
             selectedIds={selectedIds}
             expandedIds={expandedIds}
             onSelect={onSelect}
             onToggle={onToggle}
+            onReorder={onReorder}
           />
         ))}
     </div>
@@ -118,7 +170,7 @@ function NodeItem({
 }
 
 export function NodeTree({ collapsed, onTogglePanel }: { collapsed?: boolean; onTogglePanel?: () => void }) {
-  const { state, selectNode } = useEditor();
+  const { state, selectNode, reorderChildren } = useEditor();
   const listRef = useRef<HTMLDivElement>(null);
 
   // 展開状態の管理（トップレベルはデフォルト展開）
@@ -182,16 +234,19 @@ export function NodeTree({ collapsed, onTogglePanel }: { collapsed?: boolean; on
         )}
       </div>
       <div className="node-tree__list" ref={listRef}>
-        {state.doc.children.map((node) => (
+        {state.doc.children.map((node, i) => (
           <NodeItem
             key={node.id}
             node={node}
             depth={0}
+            index={i}
+            parentId={null}
             selectedId={state.selectedNodeId}
             selectedIds={state.selectedNodeIds}
             expandedIds={expandedIds}
             onSelect={selectNode}
             onToggle={onToggle}
+            onReorder={reorderChildren}
           />
         ))}
       </div>
