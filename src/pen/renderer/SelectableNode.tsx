@@ -5,7 +5,7 @@
 import { useCallback, useRef, useState } from 'react';
 import type { PenNode } from '../types';
 import { useEditor } from '../state/EditorContext';
-import { computeSnap, computeResizeSnap, type SnapGuide, type SnapRect } from '../state/snapEngine';
+import { computeSnap, computeResizeSnap, computeEqualSpaceSnap, type SnapGuide, type SnapRect, type EqualSpaceGuide } from '../state/snapEngine';
 
 interface Props {
   node: PenNode;
@@ -287,13 +287,31 @@ export function SelectableNode({ node, children }: Props) {
           const moving: SnapRect = { id: node.id, x: rawX, y: rawY, width: nodeStart.current.w, height: nodeStart.current.h };
           const snap = computeSnap(moving, staticsRaw, threshold);
 
+          // 等間隔スナップ（エッジスナップが効いてない軸のみ補完適用）
+          const equal = computeEqualSpaceSnap(
+            { id: node.id, x: snap.x, y: snap.y, width: nodeStart.current.w, height: nodeStart.current.h },
+            staticsRaw,
+            threshold,
+          );
+          // エッジスナップ優先: エッジガイドが出ている軸は等間隔を適用しない
+          const hasVEdge = snap.guides.some((g) => g.orientation === 'v');
+          const hasHEdge = snap.guides.some((g) => g.orientation === 'h');
+          const finalX = hasVEdge ? snap.x : equal.x;
+          const finalY = hasHEdge ? snap.y : equal.y;
+          const equalGuides = equal.guides.filter(
+            (g) => (g.orientation === 'h' && !hasVEdge) || (g.orientation === 'v' && !hasHEdge),
+          );
+
           updateNodeSilent(node.id, {
-            x: Math.round(snap.x),
-            y: Math.round(snap.y),
+            x: Math.round(finalX),
+            y: Math.round(finalY),
           } as Partial<PenNode>);
 
           window.dispatchEvent(
             new CustomEvent<SnapGuide[]>('pencil-snap-guides', { detail: snap.guides }),
+          );
+          window.dispatchEvent(
+            new CustomEvent<EqualSpaceGuide[]>('pencil-equal-space-guides', { detail: equalGuides }),
           );
         }
       } else if (isResizing.current) {
@@ -372,6 +390,7 @@ export function SelectableNode({ node, children }: Props) {
     if (isDragging.current || isResizing.current) {
       // ドラッグ/リサイズ終了時にガイドを消去
       window.dispatchEvent(new CustomEvent<SnapGuide[]>('pencil-snap-guides', { detail: [] }));
+      window.dispatchEvent(new CustomEvent<EqualSpaceGuide[]>('pencil-equal-space-guides', { detail: [] }));
     }
     isDragging.current = false;
     isResizing.current = null;

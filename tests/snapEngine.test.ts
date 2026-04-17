@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeSnap, computeResizeSnap, type SnapRect } from '../src/pen/state/snapEngine';
+import { computeSnap, computeResizeSnap, computeEqualSpaceSnap, type SnapRect } from '../src/pen/state/snapEngine';
 
 const ref: SnapRect = { id: 'r', x: 100, y: 100, width: 100, height: 100 };
 
@@ -96,5 +96,47 @@ describe('computeResizeSnap', () => {
     const moving: SnapRect = { id: 'm', x: 0, y: 0, width: 2, height: 2 };
     const result = computeResizeSnap(moving, [ref], 'w', 6);
     expect(result.width).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('computeEqualSpaceSnap', () => {
+  // 水平: left @ [0..50]y=100-150, right @ [200..250]y=100-150, gap=150
+  // moving 50x50: equal spacing = 50 each side, target x = 100
+  const leftN: SnapRect = { id: 'L', x: 0, y: 100, width: 50, height: 50 };
+  const rightN: SnapRect = { id: 'R', x: 200, y: 100, width: 50, height: 50 };
+
+  it('snaps to equal horizontal spacing when moving is between two statics', () => {
+    const moving: SnapRect = { id: 'm', x: 98, y: 110, width: 50, height: 30 };
+    const r = computeEqualSpaceSnap(moving, [leftN, rightN], 6);
+    expect(r.x).toBe(100);
+    expect(r.guides.some((g) => g.orientation === 'h' && g.spacing === 50)).toBe(true);
+  });
+
+  it('does not snap when beyond threshold', () => {
+    const moving: SnapRect = { id: 'm', x: 150, y: 110, width: 50, height: 30 };
+    const r = computeEqualSpaceSnap(moving, [leftN, rightN], 6);
+    expect(r.x).toBe(150);
+    expect(r.guides.length).toBe(0);
+  });
+
+  it('does not snap if two statics do not overlap vertically with moving', () => {
+    const moving: SnapRect = { id: 'm', x: 98, y: 400, width: 50, height: 30 };
+    const r = computeEqualSpaceSnap(moving, [leftN, rightN], 6);
+    expect(r.x).toBe(98);
+  });
+
+  it('does not snap when moving cannot fit in the gap', () => {
+    const moving: SnapRect = { id: 'm', x: 98, y: 110, width: 200, height: 30 };
+    const r = computeEqualSpaceSnap(moving, [leftN, rightN], 6);
+    expect(r.x).toBe(98);
+  });
+
+  it('snaps vertically between top and bottom statics', () => {
+    const topN: SnapRect = { id: 'T', x: 100, y: 0, width: 50, height: 50 };
+    const bottomN: SnapRect = { id: 'B', x: 100, y: 200, width: 50, height: 50 };
+    const moving: SnapRect = { id: 'm', x: 110, y: 98, width: 30, height: 50 };
+    const r = computeEqualSpaceSnap(moving, [topN, bottomN], 6);
+    expect(r.y).toBe(100);
+    expect(r.guides.some((g) => g.orientation === 'v' && g.spacing === 50)).toBe(true);
   });
 });

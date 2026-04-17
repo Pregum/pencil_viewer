@@ -134,6 +134,121 @@ export function computeSnap(
   return { x: outX, y: outY, guides: outGuides };
 }
 
+/**
+ * 等間隔スナップ: moving の両側にある static ノードの「間に収まる位置」に
+ * 左右（上下）のギャップを等しくするよう吸着させる。
+ * 水平は moving と y 方向に重なる static、垂直は x 方向に重なる static が対象。
+ */
+export interface EqualSpaceGuide {
+  orientation: 'h' | 'v';
+  /** 表示距離（整数丸め済み） */
+  spacing: number;
+  /** 左右 or 上下のギャップセグメント（描画用: { start, end, perp }）*/
+  segments: Array<{ start: number; end: number; perp: number }>;
+}
+
+export interface EqualSpaceResult {
+  x: number;
+  y: number;
+  guides: EqualSpaceGuide[];
+}
+
+function overlaps1D(a1: number, a2: number, b1: number, b2: number): boolean {
+  return a1 < b2 && b1 < a2;
+}
+
+export function computeEqualSpaceSnap(
+  moving: SnapRect,
+  statics: SnapRect[],
+  threshold: number,
+): EqualSpaceResult {
+  let outX = moving.x;
+  let outY = moving.y;
+  const guides: EqualSpaceGuide[] = [];
+
+  // --- 水平方向 (左右に static が挟む) ---
+  const mTop = moving.y;
+  const mBottom = moving.y + moving.height;
+  const hStatics = statics.filter(
+    (s) => s.id !== moving.id && overlaps1D(mTop, mBottom, s.y, s.y + s.height),
+  );
+  let bestH: { targetX: number; diff: number; guide: EqualSpaceGuide } | null = null;
+  for (const left of hStatics) {
+    for (const right of hStatics) {
+      if (left.id === right.id) continue;
+      const leftRight = left.x + left.width;
+      const rightLeft = right.x;
+      if (leftRight >= rightLeft) continue; // 左右の関係
+      const gap = rightLeft - leftRight;
+      if (gap <= moving.width + 4) continue; // moving が収まらない
+      const spacing = (gap - moving.width) / 2;
+      const targetX = leftRight + spacing;
+      const diff = Math.abs(moving.x - targetX);
+      if (diff < threshold && (!bestH || diff < Math.abs(bestH.diff))) {
+        const perp = (Math.max(mTop, left.y, right.y) + Math.min(mBottom, left.y + left.height, right.y + right.height)) / 2;
+        bestH = {
+          targetX,
+          diff: moving.x - targetX,
+          guide: {
+            orientation: 'h',
+            spacing: Math.round(spacing),
+            segments: [
+              { start: leftRight, end: targetX, perp },
+              { start: targetX + moving.width, end: rightLeft, perp },
+            ],
+          },
+        };
+      }
+    }
+  }
+  if (bestH) {
+    outX = bestH.targetX;
+    guides.push(bestH.guide);
+  }
+
+  // --- 垂直方向 (上下に static が挟む) ---
+  const mLeft = moving.x;
+  const mRight = moving.x + moving.width;
+  const vStatics = statics.filter(
+    (s) => s.id !== moving.id && overlaps1D(mLeft, mRight, s.x, s.x + s.width),
+  );
+  let bestV: { targetY: number; diff: number; guide: EqualSpaceGuide } | null = null;
+  for (const top of vStatics) {
+    for (const bottom of vStatics) {
+      if (top.id === bottom.id) continue;
+      const topBottom = top.y + top.height;
+      const bottomTop = bottom.y;
+      if (topBottom >= bottomTop) continue;
+      const gap = bottomTop - topBottom;
+      if (gap <= moving.height + 4) continue;
+      const spacing = (gap - moving.height) / 2;
+      const targetY = topBottom + spacing;
+      const diff = Math.abs(moving.y - targetY);
+      if (diff < threshold && (!bestV || diff < Math.abs(bestV.diff))) {
+        const perp = (Math.max(mLeft, top.x, bottom.x) + Math.min(mRight, top.x + top.width, bottom.x + bottom.width)) / 2;
+        bestV = {
+          targetY,
+          diff: moving.y - targetY,
+          guide: {
+            orientation: 'v',
+            spacing: Math.round(spacing),
+            segments: [
+              { start: topBottom, end: targetY, perp },
+              { start: targetY + moving.height, end: bottomTop, perp },
+            ],
+          },
+        };
+      }
+    }
+  }
+  if (bestV) {
+    outY = bestV.targetY;
+    guides.push(bestV.guide);
+  }
+
+  return { x: outX, y: outY, guides };
+}
+
 export interface ResizeSnapResult {
   /** 調整後の矩形（top-left + size） */
   x: number;
