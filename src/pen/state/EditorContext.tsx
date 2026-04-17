@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { PenDocument, PenNode, FrameNode, NamedStyle, ColorStyle, TextStyle, EffectStyle } from '../types';
 import { duplicateNode } from '../../components/Viewer/ExtraCommands';
 import { booleanOperation, type BoolOp } from '../renderer/booleanOps';
+import { flattenToPath, outlineStroke } from '../renderer/flatten';
 
 /** 変数 1 つの形。Pencil の $var は color / number / boolean / string のいずれか。 */
 export type VariableType = 'color' | 'number' | 'boolean' | 'string';
@@ -120,6 +121,10 @@ interface EditorContextValue {
   upsertStyle: (style: NamedStyle) => void;
   removeStyle: (id: string) => void;
   applyStyleToSelection: (styleId: string) => void;
+  /** 選択ノード群を Union で 1 つの path に統合 */
+  flattenSelection: () => void;
+  /** 選択ノードの stroke を path 化して置換 */
+  outlineStrokeSelected: () => void;
   /** 変数の追加/更新 */
   upsertVariable: (name: string, def: VariableDef) => void;
   /** 変数を削除 */
@@ -580,6 +585,64 @@ export function EditorProvider({
         nextRaw = updateNodeInDoc(nextRaw, id, patch);
       }
       return { ...s, doc: nextDoc, rawDoc: nextRaw };
+    });
+  }, [pushUndo]);
+
+  const flattenSelection = useCallback(() => {
+    setState((s) => {
+      const ids = s.selectedNodeIds.size > 0
+        ? Array.from(s.selectedNodeIds)
+        : s.selectedNodeId ? [s.selectedNodeId] : [];
+      if (ids.length === 0) return s;
+      const idSet = new Set(ids);
+      const selected = s.doc.children.filter((n) => idSet.has(n.id));
+      const result = flattenToPath(selected);
+      if (!result) {
+        window.alert('Flatten failed: need 2+ flatten-able shapes at the top level.');
+        return s;
+      }
+      pushUndo(s.doc, s.rawDoc);
+      const rest = s.doc.children.filter((n) => !idSet.has(n.id));
+      const newChildren = [...rest, result];
+      return {
+        ...s,
+        doc: { ...s.doc, children: newChildren },
+        rawDoc: { ...s.rawDoc, children: newChildren },
+        selectedNodeId: result.id,
+        selectedNodeIds: new Set(),
+      };
+    });
+  }, [pushUndo]);
+
+  const outlineStrokeSelected = useCallback(() => {
+    setState((s) => {
+      if (!s.selectedNodeId) return s;
+      const n = findNode(s.doc.children, s.selectedNodeId);
+      if (!n) return s;
+      const result = outlineStroke(n);
+      if (!result) {
+        window.alert('Outline stroke failed. Shape must have a stroke and be a rectangle/ellipse/polygon.');
+        return s;
+      }
+      pushUndo(s.doc, s.rawDoc);
+      // 元ノードを削除して新 path ノードを追加
+      const removeRec = (nodes: PenNode[]): PenNode[] =>
+        nodes
+          .filter((x) => x.id !== s.selectedNodeId)
+          .map((x) => {
+            if ('children' in x && Array.isArray((x as { children?: PenNode[] }).children)) {
+              return { ...(x as object), children: removeRec((x as { children: PenNode[] }).children) } as PenNode;
+            }
+            return x;
+          });
+      const newDocChildren = [...removeRec(s.doc.children), result];
+      const newRawChildren = [...removeRec(s.rawDoc.children), result];
+      return {
+        ...s,
+        doc: { ...s.doc, children: newDocChildren },
+        rawDoc: { ...s.rawDoc, children: newRawChildren },
+        selectedNodeId: result.id,
+      };
     });
   }, [pushUndo]);
 
@@ -1239,8 +1302,8 @@ export function EditorProvider({
   const canRedo = redoStack.current.length > 0;
 
   const value = useMemo(
-    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, applyBooleanOp, upsertStyle, removeStyle, applyStyleToSelection, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
-    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, applyBooleanOp, upsertStyle, removeStyle, applyStyleToSelection, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
+    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, applyBooleanOp, upsertStyle, removeStyle, applyStyleToSelection, flattenSelection, outlineStrokeSelected, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
+    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, applyBooleanOp, upsertStyle, removeStyle, applyStyleToSelection, flattenSelection, outlineStrokeSelected, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;
