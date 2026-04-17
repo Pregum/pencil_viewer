@@ -16,8 +16,9 @@ const HANDLE_SIZE = 8;
 
 export function SelectableNode({ node, children }: Props) {
   const { state, selectNode, toggleSelectNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, beginEditing, cloneNodesAtTop } = useEditor();
-  const isSelected = state.selectedNodeId === node.id;
-  const isMultiSelected = state.selectedNodeIds.has(node.id);
+  const isLocked = (node as { locked?: boolean }).locked === true;
+  const isSelected = state.selectedNodeId === node.id && !isLocked;
+  const isMultiSelected = state.selectedNodeIds.has(node.id) && !isLocked;
   const isEditing = state.editingNodeId === node.id;
   const isDragging = useRef(false);
   const isResizing = useRef<string | null>(null);
@@ -53,6 +54,7 @@ export function SelectableNode({ node, children }: Props) {
 
   const handleClick = (e: React.MouseEvent) => {
     if (isDragging.current || isResizing.current) return;
+    if (isLocked) return; // ロック中のノードは選択できない
     // Inner-first: stopPropagation so the deepest (innermost) node wins.
     // SVG bubble order: innermost → outermost. We stop at the first handler.
     e.stopPropagation();
@@ -65,7 +67,7 @@ export function SelectableNode({ node, children }: Props) {
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     // テキストノードのみダブルクリックでインライン編集
-    if (node.type !== 'text') return;
+    if (node.type !== 'text' || isLocked) return;
     e.stopPropagation();
     e.preventDefault();
     beginEditing(node.id);

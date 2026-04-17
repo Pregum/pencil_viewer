@@ -8,6 +8,31 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor } from '../../pen/state/EditorContext';
 import type { PenNode } from '../../pen/types';
 
+const EYE_ON = (
+  <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+    <path d="M8 3C4 3 1.5 8 1.5 8S4 13 8 13 14.5 8 14.5 8 12 3 8 3Z" stroke="currentColor" strokeWidth="1.2" />
+    <circle cx="8" cy="8" r="2" fill="currentColor" />
+  </svg>
+);
+const EYE_OFF = (
+  <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+    <path d="M3 3L13 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    <path d="M8 3C4 3 1.5 8 1.5 8S4 13 8 13 14.5 8 14.5 8" stroke="currentColor" strokeWidth="1.2" opacity="0.5" />
+  </svg>
+);
+const LOCK_ON = (
+  <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+    <rect x="3" y="7" width="10" height="7" rx="1" stroke="currentColor" strokeWidth="1.2" fill="currentColor" fillOpacity="0.2" />
+    <path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" strokeWidth="1.2" fill="none" />
+  </svg>
+);
+const LOCK_OFF = (
+  <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+    <rect x="3" y="7" width="10" height="7" rx="1" stroke="currentColor" strokeWidth="1.2" opacity="0.5" />
+    <path d="M5 7V5a3 3 0 0 1 5-1.5" stroke="currentColor" strokeWidth="1.2" fill="none" opacity="0.5" />
+  </svg>
+);
+
 const TYPE_ICONS: Record<string, string> = {
   frame: 'F',
   group: 'G',
@@ -56,6 +81,8 @@ function NodeItem({
   onSelect,
   onToggle,
   onReorder,
+  onToggleVisibility,
+  onToggleLock,
 }: {
   node: PenNode;
   depth: number;
@@ -68,6 +95,8 @@ function NodeItem({
   onSelect: (id: string) => void;
   onToggle: (id: string) => void;
   onReorder: (parentId: string | null, fromIdx: number, toIdx: number) => void;
+  onToggleVisibility: (id: string) => void;
+  onToggleLock: (id: string) => void;
 }) {
   const isSelected = selectedId === node.id;
   const isMulti = selectedIds.has(node.id);
@@ -76,6 +105,8 @@ function NodeItem({
   const expanded = expandedIds.has(node.id);
   const name = (node as { name?: string }).name ?? node.id;
   const typeIcon = TYPE_ICONS[node.type] ?? '?';
+  const visible = (node as { enabled?: boolean }).enabled !== false;
+  const locked = (node as { locked?: boolean }).locked === true;
 
   const [dropPos, setDropPos] = useState<'above' | 'below' | null>(null);
 
@@ -148,6 +179,22 @@ function NodeItem({
         <span className="node-tree__name" title={name}>
           {name}
         </span>
+        <button
+          type="button"
+          className={`node-tree__icon-btn${!visible ? ' node-tree__icon-btn--active' : ''}`}
+          title={visible ? 'Hide (Cmd+Shift+H)' : 'Show'}
+          onClick={(e) => { e.stopPropagation(); onToggleVisibility(node.id); }}
+        >
+          {visible ? EYE_ON : EYE_OFF}
+        </button>
+        <button
+          type="button"
+          className={`node-tree__icon-btn${locked ? ' node-tree__icon-btn--active' : ''}`}
+          title={locked ? 'Unlock (Cmd+Shift+L)' : 'Lock'}
+          onClick={(e) => { e.stopPropagation(); onToggleLock(node.id); }}
+        >
+          {locked ? LOCK_ON : LOCK_OFF}
+        </button>
       </div>
       {expanded &&
         children.map((child, i) => (
@@ -163,6 +210,8 @@ function NodeItem({
             onSelect={onSelect}
             onToggle={onToggle}
             onReorder={onReorder}
+            onToggleVisibility={onToggleVisibility}
+            onToggleLock={onToggleLock}
           />
         ))}
     </div>
@@ -170,7 +219,42 @@ function NodeItem({
 }
 
 export function NodeTree({ collapsed, onTogglePanel }: { collapsed?: boolean; onTogglePanel?: () => void }) {
-  const { state, selectNode, reorderChildren } = useEditor();
+  const { state, selectNode, reorderChildren, updateNode } = useEditor();
+
+  const toggleVisibility = useCallback((id: string) => {
+    // 対象ノードの現在値を引き直して反転
+    const find = (nodes: PenNode[]): PenNode | null => {
+      for (const n of nodes) {
+        if (n.id === id) return n;
+        if ('children' in n && Array.isArray((n as { children?: PenNode[] }).children)) {
+          const found = find((n as { children: PenNode[] }).children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    const node = find(state.doc.children);
+    if (!node) return;
+    const currentlyVisible = (node as { enabled?: boolean }).enabled !== false;
+    updateNode(id, { enabled: !currentlyVisible } as Partial<PenNode>);
+  }, [state.doc.children, updateNode]);
+
+  const toggleLock = useCallback((id: string) => {
+    const find = (nodes: PenNode[]): PenNode | null => {
+      for (const n of nodes) {
+        if (n.id === id) return n;
+        if ('children' in n && Array.isArray((n as { children?: PenNode[] }).children)) {
+          const found = find((n as { children: PenNode[] }).children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    const node = find(state.doc.children);
+    if (!node) return;
+    const currentlyLocked = (node as { locked?: boolean }).locked === true;
+    updateNode(id, { locked: !currentlyLocked } as Partial<PenNode>);
+  }, [state.doc.children, updateNode]);
   const listRef = useRef<HTMLDivElement>(null);
 
   // 展開状態の管理（トップレベルはデフォルト展開）
@@ -247,6 +331,8 @@ export function NodeTree({ collapsed, onTogglePanel }: { collapsed?: boolean; on
             onSelect={selectNode}
             onToggle={onToggle}
             onReorder={reorderChildren}
+            onToggleVisibility={toggleVisibility}
+            onToggleLock={toggleLock}
           />
         ))}
       </div>
