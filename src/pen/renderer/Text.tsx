@@ -73,6 +73,11 @@ export function Text({ node }: { node: TextNode }) {
       : undefined;
     // フォールバック: 大きめに取って overflow:hidden で制御しない(fit_content)
     const fallbackHeight = Math.max(fontSize * lineHeightRatio * lines.length * 5, 200);
+    // textAlignVertical: fixed-width-height のときのみ上下整列が意味を持つ
+    // (fixed-width は height が内容で伸びるので top 相当)
+    const hasFixedHeight = node.textGrowth === 'fixed-width-height' && resolvedHeight != null;
+    const vAlign = hasFixedHeight ? node.textAlignVertical ?? 'top' : 'top';
+    const flexAlign = vAlign === 'middle' ? 'center' : vAlign === 'bottom' ? 'flex-end' : 'flex-start';
     return (
       <foreignObject
         x={x}
@@ -85,28 +90,40 @@ export function Text({ node }: { node: TextNode }) {
           // @ts-expect-error xmlns is valid for foreignObject children
           xmlns="http://www.w3.org/1999/xhtml"
           style={{
-            fontSize: `${fontSize}px`,
-            fontFamily,
-            fontWeight,
-            color: resolvedFill,
-            lineHeight: lineHeightRatio,
-            textAlign: node.textAlign ?? 'left',
-            letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            overflow: 'visible',
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: flexAlign,
             margin: 0,
             padding: 0,
-            textDecoration: [
-              node.underline ? 'underline' : '',
-              node.strikethrough ? 'line-through' : '',
-            ]
-              .filter(Boolean)
-              .join(' ') || undefined,
-            fontStyle: node.fontStyle ?? undefined,
           }}
         >
-          {node.content ?? ''}
+          <div
+            style={{
+              fontSize: `${fontSize}px`,
+              fontFamily,
+              fontWeight,
+              color: resolvedFill,
+              lineHeight: lineHeightRatio,
+              textAlign: node.textAlign ?? 'left',
+              letterSpacing: letterSpacing ? `${letterSpacing}px` : undefined,
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              overflow: 'visible',
+              margin: 0,
+              padding: 0,
+              textDecoration: [
+                node.underline ? 'underline' : '',
+                node.strikethrough ? 'line-through' : '',
+              ]
+                .filter(Boolean)
+                .join(' ') || undefined,
+              fontStyle: node.fontStyle ?? undefined,
+            }}
+          >
+            {node.content ?? ''}
+          </div>
         </div>
       </foreignObject>
     );
