@@ -169,6 +169,15 @@ interface NodeBase extends Position {
   /** Frame Constraints（親リサイズ時の挙動）。editor 拡張、passthrough 保存 */
   constraints?: NodeConstraints;
   /**
+   * Component Variants: reusable=true なノードが同じ `variantOf` 文字列を
+   * 共有するとき、同じコンポーネントセットのバリアントとして扱う。
+   * ref ノードは選択するバリアントを ref フィールドで指定し、UI から
+   * 同じグループの他バリアントへ切替できる。
+   */
+  variantOf?: string;
+  /** バリアント識別用の props (ex: { size: 'large', state: 'default' })。表示用 */
+  variantProps?: Record<string, string>;
+  /**
    * Pencil 拡張: `"absolute"` のとき、親が flex レイアウトでもこの子は
    * flex flow から外れ、自分の `x`/`y` がそのまま使われる。
    */
