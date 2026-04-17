@@ -9,10 +9,13 @@ import { PenNodeView } from '../../pen/renderer/PenNode';
 import { buildPaintRegistry } from '../../pen/paint/registry';
 import { Defs } from '../../pen/paint/Defs';
 import { PaintRegistryProvider } from '../../pen/paint/PaintContext';
+import { resolveRefs } from '../../pen/refs';
 
 export function CanvasContent() {
   const { state, selectNode } = useEditor();
-  const doc = state.doc;
+  // ref ノード（コンポーネントインスタンス）を live に展開してから描画する。
+  // reusable なノードや ref ノードが無い場合は何もしない（no-op）。
+  const doc = useMemo(() => resolveRefs(state.doc), [state.doc]);
   const registry = useMemo(() => buildPaintRegistry(doc), [doc]);
 
   return (

@@ -36,6 +36,7 @@ import { DistanceMeasure } from './DistanceMeasure';
 import { AlignToolbar } from './AlignToolbar';
 import { Rulers } from './Rulers';
 import { PagesPanel } from './PagesPanel';
+import { ComponentsPanel } from './ComponentsPanel';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -148,6 +149,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const [showLayers, setShowLayers] = useState(true);
   const [showProperties, setShowProperties] = useState(true);
   const [showPages, setShowPages] = useState(true);
+  const [showComponents, setShowComponents] = useState(true);
   const [showRulers, setShowRulers] = useState(false);
   const [clientSize, setClientSize] = useState({ width: 0, height: 0 });
 
@@ -875,6 +877,11 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
           collapsed={!showPages}
           onTogglePanel={() => setShowPages((v) => !v)}
           onZoomToPage={(p) => zoomToFrame(p)}
+        />
+        <ComponentsPanel
+          collapsed={!showComponents}
+          onTogglePanel={() => setShowComponents((v) => !v)}
+          onZoomToNode={(r) => zoomToRect(r)}
         />
         <NodeTree collapsed={!showLayers} onTogglePanel={() => setShowLayers((v) => !v)} />
         <PropertyPanel collapsed={!showProperties} onTogglePanel={() => setShowProperties((v) => !v)} />
