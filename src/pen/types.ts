@@ -25,11 +25,24 @@ export interface Size {
   height?: SizeValue;
 }
 
+/**
+ * Pencil 仕様の blend mode 名称。CSS mix-blend-mode に近い値にマップする。
+ * LinearBurn / LinearDodge / Light は CSS に直接の対応が無く、近似値にマップ。
+ */
+export type BlendMode =
+  | 'normal'
+  | 'darken' | 'multiply' | 'linear_burn' | 'color_burn'
+  | 'light' | 'screen' | 'linear_dodge' | 'color_dodge'
+  | 'overlay' | 'soft_light' | 'hard_light'
+  | 'difference' | 'exclusion'
+  | 'hue' | 'saturation' | 'color' | 'luminosity';
+
 export interface SolidFill {
   type: 'color';
   color: Color;
   enabled?: boolean;
   opacity?: number;
+  blendMode?: BlendMode;
 }
 
 export interface GradientStop {
@@ -46,6 +59,7 @@ export interface GradientFill {
   size?: { width?: number; height?: number };
   opacity?: number;
   enabled?: boolean;
+  blendMode?: BlendMode;
 }
 
 export interface ImageFill {
@@ -54,6 +68,7 @@ export interface ImageFill {
   mode?: 'stretch' | 'fill' | 'fit';
   opacity?: number;
   enabled?: boolean;
+  blendMode?: BlendMode;
 }
 
 /** Fill は単一色 (string) / 構造体 / 配列いずれも取り得る */
@@ -90,6 +105,7 @@ export interface ShadowEffect {
   spread?: number;
   color?: Color;
   enabled?: boolean;
+  blendMode?: BlendMode;
 }
 
 export type Effect = BlurEffect | ShadowEffect;
