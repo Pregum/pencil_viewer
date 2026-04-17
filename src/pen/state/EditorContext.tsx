@@ -5,6 +5,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { PenDocument, PenNode, FrameNode } from '../types';
 import { duplicateNode } from '../../components/Viewer/ExtraCommands';
+import { booleanOperation, type BoolOp } from '../renderer/booleanOps';
 
 /** 変数 1 つの形。Pencil の $var は color / number / boolean / string のいずれか。 */
 export type VariableType = 'color' | 'number' | 'boolean' | 'string';
@@ -113,6 +114,8 @@ interface EditorContextValue {
   wrapSelectionInFrame: () => void;
   /** 選択ノードの mask フラグをトグル (Cmd+Alt+M) */
   toggleMaskSelected: () => void;
+  /** 選択ノードに boolean 演算を適用し、結果の path ノードで置換 */
+  applyBooleanOp: (op: 'union' | 'subtract' | 'intersect' | 'exclude') => void;
   /** 変数の追加/更新 */
   upsertVariable: (name: string, def: VariableDef) => void;
   /** 変数を削除 */
@@ -512,6 +515,40 @@ export function EditorProvider({
    * - 囲む Frame は選択セットの bbox にフィット、layout='none'
    * - 子ノードの x/y は Frame 内座標系に変換
    */
+  const applyBooleanOp = useCallback((op: BoolOp) => {
+    setState((s) => {
+      const ids = s.selectedNodeIds.size >= 2
+        ? Array.from(s.selectedNodeIds)
+        : s.selectedNodeId ? [s.selectedNodeId] : [];
+      if (ids.length < 2) {
+        window.alert('Select at least 2 shapes to apply a boolean operation.');
+        return s;
+      }
+      const idSet = new Set(ids);
+      // トップレベルの選択ノードのみ対応
+      const selected = s.doc.children.filter((n) => idSet.has(n.id));
+      if (selected.length < 2) {
+        window.alert('Boolean operations only apply to top-level shapes currently.');
+        return s;
+      }
+      const result = booleanOperation(selected, op);
+      if (!result) {
+        window.alert(`Boolean "${op}" failed or produced empty result. Bezier/open paths and non-shape nodes are not supported.`);
+        return s;
+      }
+      pushUndo(s.doc, s.rawDoc);
+      const rest = s.doc.children.filter((n) => !idSet.has(n.id));
+      const newChildren = [...rest, result];
+      return {
+        ...s,
+        doc: { ...s.doc, children: newChildren },
+        rawDoc: { ...s.rawDoc, children: newChildren },
+        selectedNodeId: result.id,
+        selectedNodeIds: new Set(),
+      };
+    });
+  }, [pushUndo]);
+
   const toggleMaskSelected = useCallback(() => {
     setState((s) => {
       if (!s.selectedNodeId) return s;
@@ -1134,8 +1171,8 @@ export function EditorProvider({
   const canRedo = redoStack.current.length > 0;
 
   const value = useMemo(
-    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
-    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
+    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, applyBooleanOp, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
+    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, applyBooleanOp, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;

@@ -23,7 +23,17 @@ const TOOL_KEYS: Record<string, ActiveTool> = {
 };
 
 export function ToolShortcuts() {
-  const { state, setActiveTool, setGridSnap } = useEditor();
+  const { state, setActiveTool, setGridSnap, applyBooleanOp } = useEditor();
+
+  // boolean op event listener
+  useEffect(() => {
+    const onBool = (e: Event) => {
+      const ce = e as CustomEvent<'union' | 'subtract' | 'intersect' | 'exclude'>;
+      if (ce.detail) applyBooleanOp(ce.detail);
+    };
+    window.addEventListener('pencil-bool-op', onBool as EventListener);
+    return () => window.removeEventListener('pencil-bool-op', onBool as EventListener);
+  }, [applyBooleanOp]);
 
   // 修飾キー付きショートカット
   useEffect(() => {
