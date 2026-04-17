@@ -30,6 +30,16 @@ export function Text({ node }: { node: TextNode }) {
 
   const fontSize = node.fontSize ?? 14;
   const lineHeightRatio = node.lineHeight ?? 1.2;
+  // 文字ケース変換
+  const applyCase = (s: string | undefined): string | undefined => {
+    if (!s) return s;
+    switch (node.textCase) {
+      case 'upper': return s.toUpperCase();
+      case 'lower': return s.toLowerCase();
+      case 'title': return s.replace(/\b([a-z])/g, (_, ch) => ch.toUpperCase());
+      default: return s;
+    }
+  };
   const fontFamily = node.fontFamily ?? 'Inter, system-ui, sans-serif';
   const fontWeight = node.fontWeight ?? 'normal';
   const fill = resolveFill(node.fill, ctx);
@@ -122,7 +132,7 @@ export function Text({ node }: { node: TextNode }) {
               fontStyle: node.fontStyle ?? undefined,
             }}
           >
-            {node.content ?? ''}
+            {applyCase(node.content) ?? ''}
           </div>
         </div>
       </foreignObject>
@@ -153,11 +163,17 @@ export function Text({ node }: { node: TextNode }) {
         fontStyle: node.fontStyle ?? undefined,
       }}
     >
-      {lines.map((line, i) => (
-        <tspan key={i} x={renderX} dy={i === 0 ? 0 : fontSize * lineHeightRatio}>
-          {line || ' '}
-        </tspan>
-      ))}
+      {lines.map((line, i) => {
+        // 段落区切り (空行) の後は paragraphSpacing を積む
+        const extra = i > 0 && (lines[i - 1] === '' || line === '')
+          ? (node.paragraphSpacing ?? 0)
+          : 0;
+        return (
+          <tspan key={i} x={renderX} dy={i === 0 ? 0 : fontSize * lineHeightRatio + extra}>
+            {applyCase(line || ' ')}
+          </tspan>
+        );
+      })}
     </text>
   );
 }

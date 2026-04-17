@@ -705,6 +705,83 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
         return null;
       })()}
 
+      {/* Text extras (paragraphSpacing / textCase) */}
+      {n.type === 'text' && (() => {
+        const ps = (n as { paragraphSpacing?: number }).paragraphSpacing ?? 0;
+        const tc = (n as { textCase?: string }).textCase ?? 'none';
+        return (
+          <div className="prop-panel__section">
+            <div className="prop-panel__title">Text extras</div>
+            <div className="auto-layout__row auto-layout__row--nums">
+              <div className="auto-layout__num-field">
+                <label>Paragraph spacing</label>
+                <input type="number" value={ps} onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  if (!isNaN(v)) patchInput({ paragraphSpacing: Math.max(0, v) } as Partial<PenNode>);
+                }} />
+              </div>
+              <div className="auto-layout__num-field">
+                <label>Case</label>
+                <select className="prop-panel__select" value={tc} onChange={(e) => patch({ textCase: e.target.value } as Partial<PenNode>)}>
+                  <option value="none">As typed</option>
+                  <option value="upper">UPPER</option>
+                  <option value="lower">lower</option>
+                  <option value="title">Title Case</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Stroke dash editor (stroke を持つノードで表示) */}
+      {(() => {
+        const stroke = (n as { stroke?: { dashPattern?: number[]; thickness?: unknown } }).stroke;
+        if (!stroke || stroke.thickness == null) return null;
+        const dash = stroke.dashPattern ?? [];
+        return (
+          <div className="prop-panel__section">
+            <div className="prop-panel__title">Stroke dash</div>
+            <div className="auto-layout__row auto-layout__row--nums">
+              <div className="auto-layout__num-field">
+                <label>Dash</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={dash[0] ?? 0}
+                  onChange={(e) => {
+                    const v = parseFloat(e.target.value);
+                    if (isNaN(v)) return;
+                    const next = [v, dash[1] ?? v];
+                    const sum = next.reduce((a, b) => a + b, 0);
+                    const pattern = sum > 0 ? next : undefined;
+                    const cur = (n as { stroke?: object }).stroke ?? {};
+                    patch({ stroke: { ...cur, dashPattern: pattern } } as Partial<PenNode>);
+                  }}
+                />
+              </div>
+              <div className="auto-layout__num-field">
+                <label>Gap</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={dash[1] ?? 0}
+                  onChange={(e) => {
+                    const v = parseFloat(e.target.value);
+                    if (isNaN(v)) return;
+                    const next = [dash[0] ?? v, v];
+                    const sum = next.reduce((a, b) => a + b, 0);
+                    const pattern = sum > 0 ? next : undefined;
+                    const cur = (n as { stroke?: object }).stroke ?? {};
+                    patch({ stroke: { ...cur, dashPattern: pattern } } as Partial<PenNode>);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Image crop (image 選択時のみ) */}
       {n.type === 'image' && (() => {
         const ix = (n as { imageOffsetX?: number }).imageOffsetX ?? 0;
