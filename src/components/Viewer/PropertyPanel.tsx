@@ -3,9 +3,10 @@
  * 値を編集するとリアルタイムで SVG に反映される。
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor } from '../../pen/state/EditorContext';
 import type { PenNode } from '../../pen/types';
+import { ColorPicker } from './ColorPicker';
 
 function formatColor(fill: unknown): string | null {
   if (typeof fill === 'string') return fill;
@@ -87,6 +88,22 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
   const startColorChange = useCallback(() => {
     if (selectedNode) pushUndoCheckpoint();
   }, [selectedNode, pushUndoCheckpoint]);
+
+  // カスタムカラーピッカー popover の状態
+  const [picker, setPicker] = useState<{ kind: 'fill' | 'stroke'; rect: DOMRect | null } | null>(null);
+  const openedUndoRef = useRef(false);
+  const openPicker = (kind: 'fill' | 'stroke', rect: DOMRect) => {
+    if (!openedUndoRef.current) {
+      startColorChange();
+      openedUndoRef.current = true;
+    }
+    setPicker({ kind, rect });
+  };
+  const closePicker = () => {
+    setPicker(null);
+    openedUndoRef.current = false;
+  };
+
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -221,13 +238,12 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
           <div className="prop-panel__title">Fill</div>
           <div className="prop-panel__color-row">
             {fillColor.startsWith('#') && (
-              <input
-                type="color"
-                className="prop-panel__color-input"
-                value={fillColor.slice(0, 7)}
-                onMouseDown={startColorChange}
-                onInput={(e) => patchSilent({ fill: (e.target as HTMLInputElement).value } as Partial<PenNode>)}
-                onChange={(e) => patchSilent({ fill: e.target.value } as Partial<PenNode>)}
+              <button
+                type="button"
+                className="prop-panel__color-swatch"
+                style={{ background: fillColor.slice(0, 7) }}
+                title="Open color picker"
+                onClick={(e) => openPicker('fill', (e.currentTarget as HTMLElement).getBoundingClientRect())}
               />
             )}
             <span className="prop-panel__color-label">{fillColor}</span>
@@ -241,19 +257,12 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
           <div className="prop-panel__title">Stroke</div>
           <div className="prop-panel__color-row">
             {strokeColor.startsWith('#') && (
-              <input
-                type="color"
-                className="prop-panel__color-input"
-                value={strokeColor.slice(0, 7)}
-                onMouseDown={startColorChange}
-                onInput={(e) => {
-                  const current = (n as { stroke?: object }).stroke ?? {};
-                  patchSilent({ stroke: { ...current, fill: (e.target as HTMLInputElement).value } } as Partial<PenNode>);
-                }}
-                onChange={(e) => {
-                  const current = (n as { stroke?: object }).stroke ?? {};
-                  patchSilent({ stroke: { ...current, fill: e.target.value } } as Partial<PenNode>);
-                }}
+              <button
+                type="button"
+                className="prop-panel__color-swatch"
+                style={{ background: strokeColor.slice(0, 7) }}
+                title="Open color picker"
+                onClick={(e) => openPicker('stroke', (e.currentTarget as HTMLElement).getBoundingClientRect())}
               />
             )}
             <span className="prop-panel__color-label">{strokeColor}</span>
@@ -336,6 +345,23 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
         <div className="prop-panel__title">Node ID</div>
         <span className="prop-panel__readonly prop-panel__mono">{n.id}</span>
       </div>
+
+      {/* カラーピッカー popover */}
+      {picker && (
+        <ColorPicker
+          color={(picker.kind === 'fill' ? fillColor : strokeColor)?.slice(0, 7) || '#000000'}
+          anchorRect={picker.rect}
+          onChange={(hex) => {
+            if (picker.kind === 'fill') {
+              patchSilent({ fill: hex } as Partial<PenNode>);
+            } else {
+              const current = (n as { stroke?: object }).stroke ?? {};
+              patchSilent({ stroke: { ...current, fill: hex } } as Partial<PenNode>);
+            }
+          }}
+          onClose={closePicker}
+        />
+      )}
     </div>
   );
 }
