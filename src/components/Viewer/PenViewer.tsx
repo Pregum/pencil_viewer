@@ -30,6 +30,7 @@ import { ShapeCreator } from './ShapeCreator';
 import { ToolShortcuts } from './ToolShortcuts';
 import { SnapGuides } from './SnapGuides';
 import { DistanceMeasure } from './DistanceMeasure';
+import { AlignToolbar } from './AlignToolbar';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -748,6 +749,8 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         )}
 
         <span style={{ flex: 1 }} />
+        <AlignToolbar />
+        <span className="viewer__separator" />
         <CollabBar
           collab={collab}
           bridge={bridge}

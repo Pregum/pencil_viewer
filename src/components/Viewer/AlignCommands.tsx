@@ -28,7 +28,8 @@ function findNode(nodes: PenNode[], id: string): PenNode | null {
   return null;
 }
 
-export function useAlignCommands(): Command[] {
+/** 整列・分散の各アクションを単体関数として取得する。Toolbar とコマンドパレットが共有する */
+export function useAlignActions() {
   const { state, updateNodeSilent, pushUndoCheckpoint } = useEditor();
 
   const getSelectedRects = useCallback(() => {
@@ -135,18 +136,32 @@ export function useAlignCommands(): Command[] {
     }
   }, [getSelectedRects, updateNodeSilent, pushUndoCheckpoint]);
 
-  const count = state.selectedNodeIds.size;
-  const suffix = count > 0 ? ` (${count} nodes)` : '';
+  return {
+    selectedCount: state.selectedNodeIds.size,
+    alignLeft,
+    alignRight,
+    alignTop,
+    alignBottom,
+    alignCenterH,
+    alignCenterV,
+    distributeH,
+    distributeV,
+    sortByX,
+  };
+}
 
+export function useAlignCommands(): Command[] {
+  const a = useAlignActions();
+  const suffix = a.selectedCount > 0 ? ` (${a.selectedCount} nodes)` : '';
   return [
-    { id: 'align-left', label: `Align Left${suffix}`, action: alignLeft },
-    { id: 'align-right', label: `Align Right${suffix}`, action: alignRight },
-    { id: 'align-top', label: `Align Top${suffix}`, action: alignTop },
-    { id: 'align-bottom', label: `Align Bottom${suffix}`, action: alignBottom },
-    { id: 'align-center-h', label: `Align Center Horizontal${suffix}`, action: alignCenterH },
-    { id: 'align-center-v', label: `Align Center Vertical${suffix}`, action: alignCenterV },
-    { id: 'distribute-h', label: `Distribute Horizontal${suffix}`, action: distributeH },
-    { id: 'distribute-v', label: `Distribute Vertical${suffix}`, action: distributeV },
-    { id: 'sort-by-x', label: `Sort by X position${suffix}`, action: sortByX },
+    { id: 'align-left', label: `Align Left${suffix}`, action: a.alignLeft },
+    { id: 'align-right', label: `Align Right${suffix}`, action: a.alignRight },
+    { id: 'align-top', label: `Align Top${suffix}`, action: a.alignTop },
+    { id: 'align-bottom', label: `Align Bottom${suffix}`, action: a.alignBottom },
+    { id: 'align-center-h', label: `Align Center Horizontal${suffix}`, action: a.alignCenterH },
+    { id: 'align-center-v', label: `Align Center Vertical${suffix}`, action: a.alignCenterV },
+    { id: 'distribute-h', label: `Distribute Horizontal${suffix}`, action: a.distributeH },
+    { id: 'distribute-v', label: `Distribute Vertical${suffix}`, action: a.distributeV },
+    { id: 'sort-by-x', label: `Sort by X position${suffix}`, action: a.sortByX },
   ];
 }
