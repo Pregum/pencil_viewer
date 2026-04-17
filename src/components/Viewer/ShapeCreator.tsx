@@ -46,6 +46,8 @@ function defaultSize(tool: ActiveTool): { width: number; height: number } {
       return { width: 160, height: 40 };
     case 'frame':
       return { width: 375, height: 812 };
+    case 'note':
+      return { width: 200, height: 140 };
     default:
       return { width: 100, height: 100 };
   }
@@ -99,6 +101,14 @@ function buildNode(tool: ActiveTool, rect: Rect): PenNode | null {
         fill: '#FFFFFF',
         stroke: { thickness: 1, fill: '#E5E7EB' },
         children: [],
+      } as PenNode;
+    case 'note':
+      return {
+        type: 'note',
+        ...baseGraphics,
+        content: 'Note',
+        fontSize: 14,
+        fill: '#FEF3C7',
       } as PenNode;
     default:
       return null;
