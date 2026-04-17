@@ -31,6 +31,7 @@ import { ToolShortcuts } from './ToolShortcuts';
 import { SnapGuides } from './SnapGuides';
 import { DistanceMeasure } from './DistanceMeasure';
 import { AlignToolbar } from './AlignToolbar';
+import { Rulers } from './Rulers';
 
 const MIN_SCALE = 0.05;
 const MAX_SCALE = 64;
@@ -141,6 +142,8 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const [vimMode, setVimMode] = useState(false);
   const [showLayers, setShowLayers] = useState(true);
   const [showProperties, setShowProperties] = useState(true);
+  const [showRulers, setShowRulers] = useState(false);
+  const [clientSize, setClientSize] = useState({ width: 0, height: 0 });
 
   // Compute the actual viewBox from camera
   const getViewBox = useCallback((): ViewBox => {
@@ -227,6 +230,17 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
     const maxW = baseVb.width / MIN_SCALE;
     return Math.min(maxW, Math.max(minW, w));
   }
+
+  // キャンバスのクライアントサイズ追跡（ルーラー用）
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const update = () => setClientSize({ width: el.clientWidth, height: el.clientHeight });
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Space key for hand tool
   useEffect(() => {
@@ -559,6 +573,10 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
       } else if (mod && e.key === '/') {
         e.preventDefault();
         setShowShortcuts((v) => !v);
+      } else if (mod && e.key === ';') {
+        // Cmd+; でルーラー表示トグル（Cmd+R はブラウザ予約のため避ける）
+        e.preventDefault();
+        setShowRulers((v) => !v);
       } else if (mod && e.key === '0') {
         e.preventDefault();
         resetView();
@@ -778,6 +796,14 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         </button>
       </div>
       <div className="viewer__body">
+        <div className={`viewer__canvas-wrap${showRulers ? ' viewer__canvas-wrap--rulers' : ''}`}>
+          {showRulers && (
+            <Rulers
+              viewBox={currentVb}
+              clientSize={clientSize}
+              show={showRulers}
+            />
+          )}
         <div
           ref={containerRef}
           className="viewer__canvas"
@@ -818,6 +844,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             <DistanceMeasure svgRef={svgRef} svgScale={scale} />
             <EditAnimation />
           </svg>
+        </div>
         </div>
         <NodeTree collapsed={!showLayers} onTogglePanel={() => setShowLayers((v) => !v)} />
         <PropertyPanel collapsed={!showProperties} onTogglePanel={() => setShowProperties((v) => !v)} />
