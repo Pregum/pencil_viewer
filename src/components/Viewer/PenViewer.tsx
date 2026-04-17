@@ -31,6 +31,7 @@ import { ImageDropHandler } from './ImageDropHandler';
 import { FindReplaceDialog } from './FindReplaceDialog';
 import { VariablesPanel } from './VariablesPanel';
 import { DevInspectPanel } from './DevInspectPanel';
+import { StylesPanel } from './StylesPanel';
 import { GridSnapToggle } from './GridSnapToggle';
 import { ZoomInput } from './ZoomInput';
 import { Toolbar } from './Toolbar';
@@ -161,6 +162,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [showVariables, setShowVariables] = useState(false);
   const [showDevInspect, setShowDevInspect] = useState(false);
+  const [showStyles, setShowStyles] = useState(false);
   const [presentMode, setPresentMode] = useState(false);
   const [presentIdx, setPresentIdx] = useState(0);
   const [clientSize, setClientSize] = useState({ width: 0, height: 0 });
@@ -989,6 +991,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
       )}
       {showVariables && <VariablesPanel onClose={() => setShowVariables(false)} />}
       {showDevInspect && <DevInspectPanel onClose={() => setShowDevInspect(false)} />}
+      {showStyles && <StylesPanel onClose={() => setShowStyles(false)} />}
       {showCommandPalette && (
         <CommandPaletteWrapper
           baseCommands={[
@@ -998,6 +1001,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             { id: 'ui-states', label: 'Five UI States Audit', action: () => setShowUIStates(true) },
             { id: 'variables', label: '🎨 Variables (Design Tokens)', action: () => setShowVariables(true) },
             { id: 'dev-inspect', label: '🧑‍💻 Dev Mode / Inspect', shortcut: 'Cmd+Shift+D', action: () => setShowDevInspect(true) },
+            { id: 'styles', label: '💠 Styles (Color / Text / Effect)', action: () => setShowStyles(true) },
             { id: 'bool-union', label: 'Boolean: Union', action: () => window.dispatchEvent(new CustomEvent('pencil-bool-op', { detail: 'union' })) },
             { id: 'bool-subtract', label: 'Boolean: Subtract', action: () => window.dispatchEvent(new CustomEvent('pencil-bool-op', { detail: 'subtract' })) },
             { id: 'bool-intersect', label: 'Boolean: Intersect', action: () => window.dispatchEvent(new CustomEvent('pencil-bool-op', { detail: 'intersect' })) },
