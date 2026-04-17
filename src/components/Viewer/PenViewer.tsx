@@ -154,6 +154,8 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const [showComponents, setShowComponents] = useState(true);
   const [showRulers, setShowRulers] = useState(false);
   const [showFindReplace, setShowFindReplace] = useState(false);
+  const [presentMode, setPresentMode] = useState(false);
+  const [presentIdx, setPresentIdx] = useState(0);
   const [clientSize, setClientSize] = useState({ width: 0, height: 0 });
 
   // Compute the actual viewBox from camera
@@ -252,6 +254,40 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  // Present モード: active frame に自動ズーム
+  useEffect(() => {
+    if (!presentMode) return;
+    if (frames.length === 0) return;
+    const target = frames[Math.max(0, Math.min(frames.length - 1, presentIdx))];
+    if (!target) return;
+    zoomToRect({ x: target.x, y: target.y, width: target.width, height: target.height });
+    setActiveFrameId(target.id);
+  }, [presentMode, presentIdx, frames, zoomToRect]);
+
+  // Present モード時のフレーム遷移 & 終了キー
+  useEffect(() => {
+    if (!presentMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setPresentMode(false);
+        return;
+      }
+      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+        e.preventDefault();
+        setPresentIdx((i) => Math.min(frames.length - 1, i + 1));
+        return;
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        setPresentIdx((i) => Math.max(0, i - 1));
+        return;
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [presentMode, frames.length]);
 
   // Space key for hand tool
   useEffect(() => {
@@ -598,6 +634,10 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
           e.preventDefault();
           setShowAIGenerate((v) => !v);
         }
+      } else if (mod && e.key === 'Enter') {
+        // Cmd+Enter で Present mode トグル
+        e.preventDefault();
+        setPresentMode((v) => !v);
       } else if (mod && e.key === '0') {
         e.preventDefault();
         resetView();
@@ -704,7 +744,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
 
   return (
     <EditorProvider doc={doc} rawDoc={rawDoc}>
-    <div className="viewer">
+    <div className={`viewer${presentMode ? ' viewer--present' : ''}`}>
       <div className="viewer__toolbar">
         <Toolbar />
         <span className="viewer__separator" />
