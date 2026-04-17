@@ -264,6 +264,21 @@ export function Docs({ onBack, locale }: DocsProps) {
           <h3>{c.nodeEditing.transformTitle}</h3>
           <DocsTable data={c.nodeEditing.transformTable} />
 
+          {c.nodeEditing.toolsTitle && (
+            <>
+              <h3>{c.nodeEditing.toolsTitle}</h3>
+              {c.nodeEditing.toolsIntro && <p>{c.nodeEditing.toolsIntro}</p>}
+              {c.nodeEditing.toolsTable && <DocsTable data={c.nodeEditing.toolsTable} />}
+            </>
+          )}
+
+          {c.nodeEditing.smartGuidesTitle && (
+            <>
+              <h3>{c.nodeEditing.smartGuidesTitle}</h3>
+              {c.nodeEditing.smartGuidesDesc && <p>{c.nodeEditing.smartGuidesDesc}</p>}
+            </>
+          )}
+
           <h3>{c.nodeEditing.undoRedoTitle}</h3>
           <p>{c.nodeEditing.undoRedoDesc}</p>
         </section>

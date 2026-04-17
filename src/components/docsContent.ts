@@ -77,6 +77,13 @@ export interface DocsLocale {
     properties: { name: string; desc: string }[];
     transformTitle: string;
     transformTable: TableData;
+    /** 作成ツールの一覧（Figma 互換） */
+    toolsTitle?: string;
+    toolsIntro?: string;
+    toolsTable?: TableData;
+    /** スマートガイド / スナップの説明 */
+    smartGuidesTitle?: string;
+    smartGuidesDesc?: string;
     undoRedoTitle: string;
     undoRedoDesc: string;
   };
@@ -324,28 +331,64 @@ const en: DocsLocale = {
     title: 'Node Editing',
     selectingTitle: 'Selecting Nodes',
     selectingDesc:
-      'Click on any node to select it. When nodes overlap, the innermost (deepest) node wins. Hold Shift to add to the selection.',
+      'Click on any node to select it. When nodes overlap, the innermost (deepest) node wins. Hold Shift to add to the selection. Marquee drag on empty canvas also selects.',
     propertyPanelTitle: 'Property Panel',
     propertyPanelIntro:
       'The right-side property panel lets you edit attributes of the selected node:',
     properties: [
       { name: 'Position', desc: 'X and Y coordinates' },
       { name: 'Size', desc: 'Width and Height' },
-      { name: 'Fill', desc: 'Background color' },
-      { name: 'Stroke', desc: 'Border color and width' },
-      { name: 'Opacity', desc: 'Transparency (0\u2013100%)' },
-      { name: 'Font', desc: 'Family, size, weight (for text nodes)' },
-      { name: 'Content', desc: 'Text content (for text nodes)' },
+      { name: 'Fill', desc: 'Background color (with popover color picker, multi-fill composite, gradient / image)' },
+      { name: 'Stroke', desc: 'Border color, width, cap / join / dashPattern and align (inside / center / outside)' },
+      { name: 'Opacity', desc: 'Transparency (0\u2013100%, 0-9 number key shortcut)' },
+      { name: 'Rotation', desc: 'Rotation handle on top of selection (Shift = 15\u00b0 snap)' },
+      { name: 'Corner Radius', desc: 'Orange handle inside top-left, or per-corner [nw, ne, se, sw] array' },
+      { name: 'Font', desc: 'Family, size, weight, line-height, letter-spacing, paragraph spacing, text case' },
+      { name: 'Content', desc: 'Text content (double-click to edit inline with floating toolbar)' },
+      { name: 'Auto Layout', desc: 'layout (vertical / horizontal / none), gap, padding, justify / align' },
+      { name: 'Constraints', desc: 'horizontal / vertical (left / right / center / stretch / scale) for responsive resize' },
+      { name: 'Layout Grids', desc: 'columns / rows / grid overlays inside a frame' },
+      { name: 'Image Crop', desc: 'imageOffsetX / imageOffsetY / imageScale for inside-frame crop' },
+      { name: 'Prototype', desc: 'onTap target frame + transition (duration / easing / smart-animate)' },
     ],
     transformTitle: 'Transform',
     transformTable: {
       headers: ['Action', 'How'],
       rows: [
-        { cols: ['Move node', 'Drag the selected node'] },
-        { cols: ['Resize node', 'Drag a corner or edge handle'] },
+        { cols: ['Move node', 'Drag the selected node (Shift = axis-lock, Alt = duplicate)'] },
+        { cols: ['Resize node', 'Drag a corner/edge handle (Shift = keep ratio)'] },
+        { cols: ['Nudge / Resize by keys', 'Arrows (1px, Shift 10px) / Cmd+Arrows (resize)'] },
+        { cols: ['Rotate', 'Drag the top rotation handle (Shift = 15\u00b0 snap)'] },
+        { cols: ['Corner radius', 'Drag the orange handle inside the top-left'] },
+        { cols: ['Group / Ungroup', 'Cmd + G / Cmd + Shift + G'] },
+        { cols: ['Wrap in Frame', 'Opt + Cmd + G'] },
+        { cols: ['Create component', 'Cmd + Alt + K (select node first)'] },
+        { cols: ['Use as mask', 'Cmd + Alt + M'] },
+        { cols: ['Boolean / Flatten / Outline stroke', 'Command Palette'] },
+        { cols: ['Copy style / Paste style', 'Cmd + Alt + C / Cmd + Alt + V'] },
         { cols: ['Delete node', 'Backspace or Delete'] },
       ],
     },
+    toolsTitle: 'Creation Tools',
+    toolsIntro:
+      'Select a tool from the top-left toolbar or press its shortcut key, then click/drag on the canvas to create.',
+    toolsTable: {
+      headers: ['Tool', 'Key'],
+      rows: [
+        { cols: ['Select', 'V'] },
+        { cols: ['Frame', 'F'] },
+        { cols: ['Rectangle', 'R'] },
+        { cols: ['Ellipse', 'O'] },
+        { cols: ['Line', 'L'] },
+        { cols: ['Text', 'T'] },
+        { cols: ['Note (sticky)', 'N'] },
+        { cols: ['Pen (vector paths, bezier)', 'P'] },
+        { cols: ['Comment pin', 'C'] },
+      ],
+    },
+    smartGuidesTitle: 'Smart Guides & Snap',
+    smartGuidesDesc:
+      'While dragging or resizing, pink guides appear when edges / centers align to other nodes. Equal-spacing detection automatically suggests positions that create even gaps between three or more items. Toggle pixel grid snap with Cmd + \u0027. Hold Alt and hover another node to see a distance measurement overlay.',
     undoRedoTitle: 'Undo / Redo',
     undoRedoDesc:
       'Cmd + Z to undo, Cmd + Shift + Z to redo. The history stack tracks all property changes, moves, resizes, and deletions.',
@@ -737,28 +780,64 @@ const ja: DocsLocale = {
     title: 'ノード編集',
     selectingTitle: 'ノードの選択',
     selectingDesc:
-      '任意のノードをクリックして選択します。ノードが重なっている場合、最も内側 (深い) ノードが選択されます。Shift を押しながらクリックで選択に追加できます。',
+      '任意のノードをクリックして選択。重なりがあれば最も内側のノードが優先。Shift+クリックで選択に追加、空キャンバスのドラッグでマーキー選択。',
     propertyPanelTitle: 'プロパティパネル',
     propertyPanelIntro:
       '右側のプロパティパネルで、選択ノードの属性を編集できます:',
     properties: [
       { name: 'Position', desc: 'X / Y 座標' },
       { name: 'Size', desc: '幅と高さ' },
-      { name: 'Fill', desc: '背景色' },
-      { name: 'Stroke', desc: '枠線の色と太さ' },
-      { name: 'Opacity', desc: '不透明度 (0\u2013100%)' },
-      { name: 'Font', desc: 'フォントファミリー、サイズ、太さ (テキストノード用)' },
-      { name: 'Content', desc: 'テキスト内容 (テキストノード用)' },
+      { name: 'Fill', desc: '背景色（ポップオーバー式ピッカー、複数 fill 合成、グラデーション / 画像対応）' },
+      { name: 'Stroke', desc: '枠線の色・太さ、cap / join / dashPattern、align (inside / center / outside)' },
+      { name: 'Opacity', desc: '不透明度 (0〜100% / 数字キー 0-9 でも変更)' },
+      { name: 'Rotation', desc: '選択枠上部の回転ハンドル（Shift = 15°スナップ）' },
+      { name: 'Corner Radius', desc: '左上内側のオレンジハンドル / [nw, ne, se, sw] 配列対応' },
+      { name: 'Font', desc: 'family / size / weight / line-height / letter-spacing / paragraph spacing / text-case' },
+      { name: 'Content', desc: 'テキスト内容（ダブルクリックでインライン編集 + フロートツールバー）' },
+      { name: 'Auto Layout', desc: 'layout (vertical / horizontal / none)、gap、padding、justify / align' },
+      { name: 'Constraints', desc: 'horizontal / vertical (left / right / center / stretch / scale) — レスポンシブ対応' },
+      { name: 'Layout Grids', desc: 'frame 内に columns / rows / pixel grid を表示' },
+      { name: 'Image Crop', desc: 'imageOffsetX / imageOffsetY / imageScale で frame 内の切り抜き' },
+      { name: 'Prototype', desc: 'onTap の遷移先 frame + transition (duration / easing / smart-animate)' },
     ],
     transformTitle: 'トランスフォーム',
     transformTable: {
       headers: ['操作', '方法'],
       rows: [
-        { cols: ['ノードの移動', '選択ノードをドラッグ'] },
-        { cols: ['ノードのリサイズ', '角または辺のハンドルをドラッグ'] },
-        { cols: ['ノードの削除', 'Backspace または Delete'] },
+        { cols: ['ノードの移動', 'ドラッグ (Shift = 軸ロック / Alt = 複製)'] },
+        { cols: ['ノードのリサイズ', '角/辺ハンドル (Shift = 比率固定)'] },
+        { cols: ['キーでナッジ / リサイズ', '矢印 (1px / Shift 10px) / Cmd+矢印 (リサイズ)'] },
+        { cols: ['回転', '上部の回転ハンドル (Shift = 15° スナップ)'] },
+        { cols: ['角丸調整', '左上内側のオレンジハンドル'] },
+        { cols: ['グループ化 / 解除', 'Cmd + G / Cmd + Shift + G'] },
+        { cols: ['Frame で囲む', 'Opt + Cmd + G'] },
+        { cols: ['コンポーネント化', 'Cmd + Alt + K'] },
+        { cols: ['Use as mask', 'Cmd + Alt + M'] },
+        { cols: ['Boolean / Flatten / Outline stroke', 'コマンドパレット'] },
+        { cols: ['スタイルのコピー / ペースト', 'Cmd + Alt + C / Cmd + Alt + V'] },
+        { cols: ['ノードの削除', 'Backspace / Delete'] },
       ],
     },
+    toolsTitle: '作成ツール',
+    toolsIntro:
+      '左上のツールバーから選ぶか、ショートカットキーで切替。キャンバスをクリック/ドラッグで作成します。',
+    toolsTable: {
+      headers: ['ツール', 'キー'],
+      rows: [
+        { cols: ['Select', 'V'] },
+        { cols: ['Frame', 'F'] },
+        { cols: ['Rectangle', 'R'] },
+        { cols: ['Ellipse', 'O'] },
+        { cols: ['Line', 'L'] },
+        { cols: ['Text', 'T'] },
+        { cols: ['Note (付箋)', 'N'] },
+        { cols: ['Pen (ベクター編集 / bezier)', 'P'] },
+        { cols: ['Comment ピン', 'C'] },
+      ],
+    },
+    smartGuidesTitle: 'スマートガイド & スナップ',
+    smartGuidesDesc:
+      'ドラッグ/リサイズ中、他ノードのエッジや中心に揃うとピンクのガイドが表示されます。等間隔スナップは 3+ ノードが等間隔に並ぶ位置を検知。Cmd+\u0027 でピクセルグリッドスナップ、Alt を押しながら別ノードをホバーすると距離測定が出ます。',
     undoRedoTitle: '元に戻す / やり直す',
     undoRedoDesc:
       'Cmd + Z で元に戻す、Cmd + Shift + Z でやり直します。変更履歴にはプロパティの変更、移動、リサイズ、削除がすべて記録されます。',
