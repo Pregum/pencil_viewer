@@ -71,8 +71,24 @@ export interface ImageFill {
   blendMode?: BlendMode;
 }
 
+/**
+ * Mesh gradient: Pencil 仕様の bezier 補間メッシュ。
+ * SVG には直接対応が無いため、viewer では縦横 2 本の linear gradient の
+ * オーバーレイで「何となく似ている」近似を描く。
+ */
+export interface MeshGradientFill {
+  type: 'mesh_gradient';
+  columns?: number;
+  rows?: number;
+  /** 行メジャー順 (row-major) の頂点カラー。columns * rows 個を想定。*/
+  colors?: Color[];
+  opacity?: number;
+  enabled?: boolean;
+  blendMode?: BlendMode;
+}
+
 /** Fill は単一色 (string) / 構造体 / 配列いずれも取り得る */
-export type Fill = Color | SolidFill | GradientFill | ImageFill;
+export type Fill = Color | SolidFill | GradientFill | ImageFill | MeshGradientFill;
 export type Fills = Fill | Fill[];
 
 export interface StrokeThickness {

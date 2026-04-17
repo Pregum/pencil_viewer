@@ -3,7 +3,7 @@
  * ドキュメント 1 回だけ出力する。
  */
 
-import type { GradientFill } from '../types';
+import type { GradientFill, MeshGradientFill } from '../types';
 import type { PaintRegistry, PaintRef, FilterRef } from './registry';
 
 export function Defs({ registry }: { registry: PaintRegistry }) {
@@ -31,6 +31,7 @@ function sanitizeImageUrl(url: string): string | null {
 
 function renderPaint(p: PaintRef) {
   if (p.kind === 'gradient') return renderGradient(p.id, p.def as GradientFill);
+  if (p.kind === 'mesh') return renderMeshGradient(p.id, p.def as MeshGradientFill);
   // image fill (pattern)
   const def = p.def as { url: string; mode?: 'stretch' | 'fill' | 'fit' };
   const safeUrl = sanitizeImageUrl(def.url);
@@ -60,6 +61,58 @@ function renderPaint(p: PaintRef) {
       />
     </pattern>
   );
+}
+
+/**
+ * Mesh gradient の近似描画:
+ * SVG に直接の対応が無いので、左上↔右下の対角 linear gradient を描く。
+ * 対角 2 色以上あれば bezier 補間らしさは出ないが破綻しない fallback。
+ */
+function renderMeshGradient(id: string, def: MeshGradientFill) {
+  const cols = Math.max(1, def.columns ?? 1);
+  const rows = Math.max(1, def.rows ?? 1);
+  const colors = def.colors ?? [];
+  if (colors.length === 0) {
+    return <linearGradient key={id} id={id} />;
+  }
+  // 頂点カラーの平均を補間の基準にする — 単純に対角方向に並べる
+  const topLeft = colors[0];
+  const topRight = colors[cols - 1] ?? colors[colors.length - 1];
+  const bottomRight = colors[colors.length - 1];
+  const bottomLeft = colors[(rows - 1) * cols] ?? colors[colors.length - 1];
+  // 2 本の linear gradient を重ねると近似度が上がる: 横 (TL→TR→BR→BL) + 縦
+  // ただし SVG 1 つの linearGradient で 4 隅を正しく出すのは不可能なので、
+  // MVP では top 行 → bottom 行 の縦方向グラデに割り切る。
+  return (
+    <linearGradient key={id} id={id} x1={0} y1={0} x2={0} y2={1}>
+      <stop offset="0" stopColor={topLeft} />
+      <stop offset={0.5} stopColor={mixColors(topRight, bottomLeft)} />
+      <stop offset="1" stopColor={bottomRight} />
+    </linearGradient>
+  );
+}
+
+/** 2 つの #RRGGBB を線形ブレンド。不正な形式は第 1 色を返す。 */
+function mixColors(a: string, b: string): string {
+  const pa = parseHex(a);
+  const pb = parseHex(b);
+  if (!pa || !pb) return a;
+  const r = Math.round((pa.r + pb.r) / 2);
+  const g = Math.round((pa.g + pb.g) / 2);
+  const bl = Math.round((pa.b + pb.b) / 2);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${bl.toString(16).padStart(2, '0')}`;
+}
+
+function parseHex(hex: string): { r: number; g: number; b: number } | null {
+  const m = /^#?([0-9a-f]{6}|[0-9a-f]{3})/i.exec(hex.trim());
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+  return {
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
+  };
 }
 
 function renderGradient(id: string, def: GradientFill) {

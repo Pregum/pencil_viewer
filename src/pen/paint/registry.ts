@@ -13,6 +13,7 @@ import type {
   Fills,
   GradientFill,
   ImageFill,
+  MeshGradientFill,
   PenDocument,
   PenNode,
   Effect,
@@ -22,9 +23,9 @@ import type {
 } from '../types';
 
 export type PaintRef = {
-  kind: 'gradient' | 'image';
+  kind: 'gradient' | 'image' | 'mesh';
   id: string;
-  def: GradientFill | ImageFill;
+  def: GradientFill | ImageFill | MeshGradientFill;
 };
 
 export type FilterRef = {
@@ -72,10 +73,10 @@ function walkNode(node: PenNode, registry: PaintRegistry): void {
         entries.push(null);
         return;
       }
-      if (f.type === 'gradient' || f.type === 'image') {
+      if (f.type === 'gradient' || f.type === 'image' || f.type === 'mesh_gradient') {
         const id = `fill-${nodeId}-${i}`;
         registry.paints.push({
-          kind: f.type,
+          kind: f.type === 'mesh_gradient' ? 'mesh' : f.type,
           id,
           def: f,
         });
