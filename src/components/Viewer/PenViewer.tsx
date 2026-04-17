@@ -26,6 +26,7 @@ import { AIReviewPanel } from './AIReviewPanel';
 import { isAIReviewEnabled } from '../../utils/aiReview';
 import { AIGeneratorPanel } from './AIGeneratorPanel';
 import { isAIGenerateEnabled } from '../../utils/aiGenerate';
+import { FloatingTextToolbar } from './FloatingTextToolbar';
 import { ZoomInput } from './ZoomInput';
 import { Toolbar } from './Toolbar';
 import { ShapeCreator } from './ShapeCreator';
@@ -923,6 +924,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
       {vimMode && <VimBadge />}
       <ContextMenu />
       <ToolShortcuts />
+      <FloatingTextToolbar svgRef={svgRef} />
     </div>
     </EditorProvider>
   );
