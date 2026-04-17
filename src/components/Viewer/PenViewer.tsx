@@ -34,6 +34,7 @@ import { GridSnapToggle } from './GridSnapToggle';
 import { ZoomInput } from './ZoomInput';
 import { Toolbar } from './Toolbar';
 import { ShapeCreator } from './ShapeCreator';
+import { PenToolCreator } from './PenToolCreator';
 import { ToolShortcuts } from './ToolShortcuts';
 import { SnapGuides } from './SnapGuides';
 import { DistanceMeasure } from './DistanceMeasure';
@@ -931,6 +932,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             <HintLabels vimMode={vimMode} svgScale={scale} cameraCx={camera.cx} cameraCy={camera.cy} viewBox={currentVb} />
             <MarqueeSelect viewBox={currentVb} svgRef={svgRef} />
             <ShapeCreator svgRef={svgRef} />
+            <PenToolCreator svgRef={svgRef} svgScale={scale} />
             <SnapGuides svgScale={scale} />
             <DistanceMeasure svgRef={svgRef} svgScale={scale} />
             <EditAnimation />
