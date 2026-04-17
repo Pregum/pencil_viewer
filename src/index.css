@@ -561,6 +561,71 @@ html,
   margin: 0 6px;
 }
 
+/* ======== Floating Text Toolbar (inline edit) ======== */
+.float-text-toolbar {
+  position: fixed;
+  z-index: 800;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 6px;
+  box-shadow: 0 6px 16px rgba(0,0,0,.12), 0 2px 4px rgba(0,0,0,.06);
+  user-select: none;
+  pointer-events: auto;
+}
+.float-text-toolbar__num {
+  width: 44px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 4px;
+  background: var(--color-canvas, #f9fafb);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  text-align: center;
+}
+.float-text-toolbar__btn {
+  width: 26px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text, #111827);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.float-text-toolbar__btn:hover { background: var(--color-canvas, #f9fafb); }
+.float-text-toolbar__btn--active {
+  background: var(--color-accent-soft, #EEF2FF);
+  color: var(--color-accent, #4F46E5);
+  border-color: var(--color-accent, #4F46E5);
+}
+.float-text-toolbar__sep {
+  width: 1px;
+  height: 18px;
+  background: var(--color-border, #e5e7eb);
+  margin: 0 3px;
+}
+.float-text-toolbar__color {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid rgba(0,0,0,.15);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.float-text-toolbar__color:hover {
+  border-color: var(--color-accent, #4F46E5);
+}
+
 /* ======== AI Design Generator ======== */
 .ai-gen {
   width: min(680px, 94vw);
