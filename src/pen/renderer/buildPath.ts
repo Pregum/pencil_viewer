@@ -34,7 +34,12 @@ export function buildPathD(anchors: PathAnchor[], closed = false): string {
   }
 
   if (closed && anchors.length >= 2) {
-    parts.push(segment(anchors[anchors.length - 1], first));
+    const last = anchors[anchors.length - 1];
+    // 両端のどちらかに bezier ハンドルがあれば明示的な closing bezier が必要。
+    // 両端コーナー同士なら Z が自動で直線クロージングするため冗長セグメント不要。
+    if (last.outHandle || first.inHandle) {
+      parts.push(segment(last, first));
+    }
     parts.push('Z');
   }
   return parts.join(' ');
@@ -52,6 +57,62 @@ function segment(from: PathAnchor, to: PathAnchor): string {
 function fmt(n: number): string {
   // 小数点 2 桁まで、余計な 0 を削る
   return Number(n.toFixed(2)).toString();
+}
+
+/**
+ * SVG path d 文字列を PathAnchor 配列にパースする（逆変換）。
+ *
+ * 対応コマンド: M, L, C, Z (buildPathD が出力するもの)。
+ * H / V / S / Q / T / A は未対応 — 非対応コマンドに遭遇すると null を返す。
+ *
+ * closed は末尾が Z で閉じられているか。
+ */
+export interface ParsedPath {
+  anchors: PathAnchor[];
+  closed: boolean;
+}
+
+export function parsePathD(d: string): ParsedPath | null {
+  if (!d || typeof d !== 'string') return null;
+  // 数値と 1 文字コマンドを順に読み取る
+  const tokens = d.match(/[MLCZ]|-?\d*\.?\d+(?:[eE][+-]?\d+)?/gi);
+  if (!tokens) return null;
+
+  const anchors: PathAnchor[] = [];
+  let closed = false;
+  let i = 0;
+
+  const readNum = (): number | null => {
+    const t = tokens[i++];
+    const n = parseFloat(t);
+    return isNaN(n) ? null : n;
+  };
+
+  while (i < tokens.length) {
+    const cmd = tokens[i++].toUpperCase();
+    if (cmd === 'M' || cmd === 'L') {
+      const x = readNum(); const y = readNum();
+      if (x == null || y == null) return null;
+      anchors.push({ position: { x, y } });
+    } else if (cmd === 'C') {
+      const x1 = readNum(); const y1 = readNum();
+      const x2 = readNum(); const y2 = readNum();
+      const x = readNum(); const y = readNum();
+      if ([x1, y1, x2, y2, x, y].some((v) => v == null)) return null;
+      // 前アンカーに outHandle (x1,y1)、新アンカーに position (x,y) と inHandle (x2,y2)
+      const prev = anchors[anchors.length - 1];
+      if (prev) prev.outHandle = { x: x1!, y: y1! };
+      anchors.push({ position: { x: x!, y: y! }, inHandle: { x: x2!, y: y2! } });
+    } else if (cmd === 'Z') {
+      closed = true;
+    } else {
+      // 未対応コマンド (H/V/S/Q/T/A 等)
+      return null;
+    }
+  }
+
+  if (anchors.length === 0) return null;
+  return { anchors, closed };
 }
 
 /** アンカー配列全体の軸並行バウンディングボックスを計算 */
