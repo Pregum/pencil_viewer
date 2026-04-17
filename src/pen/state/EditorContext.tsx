@@ -6,6 +6,13 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { PenDocument, PenNode, FrameNode } from '../types';
 import { duplicateNode } from '../../components/Viewer/ExtraCommands';
 
+/** 変数 1 つの形。Pencil の $var は color / number / boolean / string のいずれか。 */
+export type VariableType = 'color' | 'number' | 'boolean' | 'string';
+export interface VariableDef {
+  type: VariableType;
+  value: string | number | boolean;
+}
+
 /** アクティブな作成ツール。'select' 以外を選ぶとドラッグでシェイプが生成される */
 export type ActiveTool = 'select' | 'rectangle' | 'ellipse' | 'line' | 'text' | 'frame' | 'note';
 
@@ -94,6 +101,12 @@ interface EditorContextValue {
   addNode: (node: PenNode) => void;
   /** Alt+ドラッグ複製用: トップレベル指定 IDs をクローン追加して選択、開始位置を返す */
   cloneNodesAtTop: (ids: string[]) => Array<{ id: string; x0: number; y0: number; w: number; h: number }>;
+  /** 変数の追加/更新 */
+  upsertVariable: (name: string, def: VariableDef) => void;
+  /** 変数を削除 */
+  removeVariable: (name: string) => void;
+  /** 変数をリネーム（古い名前は削除し、同じ値で新しい名前を作る。参照 $old は置換しない） */
+  renameVariable: (oldName: string, newName: string) => void;
   /** 選択ノードをコンポーネント化（reusable=true） */
   createComponent: (nodeId?: string) => void;
   /** コンポーネント化を解除 */
@@ -432,6 +445,54 @@ export function EditorProvider({
   const setActiveTool = useCallback((tool: ActiveTool) => {
     setState((s) => (s.activeTool === tool ? s : { ...s, activeTool: tool }));
   }, []);
+
+  /** 変数辞書（{name: {type,value}} の形）を取り出す */
+  const getVarsDict = (d: PenDocument): Record<string, { type: VariableType; value: string | number | boolean }> => {
+    if (!d.variables || typeof d.variables !== 'object') return {};
+    return { ...(d.variables as Record<string, { type: VariableType; value: string | number | boolean }>) };
+  };
+
+  const upsertVariable = useCallback((name: string, def: VariableDef) => {
+    setState((s) => {
+      pushUndo(s.doc, s.rawDoc);
+      const dict = getVarsDict(s.rawDoc);
+      dict[name] = def;
+      return {
+        ...s,
+        doc: { ...s.doc, variables: dict },
+        rawDoc: { ...s.rawDoc, variables: dict },
+      };
+    });
+  }, [pushUndo]);
+
+  const removeVariable = useCallback((name: string) => {
+    setState((s) => {
+      pushUndo(s.doc, s.rawDoc);
+      const dict = getVarsDict(s.rawDoc);
+      delete dict[name];
+      return {
+        ...s,
+        doc: { ...s.doc, variables: dict },
+        rawDoc: { ...s.rawDoc, variables: dict },
+      };
+    });
+  }, [pushUndo]);
+
+  const renameVariable = useCallback((oldName: string, newName: string) => {
+    if (!newName || oldName === newName) return;
+    setState((s) => {
+      pushUndo(s.doc, s.rawDoc);
+      const dict = getVarsDict(s.rawDoc);
+      if (!dict[oldName]) return s;
+      dict[newName] = dict[oldName];
+      delete dict[oldName];
+      return {
+        ...s,
+        doc: { ...s.doc, variables: dict },
+        rawDoc: { ...s.rawDoc, variables: dict },
+      };
+    });
+  }, [pushUndo]);
 
   /**
    * 選択ノードをコンポーネント化（reusable: true を付与）。
@@ -898,8 +959,8 @@ export function EditorProvider({
   const canRedo = redoStack.current.length > 0;
 
   const value = useMemo(
-    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
-    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
+    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
+    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;
