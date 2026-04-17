@@ -184,6 +184,30 @@ export interface TextNode extends GraphicsBase {
   fontStyle?: string;
 }
 
+/**
+ * Figma の Layout Grid 相当。Frame 内に視覚ガイドとして半透明で描画される。
+ * - columns: 縦のカラム群
+ * - rows:    横のロー群
+ * - grid:    同間隔の格子
+ */
+export interface LayoutGrid {
+  pattern: 'columns' | 'rows' | 'grid';
+  /** columns/rows: カラム/ロー数 */
+  count?: number;
+  /** grid: 1 セルのサイズ (px) */
+  size?: number;
+  /** カラム/ロー間のスペース */
+  gutter?: number;
+  /** 両端の余白 (alignment='min' のとき先頭, 'max' のとき末尾) */
+  offset?: number;
+  /** カラム/ロー幅 (alignment='min'/'max'/'center' で有効) */
+  sectionSize?: number;
+  alignment?: 'min' | 'max' | 'center' | 'stretch';
+  color?: Color;
+  opacity?: number;
+  visible?: boolean;
+}
+
 export interface FrameNode extends GraphicsBase {
   type: 'frame';
   children?: PenNode[];
@@ -194,6 +218,7 @@ export interface FrameNode extends GraphicsBase {
   padding?: number | [number, number] | [number, number, number, number];
   justifyContent?: 'start' | 'center' | 'end' | 'space_between' | 'space_around';
   alignItems?: 'start' | 'center' | 'end';
+  layoutGrids?: LayoutGrid[];
 }
 
 export interface GroupNode extends NodeBase {
