@@ -242,6 +242,10 @@ export interface TextNode extends GraphicsBase {
   underline?: boolean;
   strikethrough?: boolean;
   fontStyle?: string;
+  /** 段落間スペース (px)。<br><br> 的な改行で空ける量 */
+  paragraphSpacing?: number;
+  /** 文字ケース: 'upper' = ALL CAPS、'lower'、'title' = 各単語先頭大文字 */
+  textCase?: 'upper' | 'lower' | 'title' | 'none';
 }
 
 /**
