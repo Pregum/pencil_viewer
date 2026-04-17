@@ -1006,6 +1006,8 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             { id: 'bool-subtract', label: 'Boolean: Subtract', action: () => window.dispatchEvent(new CustomEvent('pencil-bool-op', { detail: 'subtract' })) },
             { id: 'bool-intersect', label: 'Boolean: Intersect', action: () => window.dispatchEvent(new CustomEvent('pencil-bool-op', { detail: 'intersect' })) },
             { id: 'bool-exclude', label: 'Boolean: Exclude (XOR)', action: () => window.dispatchEvent(new CustomEvent('pencil-bool-op', { detail: 'exclude' })) },
+            { id: 'flatten', label: 'Flatten selection (union → single path)', action: () => window.dispatchEvent(new Event('pencil-flatten')) },
+            { id: 'outline-stroke', label: 'Outline stroke (stroke → filled path)', action: () => window.dispatchEvent(new Event('pencil-outline-stroke')) },
             ...(isAIReviewEnabled() ? [{ id: 'ai-review', label: '🤖 AI Design Review', action: () => setShowAIReview(true) }] : []),
             ...(isAIGenerateEnabled() ? [{ id: 'ai-generate', label: '🪄 AI Design Generator', shortcut: 'Cmd+K', action: () => setShowAIGenerate(true) }] : []),
             { id: 'fit-view', label: 'Fit to View', shortcut: 'Cmd+0', action: resetView },

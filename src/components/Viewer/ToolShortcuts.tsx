@@ -23,7 +23,7 @@ const TOOL_KEYS: Record<string, ActiveTool> = {
 };
 
 export function ToolShortcuts() {
-  const { state, setActiveTool, setGridSnap, applyBooleanOp } = useEditor();
+  const { state, setActiveTool, setGridSnap, applyBooleanOp, flattenSelection, outlineStrokeSelected } = useEditor();
 
   // boolean op event listener
   useEffect(() => {
@@ -31,9 +31,17 @@ export function ToolShortcuts() {
       const ce = e as CustomEvent<'union' | 'subtract' | 'intersect' | 'exclude'>;
       if (ce.detail) applyBooleanOp(ce.detail);
     };
+    const onFlatten = () => flattenSelection();
+    const onOutline = () => outlineStrokeSelected();
     window.addEventListener('pencil-bool-op', onBool as EventListener);
-    return () => window.removeEventListener('pencil-bool-op', onBool as EventListener);
-  }, [applyBooleanOp]);
+    window.addEventListener('pencil-flatten', onFlatten);
+    window.addEventListener('pencil-outline-stroke', onOutline);
+    return () => {
+      window.removeEventListener('pencil-bool-op', onBool as EventListener);
+      window.removeEventListener('pencil-flatten', onFlatten);
+      window.removeEventListener('pencil-outline-stroke', onOutline);
+    };
+  }, [applyBooleanOp, flattenSelection, outlineStrokeSelected]);
 
   // 修飾キー付きショートカット
   useEffect(() => {
