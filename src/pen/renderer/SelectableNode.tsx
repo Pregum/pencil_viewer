@@ -6,6 +6,8 @@ import { useCallback, useRef, useState } from 'react';
 import type { PenNode } from '../types';
 import { useEditor } from '../state/EditorContext';
 import { computeSnap, computeResizeSnap, computeEqualSpaceSnap, type SnapGuide, type SnapRect, type EqualSpaceGuide } from '../state/snapEngine';
+import { applyConstraints, type ChildGeom } from '../layout/constraints';
+import type { NodeConstraints } from '../types';
 
 interface Props {
   node: PenNode;
@@ -33,6 +35,8 @@ export function SelectableNode({ node, children }: Props) {
   const rotateStart = useRef({ startAngle: 0, originalRotation: 0, pivotSvg: { x: 0, y: 0 } });
   /** マルチ選択ドラッグ時、選択全ノードの開始 x,y,w,h */
   const multiStart = useRef<Array<{ id: string; x0: number; y0: number; w: number; h: number }>>([]);
+  /** リサイズ時、この node の直接の子の開始 geom + constraints（frame のみ） */
+  const childrenStart = useRef<Array<{ id: string; x: number; y: number; w: number; h: number; constraints?: NodeConstraints }>>([]);
 
   const x = node.x ?? 0;
   const y = node.y ?? 0;
@@ -141,6 +145,32 @@ export function SelectableNode({ node, children }: Props) {
       if (handle) {
         isResizing.current = handle;
         setActivityLabel('resize');
+        // frame / group リサイズ時: layout='none' の direct children をスナップショット
+        if (node.type === 'frame' || node.type === 'group') {
+          const layout = (node as { layout?: string }).layout ?? (node.type === 'group' ? 'none' : 'horizontal');
+          const children = (node as { children?: PenNode[] }).children ?? [];
+          if (layout === 'none' && children.length > 0) {
+            childrenStart.current = children
+              .map((c) => {
+                const cw = typeof (c as { width?: unknown }).width === 'number' ? (c as { width: number }).width : 0;
+                const ch = typeof (c as { height?: unknown }).height === 'number' ? (c as { height: number }).height : 0;
+                if (cw <= 0 || ch <= 0) return null;
+                return {
+                  id: c.id,
+                  x: c.x ?? 0,
+                  y: c.y ?? 0,
+                  w: cw,
+                  h: ch,
+                  constraints: (c as { constraints?: NodeConstraints }).constraints,
+                };
+              })
+              .filter((r): r is NonNullable<typeof r> => r !== null);
+          } else {
+            childrenStart.current = [];
+          }
+        } else {
+          childrenStart.current = [];
+        }
       } else {
         isDragging.current = true;
         setActivityLabel('drag');
@@ -379,6 +409,29 @@ export function SelectableNode({ node, children }: Props) {
           width: Math.round(snapped.width),
           height: Math.round(snapped.height),
         } as Partial<PenNode>);
+
+        // 子ノードに constraints を適用
+        if (childrenStart.current.length > 0) {
+          const oldW = nodeStart.current.w;
+          const oldH = nodeStart.current.h;
+          const patches = childrenStart.current.map((cs) => {
+            const geom: ChildGeom = {
+              x: cs.x, y: cs.y, width: cs.w, height: cs.h,
+              constraints: cs.constraints,
+            };
+            const r = applyConstraints(geom, oldW, oldH, snapped.width, snapped.height);
+            return {
+              nodeId: cs.id,
+              patch: {
+                x: Math.round(r.x),
+                y: Math.round(r.y),
+                width: Math.round(r.width),
+                height: Math.round(r.height),
+              } as Partial<PenNode>,
+            };
+          });
+          updateManySilent(patches);
+        }
 
         window.dispatchEvent(
           new CustomEvent<SnapGuide[]>('pencil-snap-guides', { detail: snapped.guides }),
