@@ -14,7 +14,7 @@ export interface VariableDef {
 }
 
 /** アクティブな作成ツール。'select' 以外を選ぶとドラッグでシェイプが生成される */
-export type ActiveTool = 'select' | 'rectangle' | 'ellipse' | 'line' | 'text' | 'frame' | 'note';
+export type ActiveTool = 'select' | 'rectangle' | 'ellipse' | 'line' | 'text' | 'frame' | 'note' | 'pen';
 
 export interface EditorState {
   doc: PenDocument;

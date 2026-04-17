@@ -1421,7 +1421,9 @@ html,
 .viewer__canvas[data-tool="rectangle"],
 .viewer__canvas[data-tool="ellipse"],
 .viewer__canvas[data-tool="line"],
-.viewer__canvas[data-tool="frame"] {
+.viewer__canvas[data-tool="frame"],
+.viewer__canvas[data-tool="note"],
+.viewer__canvas[data-tool="pen"] {
   cursor: crosshair;
 }
 .viewer__canvas[data-tool="text"] {
