@@ -17,14 +17,16 @@ export function CanvasContent() {
 
   return (
     <>
-      {/* Background hit area: click to deselect */}
+      {/* Background hit area: click to deselect (シェイプ作成ツール中は ShapeCreator の addNode→selectedNodeId で上書きされるので無効化しない) */}
       <rect
         x={-1e6}
         y={-1e6}
         width={2e6}
         height={2e6}
         fill="transparent"
-        onClick={() => selectNode(null)}
+        onClick={() => {
+          if (state.activeTool === 'select') selectNode(null);
+        }}
       />
       <Defs registry={registry} />
       <PaintRegistryProvider value={registry}>

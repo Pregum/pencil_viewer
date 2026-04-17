@@ -444,6 +444,20 @@ html,
   z-index: 20;
 }
 
+.viewer__tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px;
+}
+
+.viewer__tool-btn {
+  color: var(--color-text);
+}
+.viewer__tool-btn > svg {
+  display: block;
+}
+
 .viewer__body {
   flex: 1;
   position: relative;
@@ -549,6 +563,16 @@ html,
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+}
+/* アクティブツールに応じた cursor を data 属性で切り替える（ToolShortcuts が設定） */
+.viewer__canvas[data-tool="rectangle"],
+.viewer__canvas[data-tool="ellipse"],
+.viewer__canvas[data-tool="line"],
+.viewer__canvas[data-tool="frame"] {
+  cursor: crosshair;
+}
+.viewer__canvas[data-tool="text"] {
+  cursor: text;
 }
 
 .viewer__svg {
