@@ -30,6 +30,7 @@ import { FloatingTextToolbar } from './FloatingTextToolbar';
 import { ImageDropHandler } from './ImageDropHandler';
 import { FindReplaceDialog } from './FindReplaceDialog';
 import { VariablesPanel } from './VariablesPanel';
+import { DevInspectPanel } from './DevInspectPanel';
 import { GridSnapToggle } from './GridSnapToggle';
 import { ZoomInput } from './ZoomInput';
 import { Toolbar } from './Toolbar';
@@ -159,6 +160,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const [showRulers, setShowRulers] = useState(false);
   const [showFindReplace, setShowFindReplace] = useState(false);
   const [showVariables, setShowVariables] = useState(false);
+  const [showDevInspect, setShowDevInspect] = useState(false);
   const [presentMode, setPresentMode] = useState(false);
   const [presentIdx, setPresentIdx] = useState(0);
   const [clientSize, setClientSize] = useState({ width: 0, height: 0 });
@@ -655,6 +657,10 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         // Cmd+Enter で Present mode トグル
         e.preventDefault();
         setPresentMode((v) => !v);
+      } else if (mod && e.shiftKey && (e.key === 'd' || e.key === 'D')) {
+        // Cmd+Shift+D で Dev Inspect パネル
+        e.preventDefault();
+        setShowDevInspect((v) => !v);
       } else if (mod && e.key === '0') {
         e.preventDefault();
         resetView();
@@ -982,6 +988,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         />
       )}
       {showVariables && <VariablesPanel onClose={() => setShowVariables(false)} />}
+      {showDevInspect && <DevInspectPanel onClose={() => setShowDevInspect(false)} />}
       {showCommandPalette && (
         <CommandPaletteWrapper
           baseCommands={[
@@ -990,6 +997,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             { id: 'auto-id', label: 'Auto ID / Rename Frames', shortcut: 'Cmd+I', action: () => setShowAutoId(true) },
             { id: 'ui-states', label: 'Five UI States Audit', action: () => setShowUIStates(true) },
             { id: 'variables', label: '🎨 Variables (Design Tokens)', action: () => setShowVariables(true) },
+            { id: 'dev-inspect', label: '🧑‍💻 Dev Mode / Inspect', shortcut: 'Cmd+Shift+D', action: () => setShowDevInspect(true) },
             ...(isAIReviewEnabled() ? [{ id: 'ai-review', label: '🤖 AI Design Review', action: () => setShowAIReview(true) }] : []),
             ...(isAIGenerateEnabled() ? [{ id: 'ai-generate', label: '🪄 AI Design Generator', shortcut: 'Cmd+K', action: () => setShowAIGenerate(true) }] : []),
             { id: 'fit-view', label: 'Fit to View', shortcut: 'Cmd+0', action: resetView },
