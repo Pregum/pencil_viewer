@@ -13,9 +13,40 @@ export interface PaintContext {
 }
 
 export function resolveFill(fill: Fills | undefined, ctx: PaintContext): string {
-  const refId = ctx.registry?.fillMap.get(ctx.nodeId);
-  if (refId) return `url(#${refId})`;
+  // 単一 fill の後方互換: 配列最初の paint ref があればそれ、無ければ solid fallback。
+  const entries = ctx.registry?.fillMap.get(ctx.nodeId);
+  const firstRef = entries?.find((e) => e != null);
+  if (firstRef) return `url(#${firstRef})`;
   return resolveSolidFill(fill);
+}
+
+/**
+ * 複数 fill を配列順に返す（pencil.dev 仕様: composite in order）。
+ * 各 entry は SVG ready な fill 値（hex / url(#id)）。
+ * fill opacity も同時に返す（OK: Fill.opacity / SolidFill.opacity）。
+ */
+export function resolveFillLayers(
+  fill: Fills | undefined,
+  ctx: PaintContext,
+): Array<{ paint: string; opacity: number }> {
+  if (fill == null) return [];
+  const list: Fill[] = Array.isArray(fill) ? fill : [fill];
+  const entries = ctx.registry?.fillMap.get(ctx.nodeId);
+  const out: Array<{ paint: string; opacity: number }> = [];
+  list.forEach((f, i) => {
+    const refId = entries?.[i] ?? null;
+    const opacity = (f && typeof f === 'object' && 'opacity' in f && typeof f.opacity === 'number') ? (f.opacity as number) : 1;
+    const enabled = (f && typeof f === 'object' && 'enabled' in f ? (f as { enabled?: boolean }).enabled : undefined);
+    if (enabled === false) return;
+    if (refId) {
+      out.push({ paint: `url(#${refId})`, opacity });
+    } else if (typeof f === 'string') {
+      out.push({ paint: f, opacity });
+    } else if (f && typeof f === 'object' && f.type === 'color') {
+      out.push({ paint: f.color, opacity });
+    }
+  });
+  return out;
 }
 
 export function resolveStroke(stroke: Stroke | undefined, ctx: PaintContext): string {

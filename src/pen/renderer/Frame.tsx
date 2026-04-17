@@ -6,7 +6,7 @@
 import type { FrameNode } from '../types';
 import { usePaintRegistry } from '../paint/PaintContext';
 import {
-  resolveFill,
+  resolveFillLayers,
   resolveStroke,
   resolveStrokeWidth,
   resolveFilter,
@@ -27,7 +27,7 @@ export function Frame({ node }: { node: FrameNode }) {
   const clipId = node.clip ? `clip-${node.id}` : undefined;
   const transform = x === 0 && y === 0 ? undefined : `translate(${x} ${y})`;
 
-  const bgFill = resolveFill(node.fill, ctx);
+  const fillLayers = resolveFillLayers(node.fill, ctx);
   const filter = resolveFilter(ctx);
   // cornerRadius をクランプ（Pencil: min(r, w/2, h/2) で pill 形状を実現）
   const rawRx = typeof node.cornerRadius === 'number' ? node.cornerRadius : undefined;
@@ -55,7 +55,24 @@ export function Frame({ node }: { node: FrameNode }) {
           </clipPath>
         </defs>
       )}
-      {width != null && height != null && bgFill !== 'none' && (
+      {/* 背景 fill レイヤー群（配列順に composite） */}
+      {width != null && height != null && fillLayers.map((l, i) => (
+        <rect
+          key={`bg-${i}`}
+          x={0}
+          y={0}
+          width={width}
+          height={height}
+          rx={rx}
+          ry={rx}
+          fill={l.paint}
+          fillOpacity={l.opacity !== 1 ? l.opacity : undefined}
+          stroke={i === fillLayers.length - 1 && !isPartial ? strokeColor : 'none'}
+          strokeWidth={i === fillLayers.length - 1 && !isPartial ? strokeWidth : 0}
+        />
+      ))}
+      {/* fill が全く無いが stroke だけある場合 */}
+      {width != null && height != null && fillLayers.length === 0 && strokeWidth > 0 && !isPartial && strokeColor !== 'none' && (
         <rect
           x={0}
           y={0}
@@ -63,8 +80,8 @@ export function Frame({ node }: { node: FrameNode }) {
           height={height}
           rx={rx}
           ry={rx}
-          fill={bgFill}
-          stroke={isPartial ? 'none' : strokeColor}
+          fill="none"
+          stroke={strokeColor}
           strokeWidth={strokeWidth}
         />
       )}
