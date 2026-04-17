@@ -94,6 +94,12 @@ interface EditorContextValue {
   addNode: (node: PenNode) => void;
   /** Alt+ドラッグ複製用: トップレベル指定 IDs をクローン追加して選択、開始位置を返す */
   cloneNodesAtTop: (ids: string[]) => Array<{ id: string; x0: number; y0: number; w: number; h: number }>;
+  /** 選択ノードをコンポーネント化（reusable=true） */
+  createComponent: (nodeId?: string) => void;
+  /** コンポーネント化を解除 */
+  unmakeComponent: (nodeId: string) => void;
+  /** コンポーネント ID を参照する ref インスタンスをトップレベルに追加 */
+  insertInstance: (componentId: string, pos?: { x?: number; y?: number; width?: number; height?: number }) => void;
   /** アクティブツールを切り替える */
   setActiveTool: (tool: ActiveTool) => void;
   /** インラインテキスト編集の開始/終了 */
@@ -427,6 +433,77 @@ export function EditorProvider({
     setState((s) => (s.activeTool === tool ? s : { ...s, activeTool: tool }));
   }, []);
 
+  /**
+   * 選択ノードをコンポーネント化（reusable: true を付与）。
+   * 既存の refs.ts が reusable を参照するので、これだけで ref インスタンス化の対象になる。
+   */
+  const createComponent = useCallback((nodeId?: string) => {
+    setState((s) => {
+      const target = nodeId ?? s.selectedNodeId;
+      if (!target) return s;
+      pushUndo(s.doc, s.rawDoc);
+      const patch = { reusable: true } as Partial<PenNode>;
+      return {
+        ...s,
+        doc: updateNodeInDoc(s.doc, target, patch),
+        rawDoc: updateNodeInDoc(s.rawDoc, target, patch),
+      };
+    });
+  }, [pushUndo]);
+
+  /** コンポーネント化を解除 */
+  const unmakeComponent = useCallback((nodeId: string) => {
+    setState((s) => {
+      pushUndo(s.doc, s.rawDoc);
+      // reusable: false を立てる（undefined は Partial で消せないため false を入れる）
+      const patch = { reusable: false } as unknown as Partial<PenNode>;
+      return {
+        ...s,
+        doc: updateNodeInDoc(s.doc, nodeId, patch),
+        rawDoc: updateNodeInDoc(s.rawDoc, nodeId, patch),
+      };
+    });
+  }, [pushUndo]);
+
+  /**
+   * コンポーネント ID への参照 (RefNode) を生成してトップレベルに追加する。
+   * 引数の width/height は参照先のサイズを継承するため省略可。
+   */
+  const insertInstance = useCallback(
+    (componentId: string, pos?: { x?: number; y?: number; width?: number; height?: number }) => {
+      // 参照先を探す（サイズ取得のため）
+      const target = stateRef.current.rawDoc.children.find((n) => n.id === componentId)
+        ?? (function search(nodes: PenNode[]): PenNode | null {
+          for (const n of nodes) {
+            if (n.id === componentId) return n;
+            const children = (n as { children?: PenNode[] }).children;
+            if (children) {
+              const f = search(children);
+              if (f) return f;
+            }
+          }
+          return null;
+        })(stateRef.current.rawDoc.children);
+
+      if (!target) return;
+
+      const tw = typeof (target as { width?: unknown }).width === 'number' ? (target as { width: number }).width : 100;
+      const th = typeof (target as { height?: unknown }).height === 'number' ? (target as { height: number }).height : 100;
+
+      const instance = {
+        type: 'ref' as const,
+        id: `${componentId}_instance_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        ref: componentId,
+        x: pos?.x ?? 0,
+        y: pos?.y ?? 0,
+        width: pos?.width ?? tw,
+        height: pos?.height ?? th,
+      } as PenNode;
+      addNode(instance);
+    },
+    [addNode],
+  );
+
   const beginEditing = useCallback((nodeId: string) => {
     setState((s) => ({ ...s, editingNodeId: nodeId, selectedNodeId: nodeId, selectedNodeIds: new Set(), insertMode: true }));
   }, []);
@@ -486,6 +563,15 @@ export function EditorProvider({
         tag === 'TEXTAREA' ||
         tag === 'SELECT' ||
         target.isContentEditable === true;
+
+      // Cmd+Alt+K: 選択ノードをコンポーネント化
+      if (mod && e.altKey && (e.key === 'k' || e.key === 'K' || e.key === '˚')) {
+        if (!isInput) {
+          e.preventDefault();
+          createComponent();
+          return;
+        }
+      }
 
       // Cmd+Shift+H: 選択ノードの visibility をトグル
       if (mod && e.shiftKey && (e.key === 'h' || e.key === 'H')) {
@@ -788,7 +874,7 @@ export function EditorProvider({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo, deleteNode, pushUndo, findSiblings, reorderSelected]);
+  }, [undo, redo, deleteNode, pushUndo, findSiblings, reorderSelected, createComponent]);
 
   const selectedNode = useMemo(
     () =>
@@ -812,8 +898,8 @@ export function EditorProvider({
   const canRedo = redoStack.current.length > 0;
 
   const value = useMemo(
-    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
-    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
+    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
+    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;
