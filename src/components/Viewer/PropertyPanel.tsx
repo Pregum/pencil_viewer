@@ -324,21 +324,115 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
         </div>
       )}
 
-      {/* Layout (frame only) */}
-      {n.type === 'frame' && (
-        <div className="prop-panel__section">
-          <div className="prop-panel__title">Layout</div>
-          <select
-            className="prop-panel__select"
-            value={(n as { layout?: string }).layout ?? 'horizontal'}
-            onChange={(e) => patch({ layout: e.target.value } as Partial<PenNode>)}
-          >
-            <option value="horizontal">Horizontal</option>
-            <option value="vertical">Vertical</option>
-            <option value="none">None</option>
-          </select>
-        </div>
-      )}
+      {/* Layout (frame / group) */}
+      {(n.type === 'frame' || n.type === 'group') && (() => {
+        const layout = (n as { layout?: string }).layout ?? (n.type === 'frame' ? 'horizontal' : 'none');
+        const gap = (n as { gap?: number }).gap ?? 0;
+        const padding = (n as { padding?: unknown }).padding;
+        const paddingNum = typeof padding === 'number' ? padding : 0;
+        const justify = (n as { justifyContent?: string }).justifyContent ?? 'start';
+        const align = (n as { alignItems?: string }).alignItems ?? 'start';
+        const isFlex = layout === 'vertical' || layout === 'horizontal';
+
+        return (
+          <div className="prop-panel__section">
+            <div className="prop-panel__title">Auto Layout</div>
+            {/* layout 方向: 3 ボタン */}
+            <div className="auto-layout__row">
+              {[
+                { v: 'horizontal', label: 'H', title: 'Horizontal', icon: '⇢' },
+                { v: 'vertical', label: 'V', title: 'Vertical', icon: '⇣' },
+                { v: 'none', label: 'None', title: 'No layout (absolute)', icon: '◇' },
+              ].map((opt) => (
+                <button
+                  key={opt.v}
+                  type="button"
+                  className={`auto-layout__btn${layout === opt.v ? ' auto-layout__btn--active' : ''}`}
+                  title={opt.title}
+                  onClick={() => patch({ layout: opt.v } as Partial<PenNode>)}
+                >
+                  <span className="auto-layout__btn-icon">{opt.icon}</span>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {isFlex && (
+              <>
+                {/* Gap + Padding */}
+                <div className="auto-layout__row auto-layout__row--nums">
+                  <div className="auto-layout__num-field" title="Gap between children">
+                    <label>Gap</label>
+                    <input
+                      type="number"
+                      value={gap}
+                      onFocus={onInputFocus}
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value);
+                        if (!isNaN(v)) patchInput({ gap: Math.max(0, v) } as Partial<PenNode>);
+                      }}
+                    />
+                  </div>
+                  <div className="auto-layout__num-field" title="Padding (all sides)">
+                    <label>Pad</label>
+                    <input
+                      type="number"
+                      value={paddingNum}
+                      onFocus={onInputFocus}
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value);
+                        if (!isNaN(v)) patchInput({ padding: Math.max(0, v) } as Partial<PenNode>);
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Justify (main axis) */}
+                <div className="auto-layout__row-title">Main axis ({layout === 'horizontal' ? '↔' : '↕'})</div>
+                <div className="auto-layout__row">
+                  {[
+                    { v: 'start', title: 'Start' },
+                    { v: 'center', title: 'Center' },
+                    { v: 'end', title: 'End' },
+                    { v: 'space_between', title: 'Space between' },
+                    { v: 'space_around', title: 'Space around' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.v}
+                      type="button"
+                      className={`auto-layout__btn auto-layout__btn--sm${justify === opt.v ? ' auto-layout__btn--active' : ''}`}
+                      title={opt.title}
+                      onClick={() => patch({ justifyContent: opt.v } as Partial<PenNode>)}
+                    >
+                      {opt.title === 'Space between' ? 'S-B' : opt.title === 'Space around' ? 'S-A' : opt.title.slice(0, 3)}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Align (cross axis) */}
+                <div className="auto-layout__row-title">Cross axis ({layout === 'horizontal' ? '↕' : '↔'})</div>
+                <div className="auto-layout__row">
+                  {[
+                    { v: 'start', title: 'Start' },
+                    { v: 'center', title: 'Center' },
+                    { v: 'end', title: 'End' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.v}
+                      type="button"
+                      className={`auto-layout__btn auto-layout__btn--sm${align === opt.v ? ' auto-layout__btn--active' : ''}`}
+                      title={opt.title}
+                      onClick={() => patch({ alignItems: opt.v } as Partial<PenNode>)}
+                    >
+                      {opt.title}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Node ID (read-only) */}
       <div className="prop-panel__section">
