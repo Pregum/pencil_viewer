@@ -28,6 +28,7 @@ import { AIGeneratorPanel } from './AIGeneratorPanel';
 import { isAIGenerateEnabled } from '../../utils/aiGenerate';
 import { FloatingTextToolbar } from './FloatingTextToolbar';
 import { ImageDropHandler } from './ImageDropHandler';
+import { FindReplaceDialog } from './FindReplaceDialog';
 import { ZoomInput } from './ZoomInput';
 import { Toolbar } from './Toolbar';
 import { ShapeCreator } from './ShapeCreator';
@@ -152,6 +153,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const [showPages, setShowPages] = useState(true);
   const [showComponents, setShowComponents] = useState(true);
   const [showRulers, setShowRulers] = useState(false);
+  const [showFindReplace, setShowFindReplace] = useState(false);
   const [clientSize, setClientSize] = useState({ width: 0, height: 0 });
 
   // Compute the actual viewBox from camera
@@ -586,6 +588,10 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         // Cmd+; でルーラー表示トグル（Cmd+R はブラウザ予約のため避ける）
         e.preventDefault();
         setShowRulers((v) => !v);
+      } else if (mod && !e.shiftKey && e.key === 'f') {
+        // Cmd+F で Find & Replace
+        e.preventDefault();
+        setShowFindReplace((v) => !v);
       } else if (mod && (e.key === 'k' || e.key === 'K')) {
         // Cmd+K で AI Design Generator を開く
         if (isAIGenerateEnabled()) {
@@ -906,6 +912,12 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         <AIGeneratorPanel
           onClose={() => setShowAIGenerate(false)}
           onZoomToNode={(r) => zoomToRect(r)}
+        />
+      )}
+      {showFindReplace && (
+        <FindReplaceDialog
+          onClose={() => setShowFindReplace(false)}
+          onFocusNode={(r) => zoomToRect(r)}
         />
       )}
       {showCommandPalette && (
