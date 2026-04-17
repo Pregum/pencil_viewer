@@ -95,6 +95,23 @@ export interface ShadowEffect {
 export type Effect = BlurEffect | ShadowEffect;
 export type Effects = Effect | Effect[];
 
+/**
+ * Frame リサイズ時の子ノード挙動（Figma の Constraints 相当）。
+ * 親が layout='none' のときのみ有効。
+ * - 'left' / 'top': 親の左上に固定（デフォルト）
+ * - 'right' / 'bottom': 親の右下に固定（幅/高さは保持、位置を追従）
+ * - 'center': 親の中心に固定
+ * - 'stretch': 親の両端に相対距離を保って伸縮
+ * - 'scale': 親に対する比率を保ってスケール
+ */
+export type HorizontalConstraint = 'left' | 'right' | 'center' | 'stretch' | 'scale';
+export type VerticalConstraint = 'top' | 'bottom' | 'center' | 'stretch' | 'scale';
+
+export interface NodeConstraints {
+  horizontal?: HorizontalConstraint;
+  vertical?: VerticalConstraint;
+}
+
 interface NodeBase extends Position {
   id: string;
   name?: string;
@@ -108,6 +125,8 @@ interface NodeBase extends Position {
    * Pencil format には無いが passthrough で保持される。
    */
   locked?: boolean;
+  /** Frame Constraints（親リサイズ時の挙動）。editor 拡張、passthrough 保存 */
+  constraints?: NodeConstraints;
   /**
    * Pencil 拡張: `"absolute"` のとき、親が flex レイアウトでもこの子は
    * flex flow から外れ、自分の `x`/`y` がそのまま使われる。

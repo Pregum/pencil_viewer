@@ -324,6 +324,54 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
         </div>
       )}
 
+      {/* Constraints (子要素が absolute 配置される親内で有効) */}
+      {(() => {
+        const cs = (n as { constraints?: { horizontal?: string; vertical?: string } }).constraints;
+        const h = cs?.horizontal ?? 'left';
+        const v = cs?.vertical ?? 'top';
+        return (
+          <div className="prop-panel__section">
+            <div className="prop-panel__title">Constraints</div>
+            <div className="auto-layout__row auto-layout__row--nums">
+              <div className="auto-layout__num-field">
+                <label>Horizontal</label>
+                <select
+                  className="prop-panel__select"
+                  value={h}
+                  onChange={(e) => {
+                    const cur = ((n as { constraints?: object }).constraints ?? {}) as Record<string, string>;
+                    patch({ constraints: { ...cur, horizontal: e.target.value } } as Partial<PenNode>);
+                  }}
+                >
+                  <option value="left">Left</option>
+                  <option value="right">Right</option>
+                  <option value="center">Center</option>
+                  <option value="stretch">Left &amp; Right</option>
+                  <option value="scale">Scale</option>
+                </select>
+              </div>
+              <div className="auto-layout__num-field">
+                <label>Vertical</label>
+                <select
+                  className="prop-panel__select"
+                  value={v}
+                  onChange={(e) => {
+                    const cur = ((n as { constraints?: object }).constraints ?? {}) as Record<string, string>;
+                    patch({ constraints: { ...cur, vertical: e.target.value } } as Partial<PenNode>);
+                  }}
+                >
+                  <option value="top">Top</option>
+                  <option value="bottom">Bottom</option>
+                  <option value="center">Center</option>
+                  <option value="stretch">Top &amp; Bottom</option>
+                  <option value="scale">Scale</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Layout (frame / group) */}
       {(n.type === 'frame' || n.type === 'group') && (() => {
         const layout = (n as { layout?: string }).layout ?? (n.type === 'frame' ? 'horizontal' : 'none');
