@@ -627,6 +627,18 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         // Cmd+; でルーラー表示トグル（Cmd+R はブラウザ予約のため避ける）
         e.preventDefault();
         setShowRulers((v) => !v);
+      } else if (e.shiftKey && !mod && !e.altKey && e.key === '1') {
+        // Shift+1: Fit to view
+        if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+          e.preventDefault();
+          resetView();
+        }
+      } else if (e.shiftKey && !mod && !e.altKey && e.key === '2') {
+        // Shift+2: Zoom to selected node (similar to F)
+        if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
+          e.preventDefault();
+          window.dispatchEvent(new Event('pencil-zoom-to-selected'));
+        }
       } else if (mod && !e.shiftKey && e.key === 'f') {
         // Cmd+F で Find & Replace
         e.preventDefault();
