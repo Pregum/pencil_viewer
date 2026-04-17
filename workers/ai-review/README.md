@@ -19,6 +19,10 @@ VITE_AI_REVIEW_URL=https://pencil-ai-review.YOUR.workers.dev npm run build
 
 ## API
 
+Single endpoint with 3 modes. The request body determines which path is used.
+
+### 1. Review
+
 ```bash
 POST /
 Content-Type: application/json
@@ -30,14 +34,48 @@ Content-Type: application/json
 }
 ```
 
-### Modes
-
 | Mode | Description |
 |---|---|
 | `full` | Comprehensive review (Five States + consistency + accessibility) |
 | `five-states` | Five UI States coverage only |
 | `accessibility` | Accessibility audit only |
 | `quick` | 3-5 bullet points, quick feedback |
+
+### 2. Repair missing state
+
+```json
+{
+  "frame": {...},
+  "state": "empty|loading|error|partial",
+  "offsetX": 400,
+  "locale": "ja"
+}
+```
+
+### 3. Generate (AI Design Generator — Cmd+K)
+
+```json
+{
+  "mode": "generate",
+  "prompt": "モバイルのログイン画面、メール + パスワード",
+  "kind": "mobile",
+  "offsetX": 0,
+  "locale": "ja"
+}
+```
+
+Returns a newly generated .pen `frame` node.
+
+## Redeploying
+
+**Worker に機能を追加したら必ず再デプロイを。**
+
+```bash
+cd workers/ai-review
+npx wrangler deploy
+```
+
+古い Worker に AI Design Generator (`mode: 'generate'`) を叩くと `400 Invalid request: children array required` が返ります。その場合は最新コードをデプロイしてください。
 
 ### Response
 
