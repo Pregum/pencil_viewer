@@ -39,6 +39,7 @@ import { ShapeCreator } from './ShapeCreator';
 import { PenToolCreator } from './PenToolCreator';
 import { PathEditor } from './PathEditor';
 import { CommentsLayer } from './CommentsLayer';
+import { SmartAnimateOverlay } from './SmartAnimateOverlay';
 import { ToolShortcuts } from './ToolShortcuts';
 import { SnapGuides } from './SnapGuides';
 import { DistanceMeasure } from './DistanceMeasure';
@@ -166,6 +167,16 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const [showStyles, setShowStyles] = useState(false);
   const [presentMode, setPresentMode] = useState(false);
   const [presentIdx, setPresentIdx] = useState(0);
+  // Smart Animate トランジション状態
+  const [transition, setTransition] = useState<null | {
+    fromIdx: number;
+    toIdx: number;
+    duration: number;
+    easing: 'linear' | 'ease-out' | 'ease-in' | 'ease-in-out';
+    smartAnimate: boolean;
+    progress: number;
+    startTime: number;
+  }>(null);
   const [clientSize, setClientSize] = useState({ width: 0, height: 0 });
 
   // Compute the actual viewBox from camera
@@ -265,15 +276,30 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
     return () => ro.disconnect();
   }, []);
 
-  // Present モード: active frame に自動ズーム
+  // Present モード: active frame に自動ズーム（transition 中はスキップ）
   useEffect(() => {
     if (!presentMode) return;
+    if (transition) return;
     if (frames.length === 0) return;
     const target = frames[Math.max(0, Math.min(frames.length - 1, presentIdx))];
     if (!target) return;
     zoomToRect({ x: target.x, y: target.y, width: target.width, height: target.height });
     setActiveFrameId(target.id);
-  }, [presentMode, presentIdx, frames, zoomToRect]);
+  }, [presentMode, presentIdx, frames, zoomToRect, transition]);
+
+  // transition 中は from/to bbox を補間したビューを camera に設定
+  useEffect(() => {
+    if (!transition) return;
+    const from = frames[transition.fromIdx];
+    const to = frames[transition.toIdx];
+    if (!from || !to) return;
+    const t = transition.progress;
+    const ix = from.x + (to.x - from.x) * t;
+    const iy = from.y + (to.y - from.y) * t;
+    const iw = from.width + (to.width - from.width) * t;
+    const ih = from.height + (to.height - from.height) * t;
+    zoomToRect({ x: ix, y: iy, width: iw, height: ih });
+  }, [transition, frames, zoomToRect]);
 
   // Present モード時に onTap 付きノードをクリックで遷移
   useEffect(() => {
@@ -357,7 +383,33 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
           if (idx >= 0) {
             e.preventDefault();
             e.stopPropagation();
-            setPresentIdx(idx);
+            // 当該ノードの onTapTransition を取り出して transition を開始
+            const findTrans = (nodes: PenNode[]): { duration?: number; easing?: 'linear' | 'ease-out' | 'ease-in' | 'ease-in-out'; smartAnimate?: boolean } | undefined => {
+              for (const n of nodes) {
+                if (n.id === hitId) return (n as { onTapTransition?: { duration?: number; easing?: 'linear' | 'ease-out' | 'ease-in' | 'ease-in-out'; smartAnimate?: boolean } }).onTapTransition;
+                const children = (n as { children?: PenNode[] }).children;
+                if (children) {
+                  const v = findTrans(children);
+                  if (v !== undefined) return v;
+                }
+              }
+              return undefined;
+            };
+            const trans = findTrans(doc.children);
+            const duration = trans?.duration ?? 0;
+            if (duration > 0) {
+              setTransition({
+                fromIdx: presentIdx,
+                toIdx: idx,
+                duration,
+                easing: trans?.easing ?? 'ease-out',
+                smartAnimate: trans?.smartAnimate ?? true,
+                progress: 0,
+                startTime: performance.now(),
+              });
+            } else {
+              setPresentIdx(idx);
+            }
           }
         }
       }
@@ -365,6 +417,28 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
     svg.addEventListener('pointerdown', onClick as EventListener, true);
     return () => svg.removeEventListener('pointerdown', onClick as EventListener, true);
   }, [presentMode, doc.children, frames, svgRef]);
+
+  // Smart Animate: rAF ループで progress を更新、完了したら presentIdx を切替
+  useEffect(() => {
+    if (!transition) return;
+    let raf = 0;
+    const tick = () => {
+      const now = performance.now();
+      const elapsed = now - transition.startTime;
+      const p = Math.max(0, Math.min(1, elapsed / transition.duration));
+      setTransition((prev) => (prev ? { ...prev, progress: p } : null));
+      if (p < 1) {
+        raf = requestAnimationFrame(tick);
+      } else {
+        // 完了: presentIdx を切替して transition クリア
+        setPresentIdx(transition.toIdx);
+        setTransition(null);
+      }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transition?.startTime]);
 
   // Present モード時のフレーム遷移 & 終了キー
   useEffect(() => {
@@ -1039,6 +1113,32 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             <SnapGuides svgScale={scale} />
             <DistanceMeasure svgRef={svgRef} svgScale={scale} />
             <EditAnimation />
+            {transition && frames[transition.fromIdx] && frames[transition.toIdx] && (() => {
+              // Smart Animate オーバーレイ: 元フレームを探して補間描画
+              const fromFrameId = frames[transition.fromIdx].id;
+              const toFrameId = frames[transition.toIdx].id;
+              const findFrame = (nodes: PenNode[], id: string): PenNode | null => {
+                for (const n of nodes) {
+                  if (n.id === id) return n;
+                }
+                return null;
+              };
+              const f = findFrame(doc.children, fromFrameId);
+              const t = findFrame(doc.children, toFrameId);
+              if (f?.type !== 'frame' || t?.type !== 'frame') return null;
+              return (
+                <g style={{ mixBlendMode: 'normal' }}>
+                  {/* 裏の元フレーム / 遷移先フレームを隠すため、黒背景の rect をフレーム位置に置く */}
+                  <SmartAnimateOverlay
+                    fromFrame={f}
+                    toFrame={t}
+                    progress={transition.progress}
+                    easing={transition.easing}
+                    smartAnimate={transition.smartAnimate}
+                  />
+                </g>
+              );
+            })()}
           </svg>
         </div>
         </div>

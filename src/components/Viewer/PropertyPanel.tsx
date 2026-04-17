@@ -825,11 +825,12 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
         );
       })()}
 
-      {/* Prototype: onTap (遷移先フレーム) */}
+      {/* Prototype: onTap (遷移先フレーム) + transition */}
       {(() => {
         const topFrames = state.doc.children.filter((c) => c.type === 'frame') as Array<PenNode & { name?: string }>;
         if (topFrames.length === 0) return null;
         const currentTap = (n as { onTap?: string }).onTap;
+        const tr = (n as { onTapTransition?: { duration?: number; easing?: string; smartAnimate?: boolean } }).onTapTransition ?? {};
         return (
           <div className="prop-panel__section">
             <div className="prop-panel__title">Prototype</div>
@@ -846,6 +847,46 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
                 ))}
               </select>
             </div>
+            {currentTap && (
+              <>
+                <div className="auto-layout__row auto-layout__row--nums">
+                  <div className="auto-layout__num-field">
+                    <label>Duration (ms)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={tr.duration ?? 0}
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value);
+                        if (isNaN(v)) return;
+                        patch({ onTapTransition: { ...tr, duration: Math.max(0, v) } } as Partial<PenNode>);
+                      }}
+                    />
+                  </div>
+                  <div className="auto-layout__num-field">
+                    <label>Easing</label>
+                    <select
+                      className="prop-panel__select"
+                      value={tr.easing ?? 'ease-out'}
+                      onChange={(e) => patch({ onTapTransition: { ...tr, easing: e.target.value } } as Partial<PenNode>)}
+                    >
+                      <option value="linear">linear</option>
+                      <option value="ease-in">ease-in</option>
+                      <option value="ease-out">ease-out</option>
+                      <option value="ease-in-out">ease-in-out</option>
+                    </select>
+                  </div>
+                </div>
+                <label className="auto-layout__row" style={{ marginTop: 6, gap: 6 }}>
+                  <input
+                    type="checkbox"
+                    checked={tr.smartAnimate !== false}
+                    onChange={(e) => patch({ onTapTransition: { ...tr, smartAnimate: e.target.checked } } as Partial<PenNode>)}
+                  />
+                  <span style={{ fontSize: 11 }}>Smart animate (match by id)</span>
+                </label>
+              </>
+            )}
           </div>
         );
       })()}

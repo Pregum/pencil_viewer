@@ -188,6 +188,15 @@ interface NodeBase extends Position {
    */
   onTap?: string;
   /**
+   * 遷移アニメーション設定。onTap が発火したときの挙動を制御する。
+   * smartAnimate: true のとき同 id のノードを interpolate、false のときは crossfade。
+   */
+  onTapTransition?: {
+    duration?: number; // ms (default 300)
+    easing?: 'linear' | 'ease-out' | 'ease-in' | 'ease-in-out';
+    smartAnimate?: boolean;
+  };
+  /**
    * Pencil 拡張: `"absolute"` のとき、親が flex レイアウトでもこの子は
    * flex flow から外れ、自分の `x`/`y` がそのまま使われる。
    */
