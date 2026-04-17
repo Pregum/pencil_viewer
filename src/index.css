@@ -1223,6 +1223,7 @@ html,
   white-space: nowrap;
   overflow: hidden;
   padding-right: 8px;
+  position: relative;
 }
 .node-tree__item:hover {
   background: var(--color-canvas);
@@ -1233,6 +1234,20 @@ html,
 .node-tree__item--multi {
   background: #eef2ff;
 }
+/* Drag and drop インジケータ（並び替え用の横ライン） */
+.node-tree__item--drop-above::before,
+.node-tree__item--drop-below::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-accent, #4F46E5);
+  pointer-events: none;
+  z-index: 1;
+}
+.node-tree__item--drop-above::before { top: 0; }
+.node-tree__item--drop-below::after { bottom: 0; }
 
 .node-tree__count {
   margin-left: auto;

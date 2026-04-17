@@ -86,6 +86,10 @@ interface EditorContextValue {
   deleteNode: (nodeId: string) => void;
   /** ドキュメントの children を直接差し替える（undo 付き） */
   replaceDocChildren: (children: PenNode[]) => void;
+  /** 選択ノードの z-order を移動（forward/backward/front/back） */
+  reorderSelected: (action: 'forward' | 'backward' | 'front' | 'back') => void;
+  /** 親配下の兄弟配列の並びを from → to に変更（レイヤーDnD用） */
+  reorderChildren: (parentId: string | null, fromIdx: number, toIdx: number) => void;
   /** 新しいノードをトップレベルに追加して選択する（undo 付き） */
   addNode: (node: PenNode) => void;
   /** Alt+ドラッグ複製用: トップレベル指定 IDs をクローン追加して選択、開始位置を返す */
@@ -271,6 +275,103 @@ export function EditorProvider({
     [pushUndo],
   );
 
+  /**
+   * z-order 並び替え: 選択ノードをツリー内の同じ親の兄弟内で移動する。
+   * delta: +1 = 前面に1つ / -1 = 背面に1つ / 'front' / 'back'
+   */
+  const reorderSelected = useCallback(
+    (action: 'forward' | 'backward' | 'front' | 'back') => {
+      setState((s) => {
+        if (!s.selectedNodeId) return s;
+        const targetId = s.selectedNodeId;
+
+        /** ツリー内の node を parent (兄弟配列) 単位で移動する再帰ヘルパー */
+        function applyReorder(nodes: PenNode[]): { nodes: PenNode[]; changed: boolean } {
+          const idx = nodes.findIndex((n) => n.id === targetId);
+          if (idx >= 0) {
+            const arr = [...nodes];
+            const [item] = arr.splice(idx, 1);
+            let toIdx = idx;
+            if (action === 'forward') toIdx = Math.min(arr.length, idx + 1);
+            else if (action === 'backward') toIdx = Math.max(0, idx - 1);
+            else if (action === 'front') toIdx = arr.length;
+            else if (action === 'back') toIdx = 0;
+            arr.splice(toIdx, 0, item);
+            return { nodes: arr, changed: toIdx !== idx };
+          }
+          let changed = false;
+          const next = nodes.map((n) => {
+            if ('children' in n && Array.isArray((n as { children?: PenNode[] }).children)) {
+              const res = applyReorder((n as { children: PenNode[] }).children);
+              if (res.changed) {
+                changed = true;
+                return { ...(n as object), children: res.nodes } as PenNode;
+              }
+            }
+            return n;
+          });
+          return { nodes: next, changed };
+        }
+
+        const docRes = applyReorder(s.doc.children);
+        const rawRes = applyReorder(s.rawDoc.children);
+        if (!docRes.changed) return s;
+        pushUndo(s.doc, s.rawDoc);
+        return {
+          ...s,
+          doc: { ...s.doc, children: docRes.nodes },
+          rawDoc: { ...s.rawDoc, children: rawRes.nodes },
+        };
+      });
+    },
+    [pushUndo],
+  );
+
+  /**
+   * 指定の親配下で兄弟配列の並びを from → to に変更する（レイヤーパネル DnD 用）。
+   * parentId=null の場合はトップレベル children を対象にする。
+   */
+  const reorderChildren = useCallback(
+    (parentId: string | null, fromIdx: number, toIdx: number) => {
+      if (fromIdx === toIdx) return;
+      setState((s) => {
+        function reorderArr(arr: PenNode[]): PenNode[] {
+          if (fromIdx < 0 || fromIdx >= arr.length) return arr;
+          const next = [...arr];
+          const [item] = next.splice(fromIdx, 1);
+          const insertAt = Math.max(0, Math.min(next.length, toIdx > fromIdx ? toIdx - 1 : toIdx));
+          next.splice(insertAt, 0, item);
+          return next;
+        }
+        function applyIn(nodes: PenNode[]): PenNode[] {
+          if (parentId === null) return reorderArr(nodes);
+          return nodes.map((n) => {
+            if (n.id === parentId && 'children' in n && Array.isArray((n as { children?: PenNode[] }).children)) {
+              return {
+                ...(n as object),
+                children: reorderArr((n as { children: PenNode[] }).children),
+              } as PenNode;
+            }
+            if ('children' in n && Array.isArray((n as { children?: PenNode[] }).children)) {
+              return {
+                ...(n as object),
+                children: applyIn((n as { children: PenNode[] }).children),
+              } as PenNode;
+            }
+            return n;
+          });
+        }
+        pushUndo(s.doc, s.rawDoc);
+        return {
+          ...s,
+          doc: { ...s.doc, children: applyIn(s.doc.children) },
+          rawDoc: { ...s.rawDoc, children: applyIn(s.rawDoc.children) },
+        };
+      });
+    },
+    [pushUndo],
+  );
+
   const addNode = useCallback(
     (node: PenNode) => {
       setState((s) => {
@@ -385,6 +486,22 @@ export function EditorProvider({
         tag === 'TEXTAREA' ||
         tag === 'SELECT' ||
         target.isContentEditable === true;
+
+      // z-order: 選択ノードがある場合のみ Cmd+[ / ] を横取りし、
+      // PenViewer 側の history nav (navigateBack/Forward) が発火しないようにする。
+      if (mod && !isInput && (e.key === '[' || e.key === ']')) {
+        setState((s) => {
+          if (!s.selectedNodeId) return s;
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          if (e.shiftKey) {
+            reorderSelected(e.key === ']' ? 'front' : 'back');
+          } else {
+            reorderSelected(e.key === ']' ? 'forward' : 'backward');
+          }
+          return s;
+        });
+      }
       // Escape: exit insert mode + blur input, then deselect
       if (e.key === 'Escape') {
         setState((s) => {
@@ -636,7 +753,7 @@ export function EditorProvider({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo, deleteNode, pushUndo, findSiblings]);
+  }, [undo, redo, deleteNode, pushUndo, findSiblings, reorderSelected]);
 
   const selectedNode = useMemo(
     () =>
@@ -660,8 +777,8 @@ export function EditorProvider({
   const canRedo = redoStack.current.length > 0;
 
   const value = useMemo(
-    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, addNode, cloneNodesAtTop, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
-    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, addNode, cloneNodesAtTop, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
+    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
+    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, setActiveTool, beginEditing, endEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;
