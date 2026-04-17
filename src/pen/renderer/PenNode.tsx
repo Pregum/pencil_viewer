@@ -73,6 +73,8 @@ function renderNode(node: PenNode, editingNodeId: string | null) {
 
 export function PenNodeView({ node }: { node: PenNode }) {
   const { state } = useEditor();
+  // enabled === false のノードは描画しない（Figma の目アイコン OFF と同等）
+  if ((node as { enabled?: boolean }).enabled === false) return null;
   return (
     <SelectableNode node={node}>
       {renderNode(node, state.editingNodeId)}

@@ -487,6 +487,41 @@ export function EditorProvider({
         tag === 'SELECT' ||
         target.isContentEditable === true;
 
+      // Cmd+Shift+H: 選択ノードの visibility をトグル
+      if (mod && e.shiftKey && (e.key === 'h' || e.key === 'H')) {
+        setState((s) => {
+          if (!s.selectedNodeId) return s;
+          e.preventDefault();
+          const n = findNode(s.doc.children, s.selectedNodeId);
+          if (!n) return s;
+          const cur = (n as { enabled?: boolean }).enabled !== false;
+          pushUndo(s.doc, s.rawDoc);
+          return {
+            ...s,
+            doc: updateNodeInDoc(s.doc, s.selectedNodeId, { enabled: !cur } as Partial<PenNode>),
+            rawDoc: updateNodeInDoc(s.rawDoc, s.selectedNodeId, { enabled: !cur } as Partial<PenNode>),
+          };
+        });
+        return;
+      }
+      // Cmd+Shift+L: 選択ノードの lock をトグル
+      if (mod && e.shiftKey && (e.key === 'l' || e.key === 'L')) {
+        setState((s) => {
+          if (!s.selectedNodeId) return s;
+          e.preventDefault();
+          const n = findNode(s.doc.children, s.selectedNodeId);
+          if (!n) return s;
+          const cur = (n as { locked?: boolean }).locked === true;
+          pushUndo(s.doc, s.rawDoc);
+          return {
+            ...s,
+            doc: updateNodeInDoc(s.doc, s.selectedNodeId, { locked: !cur } as Partial<PenNode>),
+            rawDoc: updateNodeInDoc(s.rawDoc, s.selectedNodeId, { locked: !cur } as Partial<PenNode>),
+          };
+        });
+        return;
+      }
+
       // z-order: 選択ノードがある場合のみ Cmd+[ / ] を横取りし、
       // PenViewer 側の history nav (navigateBack/Forward) が発火しないようにする。
       if (mod && !isInput && (e.key === '[' || e.key === ']')) {

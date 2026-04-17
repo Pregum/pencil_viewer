@@ -104,6 +104,11 @@ interface NodeBase extends Position {
   flipX?: boolean;
   flipY?: boolean;
   /**
+   * エディタ拡張: true のとき、UI から選択・ドラッグ不可（表示はされる）。
+   * Pencil format には無いが passthrough で保持される。
+   */
+  locked?: boolean;
+  /**
    * Pencil 拡張: `"absolute"` のとき、親が flex レイアウトでもこの子は
    * flex flow から外れ、自分の `x`/`y` がそのまま使われる。
    */

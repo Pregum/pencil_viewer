@@ -1249,6 +1249,32 @@ html,
 .node-tree__item--drop-above::before { top: 0; }
 .node-tree__item--drop-below::after { bottom: 0; }
 
+/* 目/鍵アイコンボタン */
+.node-tree__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+.node-tree__item:hover .node-tree__icon-btn,
+.node-tree__icon-btn--active {
+  opacity: 1;
+}
+.node-tree__icon-btn--active {
+  color: var(--color-accent, #4F46E5);
+}
+.node-tree__icon-btn:hover {
+  color: var(--color-text);
+}
+
 .node-tree__count {
   margin-left: auto;
   font-size: 10px;
