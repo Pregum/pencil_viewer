@@ -107,18 +107,55 @@ function renderGradient(id: string, def: GradientFill) {
 function renderFilter(f: FilterRef) {
   return (
     <filter key={f.id} id={f.id} x="-50%" y="-50%" width="200%" height="200%">
-      {f.effects.map((e, i) => {
+      {f.effects.flatMap((e, i) => {
         if (e.type === 'blur') {
-          return <feGaussianBlur key={i} in="SourceGraphic" stdDeviation={e.radius ?? 4} />;
+          return [<feGaussianBlur key={`b-${i}`} in="SourceGraphic" stdDeviation={e.radius ?? 4} />];
         }
-        // shadow
+        // shadow: inner / outer を分岐
         const dx = e.offset?.x ?? 0;
         const dy = e.offset?.y ?? 0;
         const blur = e.blur ?? 4;
         const color = e.color ?? '#00000040';
-        return (
-          <feDropShadow key={i} dx={dx} dy={dy} stdDeviation={blur} floodColor={color} />
-        );
+        if (e.shadowType === 'inner') {
+          // 形状の内側に落ちる影。
+          //   1) SourceAlpha を blur+offset した「広がった shadow mask」を作る
+          //   2) SourceAlpha からそれを差し引くと、内側に向かう凹み領域だけ残る
+          //   3) その領域に色を flood して合成
+          const id = `${f.id}-inner-${i}`;
+          return [
+            <feGaussianBlur key={`${id}-blur`} in="SourceAlpha" stdDeviation={blur} result={`${id}-blur`} />,
+            <feOffset key={`${id}-off`} in={`${id}-blur`} dx={dx} dy={dy} result={`${id}-off`} />,
+            // shadowDiff = SourceAlpha * 1 + offset * -1  （差分）
+            <feComposite
+              key={`${id}-diff`}
+              in="SourceAlpha"
+              in2={`${id}-off`}
+              operator="arithmetic"
+              k2={-1}
+              k3={1}
+              result={`${id}-diff`}
+            />,
+            <feFlood key={`${id}-flood`} floodColor={color} result={`${id}-color`} />,
+            <feComposite
+              key={`${id}-colorIn`}
+              in={`${id}-color`}
+              in2={`${id}-diff`}
+              operator="in"
+              result={`${id}-shadow`}
+            />,
+            // SourceGraphic の上にシャドウを重ねる
+            <feComposite
+              key={`${id}-over`}
+              in={`${id}-shadow`}
+              in2="SourceGraphic"
+              operator="over"
+            />,
+          ];
+        }
+        // outer shadow
+        return [
+          <feDropShadow key={`ds-${i}`} dx={dx} dy={dy} stdDeviation={blur} floodColor={color} />,
+        ];
       })}
     </filter>
   );
