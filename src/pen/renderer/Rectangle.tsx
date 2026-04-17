@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { RectangleNode } from '../types';
 import { usePaintRegistry } from '../paint/PaintContext';
 import {
@@ -114,6 +115,7 @@ export function Rectangle({ node }: { node: RectangleNode }) {
           ry={rx}
           fill={l.paint}
           fillOpacity={l.opacity !== 1 ? l.opacity : undefined}
+          style={l.blendMode ? ({ mixBlendMode: l.blendMode } as CSSProperties) : undefined}
         />
       ))}
       {hasStroke && (

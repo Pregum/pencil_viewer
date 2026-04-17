@@ -31,10 +31,19 @@ function sanitizeImageUrl(url: string): string | null {
 
 function renderPaint(p: PaintRef) {
   if (p.kind === 'gradient') return renderGradient(p.id, p.def as GradientFill);
-  // image fill (pattern) — MVP では簡易対応
-  const rawUrl = (p.def as { url: string }).url;
-  const safeUrl = sanitizeImageUrl(rawUrl);
-  if (!safeUrl) return null; // 不正な URL はレンダリングしない
+  // image fill (pattern)
+  const def = p.def as { url: string; mode?: 'stretch' | 'fill' | 'fit' };
+  const safeUrl = sanitizeImageUrl(def.url);
+  if (!safeUrl) return null;
+  // mode → SVG preserveAspectRatio
+  //   'stretch' (歪めて埋める) → 'none'
+  //   'fill' (=cover, 短辺合わせで crop) → 'xMidYMid slice'
+  //   'fit' (=contain, 長辺合わせで余白) → 'xMidYMid meet'
+  const preserve = def.mode === 'stretch'
+    ? 'none'
+    : def.mode === 'fit'
+    ? 'xMidYMid meet'
+    : 'xMidYMid slice'; // fill or undefined
   return (
     <pattern
       key={p.id}
@@ -45,7 +54,7 @@ function renderPaint(p: PaintRef) {
     >
       <image
         href={safeUrl}
-        preserveAspectRatio="xMidYMid slice"
+        preserveAspectRatio={preserve}
         width={1}
         height={1}
       />

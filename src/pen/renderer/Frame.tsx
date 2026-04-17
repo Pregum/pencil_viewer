@@ -3,6 +3,7 @@
  * ここでは: 背景 fill の描画、clipPath、子の再帰描画を担う。
  */
 
+import type { CSSProperties } from 'react';
 import type { FrameNode } from '../types';
 import { usePaintRegistry } from '../paint/PaintContext';
 import {
@@ -69,6 +70,7 @@ export function Frame({ node }: { node: FrameNode }) {
           fillOpacity={l.opacity !== 1 ? l.opacity : undefined}
           stroke={i === fillLayers.length - 1 && !isPartial ? strokeColor : 'none'}
           strokeWidth={i === fillLayers.length - 1 && !isPartial ? strokeWidth : 0}
+          style={l.blendMode ? ({ mixBlendMode: l.blendMode } as CSSProperties) : undefined}
         />
       ))}
       {/* fill が全く無いが stroke だけある場合 */}

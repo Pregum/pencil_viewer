@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import type { EllipseNode } from '../types';
 import { usePaintRegistry } from '../paint/PaintContext';
 import {
@@ -62,6 +63,7 @@ export function Ellipse({ node }: { node: EllipseNode }) {
           ry={ry}
           fill={l.paint}
           fillOpacity={l.opacity !== 1 ? l.opacity : undefined}
+          style={l.blendMode ? ({ mixBlendMode: l.blendMode } as CSSProperties) : undefined}
         />
       ))}
       {hasStroke && (
