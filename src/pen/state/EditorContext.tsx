@@ -111,6 +111,8 @@ interface EditorContextValue {
   setGridSize: (size: number) => void;
   /** 選択ノードを Frame で囲む (Opt+Cmd+G / Figma の "Frame Selection") */
   wrapSelectionInFrame: () => void;
+  /** 選択ノードの mask フラグをトグル (Cmd+Alt+M) */
+  toggleMaskSelected: () => void;
   /** 変数の追加/更新 */
   upsertVariable: (name: string, def: VariableDef) => void;
   /** 変数を削除 */
@@ -510,6 +512,22 @@ export function EditorProvider({
    * - 囲む Frame は選択セットの bbox にフィット、layout='none'
    * - 子ノードの x/y は Frame 内座標系に変換
    */
+  const toggleMaskSelected = useCallback(() => {
+    setState((s) => {
+      if (!s.selectedNodeId) return s;
+      const n = findNode(s.doc.children, s.selectedNodeId);
+      if (!n) return s;
+      const cur = (n as { mask?: boolean }).mask === true;
+      pushUndo(s.doc, s.rawDoc);
+      const patch = { mask: !cur } as Partial<PenNode>;
+      return {
+        ...s,
+        doc: updateNodeInDoc(s.doc, s.selectedNodeId, patch),
+        rawDoc: updateNodeInDoc(s.rawDoc, s.selectedNodeId, patch),
+      };
+    });
+  }, [pushUndo]);
+
   const wrapSelectionInFrame = useCallback(() => {
     setState((s) => {
       const ids = s.selectedNodeIds.size > 0
@@ -725,6 +743,15 @@ export function EditorProvider({
         if (!isInput) {
           e.preventDefault();
           wrapSelectionInFrame();
+          return;
+        }
+      }
+
+      // Cmd+Alt+M: 選択ノードを mask としてトグル（Figma "Use as mask"）
+      if (mod && e.altKey && (e.key === 'm' || e.key === 'M' || e.key === 'µ')) {
+        if (!isInput) {
+          e.preventDefault();
+          toggleMaskSelected();
           return;
         }
       }
@@ -1083,7 +1110,7 @@ export function EditorProvider({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo, deleteNode, pushUndo, findSiblings, reorderSelected, createComponent, wrapSelectionInFrame]);
+  }, [undo, redo, deleteNode, pushUndo, findSiblings, reorderSelected, createComponent, wrapSelectionInFrame, toggleMaskSelected]);
 
   const selectedNode = useMemo(
     () =>
@@ -1107,8 +1134,8 @@ export function EditorProvider({
   const canRedo = redoStack.current.length > 0;
 
   const value = useMemo(
-    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
-    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
+    () => ({ state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo }),
+    [state, selectNode, selectMultiple, toggleSelectNode, enterInsertMode, exitInsertMode, updateNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, deleteNode, replaceDocChildren, reorderSelected, reorderChildren, addNode, cloneNodesAtTop, createComponent, unmakeComponent, insertInstance, upsertVariable, removeVariable, renameVariable, setGridSnap, setGridSize, wrapSelectionInFrame, toggleMaskSelected, setActiveTool, beginEditing, endEditing, beginPathEditing, endPathEditing, selectedNode, exportPen, undo, redo, canUndo, canRedo],
   );
 
   return <EditorCtx.Provider value={value}>{children}</EditorCtx.Provider>;

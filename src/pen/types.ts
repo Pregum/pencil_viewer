@@ -178,6 +178,11 @@ interface NodeBase extends Position {
   /** バリアント識別用の props (ex: { size: 'large', state: 'default' })。表示用 */
   variantProps?: Record<string, string>;
   /**
+   * Masking: true のとき、このノードの shape で同階層の後続兄弟を alpha クリップする。
+   * Figma の "Use as mask" と同等。
+   */
+  mask?: boolean;
+  /**
    * Pencil 拡張: `"absolute"` のとき、親が flex レイアウトでもこの子は
    * flex flow から外れ、自分の `x`/`y` がそのまま使われる。
    */

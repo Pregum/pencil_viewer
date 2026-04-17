@@ -32,6 +32,7 @@ const GROUPS: Group[] = [
       { keys: 'Cmd + Shift + G', desc: 'Ungroup' },
       { keys: 'Opt + Cmd + G', desc: 'Wrap selection in frame' },
       { keys: 'Cmd + Alt + K', desc: 'Create component from selection' },
+      { keys: 'Cmd + Alt + M', desc: 'Toggle "use as mask" on selection' },
       { keys: 'Cmd + F', desc: 'Find & Replace' },
       { keys: 'Backspace', desc: 'Delete selected' },
       { keys: 'Arrows', desc: 'Nudge 1px (Shift: 10px)' },
