@@ -30,6 +30,7 @@ import { FloatingTextToolbar } from './FloatingTextToolbar';
 import { ImageDropHandler } from './ImageDropHandler';
 import { FindReplaceDialog } from './FindReplaceDialog';
 import { VariablesPanel } from './VariablesPanel';
+import { GridSnapToggle } from './GridSnapToggle';
 import { ZoomInput } from './ZoomInput';
 import { Toolbar } from './Toolbar';
 import { ShapeCreator } from './ShapeCreator';
@@ -831,6 +832,8 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
 
         <span style={{ flex: 1 }} />
         <AlignToolbar />
+        <span className="viewer__separator" />
+        <GridSnapToggle />
         <span className="viewer__separator" />
         {isAIGenerateEnabled() && (
           <>
