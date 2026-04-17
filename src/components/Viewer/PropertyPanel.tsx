@@ -612,6 +612,99 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
         );
       })()}
 
+      {/* Component / Variant controls */}
+      {(() => {
+        // reusable なノード: variantOf / variantProps 編集
+        const reusable = (n as { reusable?: boolean }).reusable === true;
+        const refType = n.type === 'ref';
+        if (!reusable && !refType) return null;
+
+        // ドキュメント内の全 reusable と variantOf をマップ
+        const allReusable: Array<PenNode & { variantOf?: string; variantProps?: Record<string, string> }> = [];
+        const walkReusable = (nodes: PenNode[]) => {
+          for (const nn of nodes) {
+            if ((nn as { reusable?: boolean }).reusable) allReusable.push(nn as PenNode & { variantOf?: string });
+            const children = (nn as { children?: PenNode[] }).children;
+            if (children) walkReusable(children);
+          }
+        };
+        walkReusable(state.rawDoc.children);
+
+        if (reusable) {
+          const vOf = (n as { variantOf?: string }).variantOf ?? '';
+          const props = (n as { variantProps?: Record<string, string> }).variantProps ?? {};
+          return (
+            <div className="prop-panel__section">
+              <div className="prop-panel__title">Component</div>
+              <div className="auto-layout__num-field">
+                <label>Variant group</label>
+                <input
+                  type="text"
+                  className="prop-panel__input"
+                  placeholder="e.g. Button"
+                  value={vOf}
+                  onChange={(e) => patch({ variantOf: e.target.value || undefined } as Partial<PenNode>)}
+                />
+              </div>
+              <div className="auto-layout__num-field" style={{ marginTop: 6 }}>
+                <label>Variant props (e.g. size=lg,state=default)</label>
+                <input
+                  type="text"
+                  className="prop-panel__input"
+                  placeholder="size=lg, state=default"
+                  value={Object.entries(props).map(([k, v]) => `${k}=${v}`).join(', ')}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    const next: Record<string, string> = {};
+                    for (const seg of raw.split(',')) {
+                      const [k, v] = seg.split('=').map((s) => s.trim());
+                      if (k && v) next[k] = v;
+                    }
+                    patch({ variantProps: Object.keys(next).length > 0 ? next : undefined } as Partial<PenNode>);
+                  }}
+                />
+              </div>
+            </div>
+          );
+        }
+
+        // ref ノード: 参照先を表示 + variant スワップ
+        if (refType) {
+          const refId = (n as { ref?: string }).ref ?? '';
+          const target = allReusable.find((r) => r.id === refId);
+          const variantsInGroup = target?.variantOf
+            ? allReusable.filter((r) => r.variantOf === target.variantOf)
+            : [];
+          return (
+            <div className="prop-panel__section">
+              <div className="prop-panel__title">Instance</div>
+              <div className="auto-layout__num-field">
+                <label>References</label>
+                <span className="prop-panel__readonly prop-panel__mono">{refId || '(unset)'}</span>
+              </div>
+              {target?.variantOf && variantsInGroup.length > 1 && (
+                <div className="auto-layout__num-field" style={{ marginTop: 6 }}>
+                  <label>Variant ({target.variantOf})</label>
+                  <select
+                    className="prop-panel__select"
+                    value={refId}
+                    onChange={(e) => patch({ ref: e.target.value } as unknown as Partial<PenNode>)}
+                  >
+                    {variantsInGroup.map((v) => {
+                      const label = v.variantProps
+                        ? Object.entries(v.variantProps).map(([k, val]) => `${k}=${val}`).join(', ')
+                        : (v.name ?? v.id);
+                      return <option key={v.id} value={v.id}>{label}</option>;
+                    })}
+                  </select>
+                </div>
+              )}
+            </div>
+          );
+        }
+        return null;
+      })()}
+
       {/* Node ID (read-only) */}
       <div className="prop-panel__section">
         <div className="prop-panel__title">Node ID</div>

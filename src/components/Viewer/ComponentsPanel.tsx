@@ -45,6 +45,18 @@ export function ComponentsPanel({ collapsed, onTogglePanel, onZoomToNode }: Prop
   const { state, selectNode, insertInstance, unmakeComponent, createComponent } = useEditor();
   const components = useMemo(() => walk(state.rawDoc.children), [state.rawDoc]);
 
+  // variantOf でグルーピング。null グループはグループ無し単品コンポーネント。
+  const grouped = useMemo(() => {
+    const groups = new Map<string | null, PenNode[]>();
+    for (const c of components) {
+      const key = (c as { variantOf?: string }).variantOf ?? null;
+      const arr = groups.get(key) ?? [];
+      arr.push(c);
+      groups.set(key, arr);
+    }
+    return groups;
+  }, [components]);
+
   const selectedIsNonComponent = !!(
     state.selectedNodeId &&
     !components.some((c) => c.id === state.selectedNodeId)
@@ -85,57 +97,78 @@ export function ComponentsPanel({ collapsed, onTogglePanel, onZoomToNode }: Prop
             No components yet. Select a node and click <strong>+</strong> or press <kbd>Cmd+Alt+K</kbd>.
           </div>
         )}
-        {components.map((c) => {
-          const w = typeof (c as { width?: unknown }).width === 'number' ? (c as { width: number }).width : 0;
-          const h = typeof (c as { height?: unknown }).height === 'number' ? (c as { height: number }).height : 0;
-          return (
-            <div
-              key={c.id}
-              className="components-panel__item"
-              onClick={() => {
-                selectNode(c.id);
-                if (w > 0 && h > 0) {
-                  onZoomToNode?.({ id: c.id, x: c.x ?? 0, y: c.y ?? 0, width: w, height: h });
-                }
-              }}
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.setData('application/pencil-component', c.id);
-                e.dataTransfer.effectAllowed = 'copy';
-              }}
-            >
-              <span className="components-panel__item-icon">{COMP_ICON}</span>
-              <span className="components-panel__item-name" title={c.name ?? c.id}>
-                {c.name ?? c.id}
-              </span>
-              <span className="components-panel__item-size">
-                {w > 0 && h > 0 ? `${Math.round(w)}×${Math.round(h)}` : c.type}
-              </span>
-              <button
-                type="button"
-                className="components-panel__icon-btn"
-                title="Insert instance"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  insertInstance(c.id);
-                }}
-              >
-                {PLUS_ICON}
-              </button>
-              <button
-                type="button"
-                className="components-panel__icon-btn components-panel__item-unmake"
-                title="Detach (remove reusable flag)"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  unmakeComponent(c.id);
-                }}
-              >
-                {UNMAKE_ICON}
-              </button>
+        {/* variant グループをまとめて表示、null グループは最後に flat で */}
+        {Array.from(grouped.entries())
+          .sort((a, b) => {
+            if (a[0] === null) return 1;
+            if (b[0] === null) return -1;
+            return a[0].localeCompare(b[0]);
+          })
+          .map(([groupName, items]) => (
+            <div key={groupName ?? '__flat__'} className={groupName ? 'components-panel__group' : ''}>
+              {groupName && (
+                <div className="components-panel__group-header">
+                  <span className="components-panel__group-name">{groupName}</span>
+                  <span className="components-panel__group-count">{items.length}</span>
+                </div>
+              )}
+              {items.map((c) => {
+                const w = typeof (c as { width?: unknown }).width === 'number' ? (c as { width: number }).width : 0;
+                const h = typeof (c as { height?: unknown }).height === 'number' ? (c as { height: number }).height : 0;
+                const variantProps = (c as { variantProps?: Record<string, string> }).variantProps;
+                const variantLabel = variantProps
+                  ? Object.entries(variantProps).map(([k, v]) => `${k}=${v}`).join(', ')
+                  : null;
+                return (
+                  <div
+                    key={c.id}
+                    className="components-panel__item"
+                    onClick={() => {
+                      selectNode(c.id);
+                      if (w > 0 && h > 0) {
+                        onZoomToNode?.({ id: c.id, x: c.x ?? 0, y: c.y ?? 0, width: w, height: h });
+                      }
+                    }}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('application/pencil-component', c.id);
+                      e.dataTransfer.effectAllowed = 'copy';
+                    }}
+                  >
+                    <span className="components-panel__item-icon">{COMP_ICON}</span>
+                    <span className="components-panel__item-name" title={c.name ?? c.id}>
+                      {variantLabel ?? c.name ?? c.id}
+                    </span>
+                    <span className="components-panel__item-size">
+                      {w > 0 && h > 0 ? `${Math.round(w)}×${Math.round(h)}` : c.type}
+                    </span>
+                    <button
+                      type="button"
+                      className="components-panel__icon-btn"
+                      title="Insert instance"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        insertInstance(c.id);
+                      }}
+                    >
+                      {PLUS_ICON}
+                    </button>
+                    <button
+                      type="button"
+                      className="components-panel__icon-btn components-panel__item-unmake"
+                      title="Detach (remove reusable flag)"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        unmakeComponent(c.id);
+                      }}
+                    >
+                      {UNMAKE_ICON}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          ))}
       </div>
     </div>
   );
