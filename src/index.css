@@ -561,6 +561,103 @@ html,
   margin: 0 6px;
 }
 
+/* ======== Find & Replace ======== */
+.find-replace {
+  position: fixed;
+  top: 64px;
+  right: 20px;
+  width: 380px;
+  z-index: 900;
+  padding: 8px;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.06);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+.find-replace__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.find-replace__input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 4px;
+  background: var(--color-canvas, #f9fafb);
+  font-family: inherit;
+  font-size: 12px;
+}
+.find-replace__input:focus {
+  outline: 2px solid var(--color-accent, #4F46E5);
+  outline-offset: -1px;
+}
+.find-replace__count {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--color-text-muted, #9CA3AF);
+  min-width: 40px;
+  text-align: right;
+}
+.find-replace__btn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 4px;
+  background: var(--color-surface, #fff);
+  color: var(--color-text, #111827);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.find-replace__btn:hover:not(:disabled) {
+  background: var(--color-canvas, #f9fafb);
+}
+.find-replace__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.find-replace__btn--primary {
+  background: var(--color-accent, #4F46E5);
+  color: #fff;
+  border-color: var(--color-accent, #4F46E5);
+}
+.find-replace__btn--primary:hover:not(:disabled) { background: #4338CA; color: #fff; }
+.find-replace__close {
+  height: 28px;
+  width: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-muted, #9CA3AF);
+  cursor: pointer;
+}
+.find-replace__close:hover {
+  background: var(--color-canvas, #f9fafb);
+  color: var(--color-text, #111827);
+}
+.find-replace__case {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 6px;
+  height: 28px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--color-text-muted, #9CA3AF);
+  cursor: pointer;
+}
+.find-replace__case input { margin: 0; }
+
 /* ======== Layout grid item ======== */
 .layout-grid-item {
   margin-top: 6px;
