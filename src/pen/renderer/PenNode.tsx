@@ -60,7 +60,9 @@ function renderNode(node: PenNode, editingNodeId: string | null) {
         />
       );
     case 'note':
-      return <Note node={node} />;
+      return editingNodeId === node.id
+        ? <TextEditor node={{ ...node, type: 'text' as const, fontSize: (node as { fontSize?: number }).fontSize ?? 14 } as unknown as import('../types').TextNode} />
+        : <Note node={node} />;
     case 'connection':
       return <Connection node={node} />;
     case 'unsupported':

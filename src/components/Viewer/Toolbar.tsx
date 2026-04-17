@@ -43,6 +43,13 @@ const TEXT_ICON = (
   </svg>
 );
 
+const NOTE_ICON = (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+    <path d="M3 2H13V11L9 15H3V2Z" stroke="currentColor" strokeWidth="1.2" fill="#FEF3C7" />
+    <path d="M13 11H9V15" stroke="currentColor" strokeWidth="1.2" fill="none" />
+  </svg>
+);
+
 const FRAME_ICON = (
   <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
     <path d="M4 1V15M12 1V15M1 4H15M1 12H15" stroke="currentColor" strokeWidth="1.2" />
@@ -56,6 +63,7 @@ const TOOLS: ToolDef[] = [
   { tool: 'ellipse', label: 'Ellipse (O)', shortcut: 'O', icon: ELLIPSE_ICON },
   { tool: 'line', label: 'Line (L)', shortcut: 'L', icon: LINE_ICON },
   { tool: 'text', label: 'Text (T)', shortcut: 'T', icon: TEXT_ICON },
+  { tool: 'note', label: 'Note (N)', shortcut: 'N', icon: NOTE_ICON },
 ];
 
 export function Toolbar() {

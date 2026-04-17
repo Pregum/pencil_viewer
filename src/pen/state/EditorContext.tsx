@@ -7,7 +7,7 @@ import type { PenDocument, PenNode, FrameNode } from '../types';
 import { duplicateNode } from '../../components/Viewer/ExtraCommands';
 
 /** アクティブな作成ツール。'select' 以外を選ぶとドラッグでシェイプが生成される */
-export type ActiveTool = 'select' | 'rectangle' | 'ellipse' | 'line' | 'text' | 'frame';
+export type ActiveTool = 'select' | 'rectangle' | 'ellipse' | 'line' | 'text' | 'frame' | 'note';
 
 export interface EditorState {
   doc: PenDocument;

@@ -70,8 +70,8 @@ export function SelectableNode({ node, children }: Props) {
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
-    // テキストノードのみダブルクリックでインライン編集
-    if (node.type !== 'text' || isLocked) return;
+    // text / note ノードはダブルクリックでインライン編集
+    if ((node.type !== 'text' && node.type !== 'note') || isLocked) return;
     e.stopPropagation();
     e.preventDefault();
     beginEditing(node.id);
