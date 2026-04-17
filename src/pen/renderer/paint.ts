@@ -88,6 +88,34 @@ export function resolveStrokeWidth(stroke: Stroke | undefined): number {
   return Math.max(t.top ?? 0, t.right ?? 0, t.bottom ?? 0, t.left ?? 0);
 }
 
+/**
+ * Pencil の stroke → SVG <rect> 等に渡す追加属性
+ *  - cap: none / round / square → SVG stroke-linecap
+ *  - join: miter / bevel / round → SVG stroke-linejoin
+ *  - dashPattern: number[] → SVG stroke-dasharray (文字列)
+ */
+export interface StrokeAttrs {
+  strokeLinecap?: 'butt' | 'round' | 'square';
+  strokeLinejoin?: 'miter' | 'bevel' | 'round';
+  strokeDasharray?: string;
+}
+
+export function resolveStrokeAttrs(stroke: Stroke | undefined): StrokeAttrs {
+  if (!stroke) return {};
+  const out: StrokeAttrs = {};
+  if (stroke.cap) {
+    // Pencil: 'none' → SVG 'butt' (デフォルト)、その他はそのまま
+    out.strokeLinecap = stroke.cap === 'none' ? 'butt' : stroke.cap;
+  }
+  if (stroke.join) {
+    out.strokeLinejoin = stroke.join;
+  }
+  if (Array.isArray(stroke.dashPattern) && stroke.dashPattern.length > 0) {
+    out.strokeDasharray = stroke.dashPattern.join(' ');
+  }
+  return out;
+}
+
 /** stroke.thickness がオブジェクトかどうか */
 export function hasPartialStroke(stroke: Stroke | undefined): boolean {
   return (

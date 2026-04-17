@@ -5,6 +5,7 @@ import {
   resolveStroke,
   resolveFilter,
   resolveStrokeWidth,
+  resolveStrokeAttrs,
 } from './paint';
 
 export function Ellipse({ node }: { node: EllipseNode }) {
@@ -20,9 +21,18 @@ export function Ellipse({ node }: { node: EllipseNode }) {
   const layers = resolveFillLayers(node.fill, ctx);
   const strokeColor = resolveStroke(node.stroke, ctx);
   const strokeWidth = resolveStrokeWidth(node.stroke);
+  const strokeAttrs = resolveStrokeAttrs(node.stroke);
   const filter = resolveFilter(ctx);
 
-  if (layers.length <= 1) {
+  const align = node.stroke?.align ?? 'center';
+  const sw2 = strokeWidth / 2;
+  // inside/outside で rx/ry を調整
+  const sRx = align === 'inside' ? Math.max(0, rx - sw2) : align === 'outside' ? rx + sw2 : rx;
+  const sRy = align === 'inside' ? Math.max(0, ry - sw2) : align === 'outside' ? ry + sw2 : ry;
+
+  const hasStroke = strokeWidth > 0 && strokeColor !== 'none';
+
+  if (layers.length <= 1 && (align === 'center' || !hasStroke)) {
     const fillPaint = layers[0]?.paint ?? 'none';
     const fillOpacity = layers[0]?.opacity;
     return (
@@ -35,6 +45,7 @@ export function Ellipse({ node }: { node: EllipseNode }) {
         fillOpacity={fillOpacity != null && fillOpacity !== 1 ? fillOpacity : undefined}
         stroke={strokeColor}
         strokeWidth={strokeWidth}
+        {...strokeAttrs}
         filter={filter}
       />
     );
@@ -53,15 +64,16 @@ export function Ellipse({ node }: { node: EllipseNode }) {
           fillOpacity={l.opacity !== 1 ? l.opacity : undefined}
         />
       ))}
-      {strokeWidth > 0 && strokeColor !== 'none' && (
+      {hasStroke && (
         <ellipse
           cx={cx}
           cy={cy}
-          rx={rx}
-          ry={ry}
+          rx={sRx}
+          ry={sRy}
           fill="none"
           stroke={strokeColor}
           strokeWidth={strokeWidth}
+          {...strokeAttrs}
         />
       )}
     </g>
