@@ -4,6 +4,7 @@ import {
   resolveStroke,
   resolveFill,
   resolveStrokeWidth,
+  resolveStrokeAttrs,
 } from './paint';
 
 export function Line({ node }: { node: LineNode }) {
@@ -20,7 +21,16 @@ export function Line({ node }: { node: LineNode }) {
   const fallback = resolveFill(node.fill, ctx);
   const finalStroke = strokeVal !== 'none' ? strokeVal : fallback !== 'none' ? fallback : '#111827';
   const strokeWidth = resolveStrokeWidth(node.stroke) || 1;
+  const strokeAttrs = resolveStrokeAttrs(node.stroke);
   return (
-    <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={finalStroke} strokeWidth={strokeWidth} />
+    <line
+      x1={x1}
+      y1={y1}
+      x2={x2}
+      y2={y2}
+      stroke={finalStroke}
+      strokeWidth={strokeWidth}
+      {...strokeAttrs}
+    />
   );
 }

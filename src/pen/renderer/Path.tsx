@@ -5,6 +5,7 @@ import {
   resolveStroke,
   resolveFilter,
   resolveStrokeWidth,
+  resolveStrokeAttrs,
 } from './paint';
 
 export function Path({ node }: { node: PathNode }) {
@@ -14,6 +15,7 @@ export function Path({ node }: { node: PathNode }) {
   const x = node.x ?? 0;
   const y = node.y ?? 0;
   const translated = x === 0 && y === 0 ? undefined : `translate(${x} ${y})`;
+  const strokeAttrs = resolveStrokeAttrs(node.stroke);
   return (
     <g transform={translated} filter={resolveFilter(ctx)}>
       <path
@@ -21,6 +23,7 @@ export function Path({ node }: { node: PathNode }) {
         fill={resolveFill(node.fill, ctx)}
         stroke={resolveStroke(node.stroke, ctx)}
         strokeWidth={resolveStrokeWidth(node.stroke)}
+        {...strokeAttrs}
         fillRule={node.fillRule ?? 'nonzero'}
       />
     </g>

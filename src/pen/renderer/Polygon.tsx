@@ -5,6 +5,7 @@ import {
   resolveStroke,
   resolveFilter,
   resolveStrokeWidth,
+  resolveStrokeAttrs,
 } from './paint';
 
 export function Polygon({ node }: { node: PolygonNode }) {
@@ -26,12 +27,14 @@ export function Polygon({ node }: { node: PolygonNode }) {
     points.push(`${px.toFixed(3)},${py.toFixed(3)}`);
   }
 
+  const strokeAttrs = resolveStrokeAttrs(node.stroke);
   return (
     <polygon
       points={points.join(' ')}
       fill={resolveFill(node.fill, ctx)}
       stroke={resolveStroke(node.stroke, ctx)}
       strokeWidth={resolveStrokeWidth(node.stroke)}
+      {...strokeAttrs}
       filter={resolveFilter(ctx)}
     />
   );
