@@ -46,14 +46,16 @@ export function SelectableNode({ node, children }: Props) {
   const height = typeof (node as { height?: unknown }).height === 'number'
     ? ((node as { height: number }).height)
     : 0;
-  // NodeBase.rotation(度)を SVG rotate(angle, cx, cy) で適用。
+  // NodeBase.rotation(度) を SVG rotate(angle, cx, cy) で適用。
+  // Pencil 仕様: rotation は「反時計回り正」(docs.pencil.dev/for-developers/the-pen-format)。
+  // SVG の rotate() は y-down 画面座標で時計回り正のため、符号を反転して合わせる。
   // ピボットはノード自身の中心 (x+w/2, y+h/2)。
   // 子孫レンダラ(Frame の translate(x, y) など)はこの回転の内側にあるため、
   // 自動的に正しい位置で回転する。選択枠/ハンドルも一緒に回るので追加の補正は不要。
   const rotation = (node as { rotation?: number }).rotation ?? 0;
   const groupTransform =
     rotation !== 0 && width > 0 && height > 0
-      ? `rotate(${rotation} ${x + width / 2} ${y + height / 2})`
+      ? `rotate(${-rotation} ${x + width / 2} ${y + height / 2})`
       : undefined;
 
   const handleClick = (e: React.MouseEvent) => {
@@ -238,8 +240,10 @@ export function SelectableNode({ node, children }: Props) {
       // --- 回転 ---
       if (isRotating.current) {
         const pivot = rotateStart.current.pivotSvg;
+        // 画面座標 (y-down) での angle は CW 正。Pencil の rotation は CCW 正なので
+        // 差分を引き算で適用する（CW ドラッグ → rotation 減少）
         const currentAngle = Math.atan2(e.clientY - pivot.y, e.clientX - pivot.x) * (180 / Math.PI);
-        let nextRotation = rotateStart.current.originalRotation + (currentAngle - rotateStart.current.startAngle);
+        let nextRotation = rotateStart.current.originalRotation - (currentAngle - rotateStart.current.startAngle);
         // Shift で 15 度スナップ
         if (e.shiftKey) {
           nextRotation = Math.round(nextRotation / 15) * 15;
