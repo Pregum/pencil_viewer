@@ -170,33 +170,40 @@ function renderFilter(f: FilterRef) {
         const blur = e.blur ?? 4;
         const color = e.color ?? '#00000040';
         if (e.shadowType === 'inner') {
-          // 形状の内側に落ちる影。
-          //   1) SourceAlpha を blur+offset した「広がった shadow mask」を作る
-          //   2) SourceAlpha からそれを差し引くと、内側に向かう凹み領域だけ残る
-          //   3) その領域に色を flood して合成
+          // 形状の内側に影を落とす。
+          //   1) SourceAlpha を反転（外側=不透明に）
+          //   2) それを blur + offset
+          //   3) offset は意図的に -dx, -dy（外側から内側に光が入る方向に反転）
+          //   4) SourceAlpha と intersect して形状内だけに絞る
+          //   5) shadow 色を flood + in で着色
+          //   6) SourceGraphic の上に over で重ねる
           const id = `${f.id}-inner-${i}`;
           return [
-            <feGaussianBlur key={`${id}-blur`} in="SourceAlpha" stdDeviation={blur} result={`${id}-blur`} />,
-            <feOffset key={`${id}-off`} in={`${id}-blur`} dx={dx} dy={dy} result={`${id}-off`} />,
-            // shadowDiff = SourceAlpha * 1 + offset * -1  （差分）
-            <feComposite
-              key={`${id}-diff`}
+            <feColorMatrix
+              key={`${id}-inv`}
               in="SourceAlpha"
-              in2={`${id}-off`}
-              operator="arithmetic"
-              k2={-1}
-              k3={1}
-              result={`${id}-diff`}
+              type="matrix"
+              values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1 1"
+              result={`${id}-inv`}
+            />,
+            <feGaussianBlur key={`${id}-blur`} in={`${id}-inv`} stdDeviation={blur} result={`${id}-blur`} />,
+            <feOffset key={`${id}-off`} in={`${id}-blur`} dx={dx} dy={dy} result={`${id}-off`} />,
+            // 形状内部に絞る
+            <feComposite
+              key={`${id}-inside`}
+              in={`${id}-off`}
+              in2="SourceAlpha"
+              operator="in"
+              result={`${id}-inside`}
             />,
             <feFlood key={`${id}-flood`} floodColor={color} result={`${id}-color`} />,
             <feComposite
               key={`${id}-colorIn`}
               in={`${id}-color`}
-              in2={`${id}-diff`}
+              in2={`${id}-inside`}
               operator="in"
               result={`${id}-shadow`}
             />,
-            // SourceGraphic の上にシャドウを重ねる
             <feComposite
               key={`${id}-over`}
               in={`${id}-shadow`}

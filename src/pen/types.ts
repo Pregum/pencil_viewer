@@ -26,12 +26,21 @@ export interface Size {
 }
 
 /**
- * Pencil 仕様の blend mode 名称。CSS mix-blend-mode に近い値にマップする。
- * LinearBurn / LinearDodge / Light は CSS に直接の対応が無く、近似値にマップ。
+ * Pencil 仕様の blend mode 名。docs.pencil.dev 準拠の CamelCase。
+ * CSS mix-blend-mode へのマップは blendModeToCss で行う。
+ * LinearBurn / LinearDodge / Light は CSS に直接対応が無く近似値にマップ。
+ *
+ * 互換のため snake_case / lower の旧値も型で許容する（コードは全変種を扱う）。
  */
 export type BlendMode =
-  | 'normal'
-  | 'darken' | 'multiply' | 'linear_burn' | 'color_burn'
+  | 'Normal'
+  | 'Darken' | 'Multiply' | 'LinearBurn' | 'ColorBurn'
+  | 'Light' | 'Screen' | 'LinearDodge' | 'ColorDodge'
+  | 'Overlay' | 'SoftLight' | 'HardLight'
+  | 'Difference' | 'Exclusion'
+  | 'Hue' | 'Saturation' | 'Color' | 'Luminosity'
+  // 互換（旧形式）
+  | 'normal' | 'darken' | 'multiply' | 'linear_burn' | 'color_burn'
   | 'light' | 'screen' | 'linear_dodge' | 'color_dodge'
   | 'overlay' | 'soft_light' | 'hard_light'
   | 'difference' | 'exclusion'

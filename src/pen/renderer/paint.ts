@@ -9,30 +9,36 @@ import type { PaintRegistry } from '../paint/registry';
 
 /**
  * Pencil の blend mode 名 → CSS mix-blend-mode 値にマップ。
- * LinearBurn / LinearDodge / Light は直接の対応が無いため近似値。
+ *  - 仕様の CamelCase (Multiply / LinearBurn / SoftLight 等)
+ *  - 後方互換の snake_case / lower (multiply / linear_burn / soft_light 等)
+ * の両形式を受け付ける。
+ * LinearBurn / LinearDodge / Light は直接対応が無いため近似値。
  */
-export function blendModeToCss(mode: BlendMode | undefined): string | undefined {
-  if (!mode || mode === 'normal') return undefined;
-  switch (mode) {
-    case 'darken': return 'darken';
-    case 'multiply': return 'multiply';
-    case 'linear_burn': return 'color-burn';
-    case 'color_burn': return 'color-burn';
-    case 'light': return 'hard-light';
-    case 'screen': return 'screen';
-    case 'linear_dodge': return 'color-dodge';
-    case 'color_dodge': return 'color-dodge';
-    case 'overlay': return 'overlay';
-    case 'soft_light': return 'soft-light';
-    case 'hard_light': return 'hard-light';
-    case 'difference': return 'difference';
-    case 'exclusion': return 'exclusion';
-    case 'hue': return 'hue';
-    case 'saturation': return 'saturation';
-    case 'color': return 'color';
-    case 'luminosity': return 'luminosity';
-    default: return undefined;
-  }
+export function blendModeToCss(mode: BlendMode | string | undefined): string | undefined {
+  if (!mode) return undefined;
+  // CamelCase / snake_case / 'kebab case' を正規化: 小文字 + 区切り除去
+  const norm = String(mode).toLowerCase().replace(/[_\-\s]/g, '');
+  if (norm === 'normal') return undefined;
+  const map: Record<string, string> = {
+    darken: 'darken',
+    multiply: 'multiply',
+    linearburn: 'color-burn',
+    colorburn: 'color-burn',
+    light: 'hard-light',
+    screen: 'screen',
+    lineardodge: 'color-dodge',
+    colordodge: 'color-dodge',
+    overlay: 'overlay',
+    softlight: 'soft-light',
+    hardlight: 'hard-light',
+    difference: 'difference',
+    exclusion: 'exclusion',
+    hue: 'hue',
+    saturation: 'saturation',
+    color: 'color',
+    luminosity: 'luminosity',
+  };
+  return map[norm];
 }
 
 export interface PaintContext {
