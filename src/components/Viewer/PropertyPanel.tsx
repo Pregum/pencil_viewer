@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor } from '../../pen/state/EditorContext';
 import type { PenNode } from '../../pen/types';
 import { ColorPicker } from './ColorPicker';
+import { evalExpression } from '../../utils/evalExpression';
 
 function formatColor(fill: unknown): string | null {
   if (typeof fill === 'string') return fill;
@@ -47,6 +48,12 @@ function EditableField({
   );
 }
 
+/**
+ * 数値入力欄。テキスト入力を許可し、blur / Enter 時に evalExpression で評価。
+ *   - 単純な数値は即座に onChange に流す (スピナー併用のため)
+ *   - "100+20" のような式は focus 中は text として保持、確定時に計算
+ *   - 計算できない場合は元の value に復元
+ */
 function NumberField({
   label,
   value,
@@ -58,18 +65,57 @@ function NumberField({
   onChange: (v: number) => void;
   onFocus?: () => void;
 }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const displayValue = draft ?? String(Math.round(value * 100) / 100);
+
+  const commit = useCallback(() => {
+    if (draft == null) return;
+    const r = evalExpression(draft, { current: value });
+    if (r != null && isFinite(r)) onChange(r);
+    setDraft(null); // どちらにせよ draft を解除 → 元 or 新値で再描画
+  }, [draft, value, onChange]);
+
   return (
     <div className="prop-panel__field-inline">
       <label>{label}</label>
       <input
         className="prop-panel__input prop-panel__input--num"
-        type="number"
-        value={Math.round(value * 100) / 100}
-        onFocus={onFocus}
-        onChange={(e) => {
-          const n = parseFloat(e.target.value);
-          if (!isNaN(n)) onChange(n);
+        type="text"
+        inputMode="decimal"
+        spellCheck={false}
+        value={displayValue}
+        onFocus={(e) => {
+          onFocus?.();
+          e.currentTarget.select();
         }}
+        onChange={(e) => {
+          const v = e.target.value;
+          setDraft(v);
+          // 単純数値なら即反映 (スライダー感覚の操作を妨げない)
+          const asNum = Number(v);
+          if (v.trim() !== '' && !isNaN(asNum) && isFinite(asNum)) {
+            onChange(asNum);
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            commit();
+            (e.currentTarget as HTMLInputElement).blur();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            setDraft(null);
+            (e.currentTarget as HTMLInputElement).blur();
+          } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            // Figma 同様: 矢印で ±1 (Shift で ±10)
+            e.preventDefault();
+            const step = e.shiftKey ? 10 : 1;
+            const dir = e.key === 'ArrowUp' ? 1 : -1;
+            onChange(value + step * dir);
+            setDraft(null);
+          }
+        }}
+        onBlur={commit}
       />
     </div>
   );
