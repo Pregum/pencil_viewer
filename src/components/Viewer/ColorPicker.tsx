@@ -209,6 +209,37 @@ export function ColorPicker({ color, onChange, onClose, anchorRect }: Props) {
             if (!r) setHexInput(color);
           }}
         />
+        {/* EyeDropper API (Chromium only) */}
+        {typeof window !== 'undefined' && 'EyeDropper' in window && (
+          <button
+            type="button"
+            className="color-picker__preset"
+            style={{ flex: 'none', width: 28, height: 28, padding: 0 }}
+            title="Pick color from screen (Eyedropper)"
+            onClick={async () => {
+              try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const EyeDropperCtor = (window as any).EyeDropper as new () => { open(): Promise<{ sRGBHex: string }> };
+                const picker = new EyeDropperCtor();
+                const result = await picker.open();
+                const hex = result.sRGBHex;
+                setHexInput(hex);
+                const r = hexToRgb(hex);
+                if (r) {
+                  const h = rgbToHsv(r.r, r.g, r.b);
+                  setHue(h.h);
+                  setSat(h.s);
+                  setVal(h.v);
+                  onChange(rgbToHex(r.r, r.g, r.b));
+                }
+              } catch {
+                // ユーザーがキャンセル等
+              }
+            }}
+          >
+            🔍
+          </button>
+        )}
       </div>
 
       <div className="color-picker__presets">

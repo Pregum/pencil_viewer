@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { loadRecent, pushRecent, reorderWithRecent, saveRecent } from '../../utils/recentCommands';
 
 export interface Command {
   id: string;
@@ -20,14 +21,23 @@ interface Props {
 export function CommandPalette({ commands, onClose }: Props) {
   const [query, setQuery] = useState('');
   const [selectedIdx, setSelectedIdx] = useState(0);
+  const [recent, setRecent] = useState<string[]>(() => loadRecent());
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
-    if (!query) return commands;
+    if (!query) return reorderWithRecent(commands, recent);
     const q = query.toLowerCase();
     return commands.filter((c) => c.label.toLowerCase().includes(q));
-  }, [commands, query]);
+  }, [commands, query, recent]);
+
+  const run = (cmd: Command) => {
+    const next = pushRecent(recent, cmd.id);
+    setRecent(next);
+    saveRecent(next);
+    cmd.action();
+    onClose();
+  };
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -73,10 +83,7 @@ export function CommandPalette({ commands, onClose }: Props) {
       setSelectedIdx((i) => Math.max(i - 1, 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (filtered[selectedIdx]) {
-        filtered[selectedIdx].action();
-        onClose();
-      }
+      if (filtered[selectedIdx]) run(filtered[selectedIdx]);
     }
   };
 
@@ -101,22 +108,25 @@ export function CommandPalette({ commands, onClose }: Props) {
           {filtered.length === 0 && (
             <div className="frame-search__empty">No commands found</div>
           )}
-          {filtered.map((cmd, i) => (
-            <div
-              key={cmd.id}
-              className={`frame-search__item ${i === selectedIdx ? 'frame-search__item--active' : ''}`}
-              onMouseEnter={() => setSelectedIdx(i)}
-              onClick={() => {
-                cmd.action();
-                onClose();
-              }}
-            >
-              <span className="frame-search__name">{cmd.label}</span>
-              {cmd.shortcut && (
-                <span className="frame-search__meta">{cmd.shortcut}</span>
-              )}
-            </div>
-          ))}
+          {filtered.map((cmd, i) => {
+            const isRecent = !query && recent.includes(cmd.id);
+            return (
+              <div
+                key={cmd.id}
+                className={`frame-search__item ${i === selectedIdx ? 'frame-search__item--active' : ''}`}
+                onMouseEnter={() => setSelectedIdx(i)}
+                onClick={() => run(cmd)}
+              >
+                <span className="frame-search__name">
+                  {isRecent && <span className="frame-search__badge">recent</span>}
+                  {cmd.label}
+                </span>
+                {cmd.shortcut && (
+                  <span className="frame-search__meta">{cmd.shortcut}</span>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
