@@ -540,6 +540,101 @@ describe('layoutDocument', () => {
     });
   });
 
+  describe('justifyContent — space_between / space_around', () => {
+    it('space_between distributes children with extra space between them (horizontal)', () => {
+      const doc = makeDoc([
+        frame({
+          id: 'f',
+          layout: 'horizontal',
+          width: 300,
+          height: 100,
+          justifyContent: 'space_between',
+          children: [rect('a', 50, 50), rect('b', 50, 50), rect('c', 50, 50)],
+        }),
+      ]);
+      const f = layoutDocument(doc).children[0] as FrameNode;
+      const [a, b, c] = f.children!;
+      // 全体幅 300、子合計 150、余白 150 を 2 区間に等分 = 75
+      expect(a.x).toBe(0);
+      expect(b.x).toBe(50 + 75);
+      expect(c.x).toBe(300 - 50);
+    });
+
+    it('space_around distributes half-gaps at ends and full gaps between', () => {
+      const doc = makeDoc([
+        frame({
+          id: 'f',
+          layout: 'horizontal',
+          width: 300,
+          height: 100,
+          justifyContent: 'space_around',
+          children: [rect('a', 50, 50), rect('b', 50, 50)],
+        }),
+      ]);
+      const f = layoutDocument(doc).children[0] as FrameNode;
+      const [a, b] = f.children!;
+      // 子合計 100、余り 200 → 両端 50 + 中 100
+      // around: 余り 200 / (子数 2 * 2) = 50 ずつが両端、間に 100
+      expect(a.x).toBe(50);
+      expect(b.x).toBe(50 + 50 + 100);
+    });
+  });
+
+  describe('padding variations', () => {
+    it('accepts padding as 2-tuple [vertical, horizontal]', () => {
+      const doc = makeDoc([
+        frame({
+          id: 'f',
+          layout: 'vertical',
+          width: 200,
+          height: 200,
+          padding: [10, 20],
+          children: [rect('a', 100, 50)],
+        }),
+      ]);
+      const f = layoutDocument(doc).children[0] as FrameNode;
+      const [a] = f.children!;
+      expect(a.x).toBe(20);
+      expect(a.y).toBe(10);
+    });
+
+    it('accepts padding as 4-tuple [top, right, bottom, left]', () => {
+      const doc = makeDoc([
+        frame({
+          id: 'f',
+          layout: 'vertical',
+          width: 200,
+          height: 200,
+          padding: [5, 10, 15, 20],
+          children: [rect('a', 100, 50)],
+        }),
+      ]);
+      const f = layoutDocument(doc).children[0] as FrameNode;
+      const [a] = f.children!;
+      expect(a.x).toBe(20); // left
+      expect(a.y).toBe(5);  // top
+    });
+  });
+
+  describe('alignItems — cross-axis end', () => {
+    it('horizontal layout: alignItems end places children at bottom', () => {
+      const doc = makeDoc([
+        frame({
+          id: 'f',
+          layout: 'horizontal',
+          width: 300,
+          height: 100,
+          alignItems: 'end',
+          children: [rect('a', 50, 30), rect('b', 50, 50)],
+        }),
+      ]);
+      const f = layoutDocument(doc).children[0] as FrameNode;
+      const [a, b] = f.children!;
+      expect(a.y).toBe(70); // 100 - 30
+      expect(b.y).toBe(50); // 100 - 50
+    });
+  });
+
   describe('nested layouts', () => {
     it('recursively lays out nested flex frames', () => {
       const doc = makeDoc([
