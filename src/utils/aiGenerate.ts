@@ -47,9 +47,11 @@ export async function requestAIGenerate(
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    // Cloudflare 無料枠超過時は 429 / 500 等のエラーが返る。
-    // 呼び出し側でメッセージ表示するだけの静かな failure を想定。
-    throw new Error((err as { error: string }).error ?? `HTTP ${res.status}`);
+    // HTTP status を Error.message に含めて呼び出し側のハンドリングに使う
+    const msg = (err as { error: string }).error ?? res.statusText;
+    const e = new Error(`HTTP ${res.status}: ${msg}`);
+    (e as Error & { status?: number }).status = res.status;
+    throw e;
   }
 
   return res.json() as Promise<GenerateResult>;

@@ -130,14 +130,25 @@ export function AIGeneratorPanel({ onClose, onZoomToNode }: Props) {
             </div>
           </form>
 
-          {error && (
-            <div className="ai-gen__error" role="alert">
-              ⚠️ {error}
-              <div className="ai-gen__error-hint">
-                Cloudflare 無料枠 (Workers AI 10,000 neurons/日) に到達している可能性があります。時間を置いて再試行してください。
+          {error && (() => {
+            // エラー内容別にヒント文を出し分け
+            const is400 = /HTTP 400|children array required|prompt is required/i.test(error);
+            const is429 = /HTTP 429|rate limit|too many/i.test(error);
+            const is401or403 = /HTTP 40[13]|unauthor|forbidden/i.test(error);
+            const hint = is400
+              ? 'Cloudflare Worker が古い可能性があります。Worker の "mode: generate" 分岐を含む最新版をデプロイしてください: cd workers/ai-review && npx wrangler deploy'
+              : is429
+              ? 'レート制限に引っかかりました。少し時間を置いて再試行してください。'
+              : is401or403
+              ? 'Worker へのアクセスが拒否されました。ALLOWED_ORIGINS の設定や API Token を確認してください。'
+              : 'Cloudflare 無料枠 (Workers AI 10,000 neurons/日) に到達している可能性があります。時間を置いて再試行してください。';
+            return (
+              <div className="ai-gen__error" role="alert">
+                ⚠️ {error}
+                <div className="ai-gen__error-hint">{hint}</div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           <div className="ai-gen__section">
             <div className="ai-gen__section-title">Try an example</div>
