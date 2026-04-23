@@ -1,5 +1,6 @@
 /**
- * SVG 内のコンテンツ描画。EditorContext の doc を使ってリアルタイム反映する。
+ * SVG 内のコンテンツ描画。EditorContext の rawDoc を使い、毎レンダリングで
+ * ref 展開 / 変数置換 / flex レイアウトを再計算してリアルタイム反映する。
  * 背景クリックでノード選択解除。
  */
 
@@ -11,12 +12,19 @@ import { PaintRegistryProvider } from '../../pen/paint/PaintContext';
 import { resolveRefs } from '../../pen/refs';
 import { substituteVariables } from '../../pen/variables';
 import { renderMaskedChildren } from '../../pen/renderer/MaskedChildren';
+import { layoutDocument } from '../../pen/layout';
 
 export function CanvasContent() {
   const { state, selectNode } = useEditor();
-  // ref ノード展開 → 変数置換を live に適用してから描画。
-  // どちらも存在しない場合は no-op。
-  const doc = useMemo(() => substituteVariables(resolveRefs(state.doc)), [state.doc]);
+  // 描画パイプライン: rawDoc → ref 展開 → 変数置換 → flex layout 再計算。
+  // rawDoc を起点にすることで、PropertyPanel から justifyContent / alignItems /
+  // gap / padding / layout など flex プロパティを変えても即時反映される。
+  // (以前は state.doc (レイアウト済み) を使っていたため、これらのプロパティを
+  //  更新してもレイアウトは初回ロード時のままになっていた)
+  const doc = useMemo(
+    () => layoutDocument(substituteVariables(resolveRefs(state.rawDoc))),
+    [state.rawDoc],
+  );
   const registry = useMemo(() => buildPaintRegistry(doc), [doc]);
 
   return (

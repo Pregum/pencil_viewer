@@ -18,13 +18,13 @@
 import type { PenNode } from '../types';
 import { PenNodeView } from './PenNode';
 
-interface Segment {
+export interface Segment {
   maskId?: string;
   maskNode?: PenNode;
   children: PenNode[];
 }
 
-function splitByMasks(children: PenNode[]): Segment[] {
+export function splitByMasks(children: PenNode[]): Segment[] {
   const segments: Segment[] = [];
   let current: Segment = { children: [] };
   for (const c of children) {
