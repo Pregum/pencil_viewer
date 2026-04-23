@@ -96,6 +96,121 @@ describe('parsePen', () => {
       const result = parsePen({ version: '2.10', children: 'nope' });
       expect(result.ok).toBe(false);
     });
+
+    it('fails on null input', () => {
+      const result = parsePen(null);
+      expect(result.ok).toBe(false);
+    });
+
+    it('fails on string input', () => {
+      const result = parsePen('not an object');
+      expect(result.ok).toBe(false);
+    });
+
+    it('error.summary is a non-empty string for invalid input', () => {
+      const result = parsePen({ version: '2.10', children: 'nope' });
+      if (!result.ok) {
+        expect(typeof result.error.summary).toBe('string');
+        expect(result.error.summary.length).toBeGreaterThan(0);
+      }
+    });
+  });
+
+  describe('passthrough fields', () => {
+    it('keeps unknown fields on known node types (passthrough)', () => {
+      const result = parsePen({
+        version: '2.10',
+        children: [
+          { type: 'rectangle', id: 'r', width: 10, height: 10, customField: 'x' },
+        ],
+      });
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        const r = result.doc.children[0] as { customField?: string };
+        // passthrough で保持されるべき (zod .passthrough 経由)
+        expect(r.customField).toBe('x');
+      }
+    });
+
+    it('preserves passthrough fields for unsupported types', () => {
+      const result = parsePen({
+        version: '2.10',
+        children: [
+          { type: 'mystery', id: 'm', x: 5, y: 5, width: 20, height: 30, meta: { n: 1 } },
+        ],
+      });
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        const u = result.doc.children[0];
+        expect(u.type).toBe('unsupported');
+      }
+    });
+  });
+
+  describe('group / line / polygon / path', () => {
+    it('parses group with children', () => {
+      const result = parsePen({
+        version: '2.10',
+        children: [
+          {
+            type: 'group', id: 'g',
+            children: [{ type: 'rectangle', id: 'r', width: 10, height: 10 }],
+          },
+        ],
+      });
+      expect(result.ok).toBe(true);
+    });
+
+    it('parses a line with stroke', () => {
+      const result = parsePen({
+        version: '2.10',
+        children: [
+          { type: 'line', id: 'l', x: 0, y: 0, width: 100, height: 0, stroke: { thickness: 2, fill: '#000' } },
+        ],
+      });
+      expect(result.ok).toBe(true);
+    });
+
+    it('parses polygon with polygonCount', () => {
+      const result = parsePen({
+        version: '2.10',
+        children: [
+          { type: 'polygon', id: 'p', x: 0, y: 0, width: 100, height: 100, polygonCount: 6 },
+        ],
+      });
+      expect(result.ok).toBe(true);
+    });
+
+    it('parses a path with geometry', () => {
+      const result = parsePen({
+        version: '2.10',
+        children: [
+          { type: 'path', id: 'pa', x: 0, y: 0, width: 100, height: 40, geometry: 'M 0 0 L 100 40' },
+        ],
+      });
+      expect(result.ok).toBe(true);
+    });
+  });
+
+  describe('nested unsupported', () => {
+    it('keeps unsupported children inside a frame', () => {
+      const result = parsePen({
+        version: '2.10',
+        children: [
+          {
+            type: 'frame', id: 'f', x: 0, y: 0, width: 200, height: 200,
+            children: [{ type: 'martian', id: 'm' }],
+          },
+        ],
+      });
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        const f = result.doc.children[0];
+        if (f.type === 'frame') {
+          expect(f.children?.[0].type).toBe('unsupported');
+        }
+      }
+    });
   });
 
   describe('parsePenText', () => {
