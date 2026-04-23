@@ -92,6 +92,7 @@ const GROUPS: Group[] = [
       { keys: 'Cmd + ;', desc: "Toggle rulers" },
       { keys: "Cmd + '", desc: 'Toggle grid snap' },
       { keys: 'Cmd + Enter', desc: 'Present / Play mode' },
+      { keys: 'Cmd + .', desc: 'Focus mode (hide UI, editable)' },
       { keys: 'Cmd + Z', desc: 'Undo' },
       { keys: 'Cmd + Shift + Z', desc: 'Redo' },
     ],

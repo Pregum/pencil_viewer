@@ -165,6 +165,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const [showVariables, setShowVariables] = useState(false);
   const [showDevInspect, setShowDevInspect] = useState(false);
   const [showStyles, setShowStyles] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
   const [presentMode, setPresentMode] = useState(false);
   const [presentIdx, setPresentIdx] = useState(0);
   // Smart Animate トランジション状態
@@ -825,6 +826,10 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         // Cmd+Enter で Present mode トグル
         e.preventDefault();
         setPresentMode((v) => !v);
+      } else if (mod && e.key === '.') {
+        // Cmd+. で Focus mode トグル（UI 全消し、編集は可能）
+        e.preventDefault();
+        setFocusMode((v) => !v);
       } else if (mod && e.shiftKey && (e.key === 'd' || e.key === 'D')) {
         // Cmd+Shift+D で Dev Inspect パネル
         e.preventDefault();
@@ -935,7 +940,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
 
   return (
     <EditorProvider doc={doc} rawDoc={rawDoc}>
-    <div className={`viewer${presentMode ? ' viewer--present' : ''}`}>
+    <div className={`viewer${presentMode ? ' viewer--present' : ''}${focusMode ? ' viewer--focus' : ''}`}>
       <div className="viewer__toolbar">
         <Toolbar />
         <span className="viewer__separator" />
