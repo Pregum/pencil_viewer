@@ -2326,6 +2326,53 @@ html,
   flex: 1;
 }
 
+.node-tree__search {
+  position: relative;
+  padding: 6px 10px 4px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.node-tree__search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 22px 4px 8px;
+  font-size: 12px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  outline: none;
+}
+
+.node-tree__search-input:focus {
+  border-color: var(--color-accent, #6366f1);
+}
+
+.node-tree__search-clear {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 0;
+  color: var(--color-text-subtle);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.node-tree__search-result {
+  padding: 4px 12px;
+  font-size: 10px;
+  color: var(--color-text-subtle);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
 .node-tree__item {
   display: flex;
   align-items: center;

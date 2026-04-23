@@ -4,9 +4,10 @@
  * 選択変更時に自動スクロール + 祖先を自動展開。
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor } from '../../pen/state/EditorContext';
 import type { PenNode } from '../../pen/types';
+import { filterNodeTree } from '../../utils/filterNodeTree';
 
 const EYE_ON = (
   <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
@@ -78,6 +79,7 @@ function NodeItem({
   selectedId,
   selectedIds,
   expandedIds,
+  visibleIds,
   onSelect,
   onToggle,
   onReorder,
@@ -92,12 +94,15 @@ function NodeItem({
   selectedId: string | null;
   selectedIds: Set<string>;
   expandedIds: Set<string>;
+  /** null = フィルタなし（全表示）。Set のときは含まれる id のみ表示 */
+  visibleIds: Set<string> | null;
   onSelect: (id: string) => void;
   onToggle: (id: string) => void;
   onReorder: (parentId: string | null, fromIdx: number, toIdx: number) => void;
   onToggleVisibility: (id: string) => void;
   onToggleLock: (id: string) => void;
 }) {
+  if (visibleIds && !visibleIds.has(node.id)) return null;
   const isSelected = selectedId === node.id;
   const isMulti = selectedIds.has(node.id);
   const children = hasChildren(node) ? node.children : [];
@@ -207,6 +212,7 @@ function NodeItem({
             selectedId={selectedId}
             selectedIds={selectedIds}
             expandedIds={expandedIds}
+            visibleIds={visibleIds}
             onSelect={onSelect}
             onToggle={onToggle}
             onReorder={onReorder}
@@ -273,6 +279,26 @@ export function NodeTree({ collapsed, onTogglePanel }: { collapsed?: boolean; on
     });
   }, []);
 
+  // -- 検索フィルタ
+  const [query, setQuery] = useState('');
+  const filter = useMemo(
+    () => filterNodeTree(state.doc.children, query),
+    [state.doc.children, query],
+  );
+  const filterActive = query.trim().length > 0;
+  const visibleIds = filterActive ? filter.visible : null;
+
+  // フィルタ中はヒットの祖先を自動展開
+  useEffect(() => {
+    if (!filterActive) return;
+    if (filter.autoExpand.size === 0) return;
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of filter.autoExpand) next.add(id);
+      return next;
+    });
+  }, [filterActive, filter.autoExpand]);
+
   // 選択変更時: 祖先を自動展開 + スクロール
   useEffect(() => {
     if (!state.selectedNodeId) return;
@@ -317,6 +343,32 @@ export function NodeTree({ collapsed, onTogglePanel }: { collapsed?: boolean; on
           </button>
         )}
       </div>
+      <div className="node-tree__search">
+        <input
+          type="text"
+          className="node-tree__search-input"
+          placeholder="Search layers..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        {filterActive && (
+          <button
+            type="button"
+            className="node-tree__search-clear"
+            onClick={() => setQuery('')}
+            title="Clear search"
+          >
+            ×
+          </button>
+        )}
+      </div>
+      {filterActive && (
+        <div className="node-tree__search-result">
+          {filter.matchCount === 0
+            ? 'No matches'
+            : `${filter.matchCount} match${filter.matchCount === 1 ? '' : 'es'}`}
+        </div>
+      )}
       <div className="node-tree__list" ref={listRef}>
         {state.doc.children.map((node, i) => (
           <NodeItem
@@ -328,6 +380,7 @@ export function NodeTree({ collapsed, onTogglePanel }: { collapsed?: boolean; on
             selectedId={state.selectedNodeId}
             selectedIds={state.selectedNodeIds}
             expandedIds={expandedIds}
+            visibleIds={visibleIds}
             onSelect={selectNode}
             onToggle={onToggle}
             onReorder={reorderChildren}
