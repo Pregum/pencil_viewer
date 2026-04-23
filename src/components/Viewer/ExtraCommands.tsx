@@ -60,6 +60,24 @@ export function findNodesByColor(nodes: PenNode[], color: string): string[] {
     .map((n) => n.id);
 }
 
+/** Find all nodes whose fill shares any color with the source node's fill. */
+export function findNodesBySameFill(nodes: PenNode[], sourceId: string): string[] {
+  const all = flattenNodes(nodes);
+  const src = all.find((n) => n.id === sourceId);
+  if (!src) return [];
+  const srcFill = (src as { fill?: unknown }).fill;
+  if (!srcFill) return [];
+  const srcColors = new Set(extractColors(srcFill).map((c) => c.toLowerCase()));
+  if (srcColors.size === 0) return [];
+  return all
+    .filter((n) => {
+      const fill = (n as { fill?: unknown }).fill;
+      if (!fill) return false;
+      return extractColors(fill).some((c) => srcColors.has(c.toLowerCase()));
+    })
+    .map((n) => n.id);
+}
+
 /** Collect all unique fill colors used across all nodes. */
 export function collectColors(nodes: PenNode[]): string[] {
   const colors = new Set<string>();
@@ -164,6 +182,14 @@ export function useExtraCommands(): Command[] {
     const ids = flattenNodes(state.doc.children)
       .filter((n) => n.type === targetType)
       .map((n) => n.id);
+    selectMultiple(ids);
+  }, [state.doc.children, state.selectedNodeId, selectMultiple]);
+
+  const selectSameFill = useCallback(() => {
+    const srcId = state.selectedNodeId;
+    if (!srcId) return;
+    const ids = findNodesBySameFill(state.doc.children, srcId);
+    if (ids.length === 0) return;
     selectMultiple(ids);
   }, [state.doc.children, state.selectedNodeId, selectMultiple]);
 
@@ -314,6 +340,7 @@ export function useExtraCommands(): Command[] {
     // Selection
     { id: 'select-all', label: 'Select All', shortcut: 'Ctrl+A', action: selectAll },
     { id: 'select-same-type', label: 'Select Same Type', action: selectSameType },
+    { id: 'select-same-fill', label: 'Select Same Fill', action: selectSameFill },
     // Edit
     { id: 'duplicate-node', label: 'Duplicate Node', shortcut: 'Ctrl+D', action: duplicateSelected },
     { id: 'group-selection', label: 'Group Selection', shortcut: 'Ctrl+G', action: groupSelection },
