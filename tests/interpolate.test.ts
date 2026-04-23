@@ -64,4 +64,42 @@ describe('interpolateNode', () => {
     expect(r.width).toBe(100);
     expect(r.height).toBe(100);
   });
+
+  it('interpolates t=0 and t=1 as identity on numeric props', () => {
+    const a = { type: 'rectangle', id: 'a', x: 0, y: 0, width: 10, height: 10 } as PenNode;
+    const b = { type: 'rectangle', id: 'a', x: 100, y: 50, width: 200, height: 100 } as PenNode;
+    const r0 = interpolateNode(a, b, 0) as PenNode & Record<string, unknown>;
+    const r1 = interpolateNode(a, b, 1) as PenNode & Record<string, unknown>;
+    expect(r0.x).toBe(0);
+    expect(r1.x).toBe(100);
+  });
+
+  it('interpolates stroke.fill color when both sides have one', () => {
+    const a = { type: 'rectangle', id: 'a', x: 0, y: 0, width: 10, height: 10, stroke: { thickness: 2, fill: '#FF0000' } } as unknown as PenNode;
+    const b = { type: 'rectangle', id: 'a', x: 0, y: 0, width: 10, height: 10, stroke: { thickness: 2, fill: '#0000FF' } } as unknown as PenNode;
+    const r = interpolateNode(a, b, 0.5) as PenNode & { stroke?: { fill?: string } };
+    expect(r.stroke?.fill).toBe('#800080');
+  });
+
+  it('keeps original fill when only one side has color', () => {
+    const a = { type: 'rectangle', id: 'a', x: 0, y: 0, width: 10, height: 10, fill: '#FF0000' } as unknown as PenNode;
+    const b = { type: 'rectangle', id: 'a', x: 0, y: 0, width: 10, height: 10 } as PenNode;
+    const r = interpolateNode(a, b, 0.5) as PenNode & { fill?: string };
+    // 片側が undefined なら色補間はスキップされ、from の値がそのまま残る
+    expect(r.fill).toBe('#FF0000');
+  });
+
+  it('handles 3-digit hex input gracefully', () => {
+    const mid = interpolateColor('#F00', '#00F', 0.5);
+    // #F00 → #FF0000, #00F → #0000FF → mid は #800080
+    expect(mid).toBe('#800080');
+  });
+
+  it('interpolates cornerRadius (number) and rotation', () => {
+    const a = { type: 'rectangle', id: 'a', x: 0, y: 0, width: 10, height: 10, cornerRadius: 0, rotation: 0 } as unknown as PenNode;
+    const b = { type: 'rectangle', id: 'a', x: 0, y: 0, width: 10, height: 10, cornerRadius: 20, rotation: 90 } as unknown as PenNode;
+    const r = interpolateNode(a, b, 0.25) as PenNode & { cornerRadius?: number; rotation?: number };
+    expect(r.cornerRadius).toBe(5);
+    expect(r.rotation).toBe(22.5);
+  });
 });

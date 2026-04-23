@@ -81,4 +81,33 @@ describe('applyConstraints', () => {
     const r = applyConstraints(c, 200, 200, 10, 10);
     expect(r.width).toBeGreaterThanOrEqual(1);
   });
+
+  it('no-op when old size equals new size', () => {
+    const c: ChildGeom = { x: 10, y: 20, width: 50, height: 30 };
+    const r = applyConstraints(c, 200, 100, 200, 100);
+    expect(r).toEqual({ x: 10, y: 20, width: 50, height: 30 });
+  });
+
+  it('scale on parent shrinking to half', () => {
+    const c: ChildGeom = { x: 50, y: 50, width: 50, height: 50, constraints: { horizontal: 'scale', vertical: 'scale' } };
+    const r = applyConstraints(c, 200, 200, 100, 100);
+    expect(r.x).toBe(25);
+    expect(r.y).toBe(25);
+    expect(r.width).toBe(25);
+    expect(r.height).toBe(25);
+  });
+
+  it('center + stretch combo works independently per axis', () => {
+    const c: ChildGeom = {
+      x: 50, y: 20, width: 100, height: 160,
+      constraints: { horizontal: 'center', vertical: 'stretch' },
+    };
+    const r = applyConstraints(c, 200, 200, 400, 300);
+    // 水平 center: child center was 100 = old_center. new_center = 200, so x = 150
+    expect(r.x).toBe(150);
+    expect(r.width).toBe(100);
+    // 垂直 stretch: bottom gap = 200-180 = 20, new_h = 300-20-20 = 260
+    expect(r.y).toBe(20);
+    expect(r.height).toBe(260);
+  });
 });

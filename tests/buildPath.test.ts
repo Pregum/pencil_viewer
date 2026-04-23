@@ -111,6 +111,30 @@ describe('parsePathD', () => {
   });
 });
 
+describe('parsePathD (edge cases)', () => {
+  it('parses negative and decimal coords', () => {
+    const r = parsePathD('M -1.5 -2 L 3.25 4.5');
+    expect(r).not.toBe(null);
+    expect(r!.anchors[0].position).toEqual({ x: -1.5, y: -2 });
+    expect(r!.anchors[1].position).toEqual({ x: 3.25, y: 4.5 });
+  });
+
+  it('accepts lowercase commands as uppercase (after normalization)', () => {
+    const r = parsePathD('m 0 0 l 10 0');
+    // 現実装は toUpperCase 済み。絶対座標として解釈される (相対サポートしない)
+    expect(r).not.toBe(null);
+    expect(r!.anchors[1].position).toEqual({ x: 10, y: 0 });
+  });
+
+  it('returns null if C has < 6 numbers', () => {
+    expect(parsePathD('M 0 0 C 1 2 3')).toBe(null);
+  });
+
+  it('Z without preceding anchors returns null', () => {
+    expect(parsePathD('Z')).toBe(null);
+  });
+});
+
 describe('anchorsBBox', () => {
   it('includes positions and handles', () => {
     const anchors: PathAnchor[] = [
