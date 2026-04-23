@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseVariables, substituteVariables } from '../src/pen/variables';
+import { parseVariables, substituteVariables, extractThemeAxes } from '../src/pen/variables';
 import type { PenDocument } from '../src/pen/types';
 
 describe('parseVariables', () => {
@@ -166,6 +166,31 @@ describe('substituteVariables', () => {
     expect(r.fill).toBe('#FF00FF'); // actually substituted
   });
 
+  it('picks value matching the selected theme', () => {
+    const input: PenDocument = {
+      version: '2.10',
+      variables: {
+        primary: {
+          type: 'color',
+          value: [
+            { value: '#111', theme: { mode: 'light' } },
+            { value: '#EEE', theme: { mode: 'dark' } },
+          ],
+        },
+      } as unknown as PenDocument['variables'],
+      children: [
+        {
+          type: 'rectangle', id: 'r', x: 0, y: 0, width: 10, height: 10,
+          fill: '$primary',
+        } as unknown as PenDocument['children'][number],
+      ],
+    };
+    const light = substituteVariables(input, { mode: 'light' });
+    const dark = substituteVariables(input, { mode: 'dark' });
+    expect((light.children[0] as { fill?: string }).fill).toBe('#111');
+    expect((dark.children[0] as { fill?: string }).fill).toBe('#EEE');
+  });
+
   it('returns the same doc untouched when there is no variables block', () => {
     const input: PenDocument = {
       version: '2.10',
@@ -181,5 +206,37 @@ describe('substituteVariables', () => {
     };
     const result = substituteVariables(input);
     expect(result).toEqual(input);
+  });
+});
+
+describe('extractThemeAxes', () => {
+  it('returns null when themes is missing', () => {
+    expect(extractThemeAxes({ version: '2.10', children: [] })).toBeNull();
+  });
+
+  it('returns null when themes has no string-array entries', () => {
+    expect(extractThemeAxes({
+      version: '2.10',
+      children: [],
+      themes: { foo: 42 } as unknown,
+    })).toBeNull();
+  });
+
+  it('extracts valid axes', () => {
+    const r = extractThemeAxes({
+      version: '2.10',
+      children: [],
+      themes: { mode: ['light', 'dark'], size: ['small', 'large'] } as unknown,
+    });
+    expect(r).toEqual({ mode: ['light', 'dark'], size: ['small', 'large'] });
+  });
+
+  it('filters out non-string-array entries while keeping valid ones', () => {
+    const r = extractThemeAxes({
+      version: '2.10',
+      children: [],
+      themes: { mode: ['light', 'dark'], weird: [1, 2] } as unknown,
+    });
+    expect(r).toEqual({ mode: ['light', 'dark'] });
   });
 });

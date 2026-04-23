@@ -139,4 +139,22 @@ describe('computeEqualSpaceSnap', () => {
     expect(r.y).toBe(100);
     expect(r.guides.some((g) => g.orientation === 'v' && g.spacing === 50)).toBe(true);
   });
+
+  it('returns empty guides when no statics provided', () => {
+    const moving: SnapRect = { id: 'm', x: 100, y: 100, width: 50, height: 50 };
+    const r = computeEqualSpaceSnap(moving, [], 6);
+    expect(r.x).toBe(100);
+    expect(r.y).toBe(100);
+    expect(r.guides.length).toBe(0);
+  });
+
+  it('ignores statics that do not overlap in perpendicular axis', () => {
+    // 横方向の等間隔判定だが、y 方向で重なりのない 2 つの static
+    const leftN: SnapRect = { id: 'L', x: 0, y: 0, width: 50, height: 30 };
+    const rightN: SnapRect = { id: 'R', x: 200, y: 500, width: 50, height: 30 };
+    const moving: SnapRect = { id: 'm', x: 98, y: 110, width: 50, height: 30 };
+    const r = computeEqualSpaceSnap(moving, [leftN, rightN], 6);
+    // 左右どちらも moving の y レンジに重ならないので snap しない
+    expect(r.x).toBe(98);
+  });
 });
