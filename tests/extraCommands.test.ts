@@ -3,6 +3,7 @@ import type { PenNode } from '../src/pen/types';
 import {
   findNodesByText,
   findNodesByColor,
+  findNodesBySameFill,
   collectColors,
   collectFonts,
   countComponentUsage,
@@ -72,6 +73,36 @@ describe('findNodesByColor', () => {
 
   it('returns empty when no match', () => {
     expect(findNodesByColor(sampleNodes, '#123456')).toEqual([]);
+  });
+});
+
+describe('findNodesBySameFill', () => {
+  it('finds all nodes sharing a fill color with the source', () => {
+    const ids = findNodesBySameFill(sampleNodes, 't1'); // #FF0000
+    expect(ids).toContain('t1');
+    expect(ids).toContain('r1');
+    expect(ids).toContain('r2'); // solid-fill object form
+    expect(ids).not.toContain('t2');
+    expect(ids).not.toContain('e1');
+  });
+
+  it('returns [] when source has no fill', () => {
+    const noFillDoc: PenNode[] = [{ type: 'rectangle', id: 'x', x: 0, y: 0, width: 10, height: 10 } as PenNode];
+    expect(findNodesBySameFill(noFillDoc, 'x')).toEqual([]);
+  });
+
+  it('returns [] when source id does not exist', () => {
+    expect(findNodesBySameFill(sampleNodes, 'missing')).toEqual([]);
+  });
+
+  it('matches case-insensitively', () => {
+    const doc: PenNode[] = [
+      { type: 'rectangle', id: 'a', x: 0, y: 0, width: 10, height: 10, fill: '#ff0000' } as PenNode,
+      { type: 'rectangle', id: 'b', x: 0, y: 0, width: 10, height: 10, fill: '#FF0000' } as PenNode,
+    ];
+    const ids = findNodesBySameFill(doc, 'a');
+    expect(ids).toContain('a');
+    expect(ids).toContain('b');
   });
 });
 

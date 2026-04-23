@@ -7,6 +7,7 @@ import { useCallback } from 'react';
 import { useEditor } from '../../pen/state/EditorContext';
 import type { PenNode } from '../../pen/types';
 import type { Command } from './CommandPalette';
+import { tidyUp, type TidyItem, type TidyMode } from '../../utils/tidyUp';
 
 function getNodeRect(node: PenNode): { id: string; x: number; y: number; w: number; h: number } | null {
   const x = node.x ?? 0;
@@ -124,6 +125,23 @@ export function useAlignActions() {
     }
   }, [getSelectedRects, updateNodeSilent, pushUndoCheckpoint]);
 
+  const tidyUpSelection = useCallback((mode: TidyMode = 'auto') => {
+    const rects = getSelectedRects();
+    if (rects.length < 2) return;
+    const items: TidyItem[] = rects.map((r) => ({
+      id: r.id,
+      x: r.x,
+      y: r.y,
+      width: r.w,
+      height: r.h,
+    }));
+    const results = tidyUp(items, { mode });
+    pushUndoCheckpoint();
+    for (const r of results) {
+      updateNodeSilent(r.id, { x: Math.round(r.x), y: Math.round(r.y) } as Partial<PenNode>);
+    }
+  }, [getSelectedRects, updateNodeSilent, pushUndoCheckpoint]);
+
   const sortByX = useCallback(() => {
     const rects = getSelectedRects();
     if (rects.length < 2) return;
@@ -147,6 +165,7 @@ export function useAlignActions() {
     distributeH,
     distributeV,
     sortByX,
+    tidyUpSelection,
   };
 }
 
@@ -163,5 +182,9 @@ export function useAlignCommands(): Command[] {
     { id: 'distribute-h', label: `Distribute Horizontal${suffix}`, action: a.distributeH },
     { id: 'distribute-v', label: `Distribute Vertical${suffix}`, action: a.distributeV },
     { id: 'sort-by-x', label: `Sort by X position${suffix}`, action: a.sortByX },
+    { id: 'tidy-up', label: `Tidy Up${suffix}`, action: () => a.tidyUpSelection('auto') },
+    { id: 'tidy-up-row', label: `Tidy Up — Row${suffix}`, action: () => a.tidyUpSelection('row') },
+    { id: 'tidy-up-column', label: `Tidy Up — Column${suffix}`, action: () => a.tidyUpSelection('column') },
+    { id: 'tidy-up-grid', label: `Tidy Up — Grid${suffix}`, action: () => a.tidyUpSelection('grid') },
   ];
 }
