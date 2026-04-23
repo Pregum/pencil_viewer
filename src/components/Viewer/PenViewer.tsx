@@ -32,6 +32,7 @@ import { FindReplaceDialog } from './FindReplaceDialog';
 import { VariablesPanel } from './VariablesPanel';
 import { DevInspectPanel } from './DevInspectPanel';
 import { StylesPanel } from './StylesPanel';
+import { SelectionColorsPanel } from './SelectionColorsPanel';
 import { GridSnapToggle } from './GridSnapToggle';
 import { ZoomInput } from './ZoomInput';
 import { Toolbar } from './Toolbar';
@@ -165,6 +166,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const [showVariables, setShowVariables] = useState(false);
   const [showDevInspect, setShowDevInspect] = useState(false);
   const [showStyles, setShowStyles] = useState(false);
+  const [showSelectionColors, setShowSelectionColors] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [presentMode, setPresentMode] = useState(false);
   const [presentIdx, setPresentIdx] = useState(0);
@@ -1190,6 +1192,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
       {showVariables && <VariablesPanel onClose={() => setShowVariables(false)} />}
       {showDevInspect && <DevInspectPanel onClose={() => setShowDevInspect(false)} />}
       {showStyles && <StylesPanel onClose={() => setShowStyles(false)} />}
+      {showSelectionColors && <SelectionColorsPanel onClose={() => setShowSelectionColors(false)} />}
       {showCommandPalette && (
         <CommandPaletteWrapper
           baseCommands={[
@@ -1200,6 +1203,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             { id: 'variables', label: '🎨 Variables (Design Tokens)', action: () => setShowVariables(true) },
             { id: 'dev-inspect', label: '🧑‍💻 Dev Mode / Inspect', shortcut: 'Cmd+Shift+D', action: () => setShowDevInspect(true) },
             { id: 'styles', label: '💠 Styles (Color / Text / Effect)', action: () => setShowStyles(true) },
+            { id: 'selection-colors', label: '🎨 Selection / Document Colors', action: () => setShowSelectionColors(true) },
             { id: 'bool-union', label: 'Boolean: Union', action: () => window.dispatchEvent(new CustomEvent('pencil-bool-op', { detail: 'union' })) },
             { id: 'bool-subtract', label: 'Boolean: Subtract', action: () => window.dispatchEvent(new CustomEvent('pencil-bool-op', { detail: 'subtract' })) },
             { id: 'bool-intersect', label: 'Boolean: Intersect', action: () => window.dispatchEvent(new CustomEvent('pencil-bool-op', { detail: 'intersect' })) },
