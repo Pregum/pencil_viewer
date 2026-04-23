@@ -770,6 +770,41 @@ html,
   color: var(--color-accent, #4F46E5);
 }
 
+/* ======== Focus mode (Cmd+.) — UI 全消しで編集は可能 ======== */
+.viewer--focus .viewer__toolbar,
+.viewer--focus .node-tree,
+.viewer--focus .prop-panel,
+.viewer--focus .pages-panel,
+.viewer--focus .components-panel,
+.viewer--focus .viewer__ruler,
+.viewer--focus .viewer__ruler--h,
+.viewer--focus .viewer__ruler--v,
+.viewer--focus .viewer__ruler-corner {
+  display: none !important;
+}
+.viewer--focus .viewer__canvas-wrap {
+  inset: 0;
+  padding: 0;
+}
+.viewer--focus .viewer__canvas {
+  inset: 0;
+}
+.viewer--focus::after {
+  content: "Cmd+. to exit focus";
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  padding: 4px 10px;
+  background: rgba(0,0,0,.6);
+  color: #fff;
+  font-size: 11px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 1000;
+  font-family: system-ui, sans-serif;
+  letter-spacing: 0.02em;
+}
+
 /* ======== Present mode ======== */
 .viewer--present .viewer__toolbar,
 .viewer--present .viewer__ruler,
