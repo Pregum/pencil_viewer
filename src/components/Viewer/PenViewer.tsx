@@ -21,6 +21,8 @@ import { UIStatesPanel } from './UIStatesPanel';
 import { CollabBar } from './CollabBar';
 import { useCollab } from '../../collab/useCollab';
 import { useBridge } from '../../collab/useBridge';
+import { CollabSync } from '../../collab/CollabSync';
+import { RemoteCursors } from '../../collab/RemoteCursors';
 import { ContextMenu } from './ContextMenu';
 import { AIReviewPanel } from './AIReviewPanel';
 import { isAIReviewEnabled } from '../../utils/aiReview';
@@ -119,8 +121,21 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const svgRef = useRef<SVGSVGElement>(null);
 
   // P2P Collab
-  const { collab, createRoom, disconnect, getRoomUrl } = useCollab();
+  const {
+    collab,
+    createRoom,
+    joinRoom,
+    disconnect,
+    getRoomUrl,
+    syncDoc: syncCollabDoc,
+    setRemoteHandler,
+    setLocalCursor,
+    setLocalSelection,
+  } = useCollab();
   const { bridge, connectBridge, disconnectBridge } = useBridge();
+
+  /** 招待リンク (?room=) 経由で開いたか */
+  const joinedViaUrl = useRef(new URLSearchParams(window.location.search).has('room'));
 
   // Camera in SVG coordinate space
   const [camera, setCamera] = useState<Camera>(() => ({
@@ -278,6 +293,53 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  // Collab: 招待リンク (?room=) で開いた場合は自動で入室
+  useEffect(() => {
+    const room = new URLSearchParams(window.location.search).get('room');
+    if (room) joinRoom(room, null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Collab: 参加者が初回 doc を受信したら、その doc 全体にカメラを合わせる
+  useEffect(() => {
+    const onFit = (e: Event) => {
+      const vb = (e as CustomEvent<ViewBox>).detail;
+      if (!vb || vb.width <= 0) return;
+      setCamera({
+        cx: vb.x + vb.width / 2,
+        cy: vb.y + vb.height / 2,
+        svgWidth: clampSvgWidth(vb.width),
+      });
+    };
+    window.addEventListener('pencil-collab-fit', onFit);
+    return () => window.removeEventListener('pencil-collab-fit', onFit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Collab: 接続中はポインタ移動を SVG 座標に変換して自分のカーソルを配信
+  useEffect(() => {
+    if (!collab.connected) return;
+    const el = containerRef.current;
+    if (!el) return;
+    let last = 0;
+    const onMove = (e: PointerEvent) => {
+      const now = performance.now();
+      if (now - last < 45) return;
+      last = now;
+      const svg = svgRef.current;
+      const ctm = svg?.getScreenCTM();
+      if (!ctm) return;
+      setLocalCursor({ x: (e.clientX - ctm.e) / ctm.a, y: (e.clientY - ctm.f) / ctm.d });
+    };
+    const onLeave = () => setLocalCursor(null);
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerleave', onLeave);
+    return () => {
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerleave', onLeave);
+    };
+  }, [collab.connected, setLocalCursor]);
 
   // Present モード: active frame に自動ズーム（transition 中はスキップ）
   useEffect(() => {
@@ -942,6 +1004,13 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
 
   return (
     <EditorProvider doc={doc} rawDoc={rawDoc}>
+    <CollabSync
+      connected={collab.connected}
+      joining={joinedViaUrl.current}
+      syncDoc={syncCollabDoc}
+      setRemoteHandler={setRemoteHandler}
+      setLocalSelection={setLocalSelection}
+    />
     <div className={`viewer${presentMode ? ' viewer--present' : ''}${focusMode ? ' viewer--focus' : ''}`}>
       <div className="viewer__toolbar">
         <Toolbar />
@@ -1046,7 +1115,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         <CollabBar
           collab={collab}
           bridge={bridge}
-          onStartCollab={() => createRoom(rawDoc ?? doc, () => {})}
+          onStartCollab={() => createRoom(rawDoc ?? doc)}
           onDisconnect={disconnect}
           onToggleBridge={() => {
             if (bridge.connected) {
@@ -1094,6 +1163,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             preserveAspectRatio="xMidYMid meet"
           >
             <CanvasContent />
+            {collab.connected && <RemoteCursors peers={collab.peers} scale={scale} />}
             {activeFrameId && frames.map((f) =>
               f.id === activeFrameId ? (
                 <rect

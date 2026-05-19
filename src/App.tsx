@@ -16,7 +16,7 @@ const LOCALES: { code: SupportedLocale; label: string }[] = [
 ];
 
 export function App() {
-  const { state, loadFile, loadUrl, loadSample, reset } = useDocument();
+  const { state, loadFile, loadUrl, loadSample, loadEmpty, reset } = useDocument();
   const { locale, setLocale, t } = useI18n();
 
   const [showDocs, setShowDocs] = useState(false);
@@ -28,8 +28,12 @@ export function App() {
     const params = new URLSearchParams(window.location.search);
     const src = params.get('src');
     const id = params.get('id');
+    const room = params.get('room');
     if (src) {
       void loadUrl(src);
+    } else if (room) {
+      // 招待リンク経由: 空ドキュメントで起動し、ビューア側でルームに入室する
+      loadEmpty();
     } else if (id && isShareEnabled()) {
       void (async () => {
         try {
@@ -67,6 +71,7 @@ export function App() {
     const s = state.source;
     if (s.kind === 'file') return s.name;
     if (s.kind === 'url') return s.url;
+    if (s.kind === 'collab') return '🔴 Live collaboration';
     return `samples/${s.name}`;
   })();
 
@@ -178,7 +183,9 @@ export function App() {
               ? state.source.name
               : state.source.kind === 'url'
               ? state.source.url
-              : `samples/${state.source.name}`}
+              : state.source.kind === 'sample'
+              ? `samples/${state.source.name}`
+              : ''}
           </p>
         )}
 

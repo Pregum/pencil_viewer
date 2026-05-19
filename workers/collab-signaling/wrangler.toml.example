@@ -1,0 +1,27 @@
+# Pencil Viewer 共同編集シグナリングサーバー — wrangler 設定テンプレート
+#
+# 使い方:
+#   1. このファイルを `wrangler.toml` にコピー
+#      cp wrangler.toml.example wrangler.toml
+#   2. `npx wrangler deploy` でデプロイ
+#   3. 出力された URL の https → wss に置き換えたものを、フロントエンドの
+#      ビルド時環境変数 `VITE_COLLAB_SIGNALING` に設定する
+#      例: https://pencil-viewer-signaling.<account>.workers.dev
+#          → wss://pencil-viewer-signaling.<account>.workers.dev
+#
+# 注意: `wrangler.toml` は .gitignore されているためコミットされません。
+#
+# Durable Objects は SQLite バックエンドの new_sqlite_classes として宣言すると
+# 無料プランでも利用できます (本 DO は storage を使わないが宣言は必要)。
+
+name = "pencil-viewer-signaling"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[[durable_objects.bindings]]
+name = "SIGNALING"
+class_name = "SignalingServer"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SignalingServer"]

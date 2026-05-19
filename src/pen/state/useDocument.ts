@@ -16,7 +16,9 @@ import { loadDocumentFonts } from '../../utils/fontLoader';
 export type Source =
   | { kind: 'file'; name: string }
   | { kind: 'url'; url: string }
-  | { kind: 'sample'; name: string };
+  | { kind: 'sample'; name: string }
+  /** 招待リンク (?room=) 経由の空ドキュメント起動 */
+  | { kind: 'collab' };
 
 export interface LoadError {
   summary: string;
@@ -55,6 +57,7 @@ export function useDocument(): {
   loadFile: (file: File) => Promise<void>;
   loadUrl: (url: string) => Promise<void>;
   loadSample: (name: string) => Promise<void>;
+  loadEmpty: () => void;
   reset: () => void;
 } {
   const [state, dispatch] = useReducer(reducer, { status: 'idle' });
@@ -135,7 +138,14 @@ export function useDocument(): {
     [loadText],
   );
 
+  /** 空ドキュメントで起動する (招待リンク経由の共同編集参加者用)。
+   *  実際の内容は接続後に他ユーザーから同期される。 */
+  const loadEmpty = useCallback(() => {
+    const doc: PenDocument = { version: '1.0', children: [] };
+    dispatch({ type: 'LOAD_SUCCESS', source: { kind: 'collab' }, doc, rawDoc: doc });
+  }, []);
+
   const reset = useCallback(() => dispatch({ type: 'RESET' }), []);
 
-  return { state, loadFile, loadUrl, loadSample, reset };
+  return { state, loadFile, loadUrl, loadSample, loadEmpty, reset };
 }

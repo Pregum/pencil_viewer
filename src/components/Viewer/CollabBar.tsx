@@ -92,7 +92,7 @@ export function CollabBar({ collab, bridge, onStartCollab, onDisconnect, onToggl
         {/* Self */}
         <span
           className="collab-bar__avatar"
-          style={{ background: '#4f46e5' }}
+          style={{ background: collab.selfColor }}
           title={`${collab.userName} (you)`}
         >
           {collab.userName[0]}

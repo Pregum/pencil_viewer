@@ -52,6 +52,9 @@ jobs:
           # isShareEnabled() が false を返すので Share ボタンは自動的に非表示になる
           VITE_SHARE_API_URL: ${{ vars.VITE_SHARE_API_URL }}
           VITE_AI_REVIEW_URL: ${{ vars.VITE_AI_REVIEW_URL }}
+          # 共同編集 WebRTC シグナリングサーバー (wss://) — 未設定でも
+          # 同一ブラウザのタブ間は BroadcastChannel で同期する
+          VITE_COLLAB_SIGNALING: ${{ vars.VITE_COLLAB_SIGNALING }}
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6

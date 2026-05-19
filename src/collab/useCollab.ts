@@ -4,8 +4,16 @@
  *
  * "No trace, no server, no cost."
  * - 全員が離れたらデータは消える
- * - サーバーにデータは保存されない
- * - シグナリングのみ公開サーバーを使用
+ * - ドキュメントの中身はサーバーを経由しない (WebRTC で peer 間を直接流れる)
+ * - シグナリングサーバーは接続確立のメタデータのみ中継する
+ *   (VITE_COLLAB_SIGNALING で指定。未指定なら同一ブラウザのタブ間のみ同期)
+ *
+ * 同期の中身:
+ * - ドキュメント本体 (children) を Y.Map の 1 キーに JSON で格納
+ * - awareness で各ユーザーの presence (名前/色/カーソル/選択) を共有
+ *
+ * NOTE: children は 1 キーにまとめて持つため、同時刻に別ノードを編集すると
+ *       後勝ちになる。ノード単位の衝突解決は将来の課題 (v2)。
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -17,6 +25,10 @@ export interface CollabPeer {
   id: string;
   name: string;
   color: string;
+  /** SVG 座標系でのカーソル位置 (未送信時は undefined) */
+  cursor?: { x: number; y: number };
+  /** 選択中ノード ID 群 */
+  selection?: string[];
 }
 
 export interface CollabState {
@@ -25,7 +37,23 @@ export interface CollabState {
   peers: CollabPeer[];
   /** 自分のユーザー名 */
   userName: string;
+  /** 自分のアバター色 */
+  selfColor: string;
 }
+
+/** リモート由来でない (= 自分が書いた) Y トランザクションの目印 */
+const LOCAL_ORIGIN = 'pencil-local';
+
+/**
+ * WebRTC シグナリングサーバー (カンマ区切りで複数可)。
+ * VITE_COLLAB_SIGNALING 未設定なら空 = 同一ブラウザのタブ間のみ
+ * (BroadcastChannel) で同期する。クロスデバイスには workers/collab-signaling
+ * をデプロイして wss URL を設定する。
+ */
+const SIGNALING_SERVERS: string[] = ((import.meta.env.VITE_COLLAB_SIGNALING as string | undefined) ?? '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 const PEER_COLORS = [
   '#ef4444', '#f97316', '#eab308', '#22c55e',
@@ -44,109 +72,28 @@ function generateUserName(): string {
   return names[Math.floor(Math.random() * names.length)];
 }
 
+type RemoteDocHandler = (doc: PenDocument) => void;
+
 export function useCollab() {
-  const [state, setState] = useState<CollabState>({
+  const [state, setState] = useState<CollabState>(() => ({
     connected: false,
     roomId: null,
     peers: [],
     userName: generateUserName(),
-  });
+    selfColor: PEER_COLORS[Math.floor(Math.random() * PEER_COLORS.length)],
+  }));
 
   const ydocRef = useRef<Y.Doc | null>(null);
   const providerRef = useRef<WebrtcProvider | null>(null);
-  const onDocUpdateRef = useRef<((doc: PenDocument) => void) | null>(null);
+  /** リモート編集を受け取って EditorContext に流すハンドラ (CollabSync が登録) */
+  const onDocUpdateRef = useRef<RemoteDocHandler | null>(null);
+  /** awareness に書き込む user フィールドを最新に保つための参照 */
+  const userRef = useRef({ name: state.userName, color: state.selfColor });
+  userRef.current = { name: state.userName, color: state.selfColor };
 
-  /** ルームを作成して接続 */
-  const createRoom = useCallback((doc: PenDocument, onDocUpdate: (doc: PenDocument) => void) => {
-    const roomId = generateRoomId();
-    joinRoom(roomId, doc, onDocUpdate);
-    return roomId;
-  }, []);
-
-  /** 既存ルームに接続 */
-  const joinRoom = useCallback((roomId: string, initialDoc: PenDocument | null, onDocUpdate: (doc: PenDocument) => void) => {
-    // Cleanup previous connection
-    disconnect();
-
-    const ydoc = new Y.Doc();
-    const ymap = ydoc.getMap('pen-document');
-
-    // 初期ドキュメントをセット（ルーム作成者のみ）
-    if (initialDoc && ymap.size === 0) {
-      ydoc.transact(() => {
-        ymap.set('version', initialDoc.version);
-        ymap.set('children', JSON.stringify(initialDoc.children));
-        if (initialDoc.variables) ymap.set('variables', JSON.stringify(initialDoc.variables));
-        if (initialDoc.themes) ymap.set('themes', JSON.stringify(initialDoc.themes));
-      });
-    }
-
-    onDocUpdateRef.current = onDocUpdate;
-
-    // Y.Map の変更を監視
-    ymap.observe(() => {
-      const version = ymap.get('version') as string ?? '1.0';
-      const childrenStr = ymap.get('children') as string;
-      const variablesStr = ymap.get('variables') as string | undefined;
-      const themesStr = ymap.get('themes') as string | undefined;
-
-      if (!childrenStr) return;
-
-      try {
-        const doc: PenDocument = {
-          version,
-          children: JSON.parse(childrenStr),
-          variables: variablesStr ? JSON.parse(variablesStr) : undefined,
-          themes: themesStr ? JSON.parse(themesStr) : undefined,
-        };
-        onDocUpdateRef.current?.(doc);
-      } catch {
-        // ignore parse errors
-      }
-    });
-
-    // WebRTC Provider
-    const provider = new WebrtcProvider(`pencil-viewer-${roomId}`, ydoc, {
-      signaling: ['wss://signaling.yjs.dev'],
-    });
-
-    // Awareness (ユーザーのプレゼンス)
-    const colorIdx = Math.floor(Math.random() * PEER_COLORS.length);
-    provider.awareness.setLocalStateField('user', {
-      name: state.userName,
-      color: PEER_COLORS[colorIdx],
-    });
-
-    // Peers の監視
-    const updatePeers = () => {
-      const peers: CollabPeer[] = [];
-      provider.awareness.getStates().forEach((s, clientId) => {
-        if (clientId === ydoc.clientID) return;
-        const user = (s as { user?: { name: string; color: string } }).user;
-        if (user) {
-          peers.push({ id: String(clientId), name: user.name, color: user.color });
-        }
-      });
-      setState((prev) => ({ ...prev, peers }));
-    };
-    provider.awareness.on('change', updatePeers);
-
-    ydocRef.current = ydoc;
-    providerRef.current = provider;
-
-    setState((prev) => ({ ...prev, connected: true, roomId }));
-  }, [state.userName]);
-
-  /** ドキュメントの変更を Y.Doc に反映 */
-  const syncDoc = useCallback((doc: PenDocument) => {
-    const ydoc = ydocRef.current;
-    if (!ydoc) return;
-    const ymap = ydoc.getMap('pen-document');
-    ydoc.transact(() => {
-      ymap.set('version', doc.version);
-      ymap.set('children', JSON.stringify(doc.children));
-      if (doc.variables) ymap.set('variables', JSON.stringify(doc.variables));
-    });
+  /** CollabSync から呼ぶ: リモート doc 受信ハンドラを登録 */
+  const setRemoteHandler = useCallback((cb: RemoteDocHandler | null) => {
+    onDocUpdateRef.current = cb;
   }, []);
 
   /** 切断 */
@@ -158,7 +105,105 @@ export function useCollab() {
     setState((prev) => ({ ...prev, connected: false, roomId: null, peers: [] }));
   }, []);
 
-  /** URL にルーム ID を付与 */
+  /**
+   * ルームに接続する。
+   * @param roomId      接続先ルーム ID
+   * @param initialDoc  ルーム作成者なら seed する doc / 参加者は null
+   */
+  const joinRoom = useCallback((roomId: string, initialDoc: PenDocument | null) => {
+    disconnect();
+
+    const ydoc = new Y.Doc();
+    const ymap = ydoc.getMap('pen-document');
+
+    // 初期ドキュメントを seed (作成者のみ。参加者は null を渡すので素通り)
+    if (initialDoc) {
+      ydoc.transact(() => {
+        ymap.set('version', initialDoc.version);
+        ymap.set('children', JSON.stringify(initialDoc.children));
+      }, LOCAL_ORIGIN);
+    }
+
+    // Y.Map の変更を監視 — 自分の書き込み (LOCAL_ORIGIN) は無視してエコーを防ぐ
+    ymap.observe((_event, transaction) => {
+      if (transaction.origin === LOCAL_ORIGIN) return;
+      const version = (ymap.get('version') as string) ?? '1.0';
+      const childrenStr = ymap.get('children') as string | undefined;
+      if (!childrenStr) return;
+      try {
+        onDocUpdateRef.current?.({ version, children: JSON.parse(childrenStr) });
+      } catch {
+        // ignore parse errors
+      }
+    });
+
+    // WebRTC Provider
+    const provider = new WebrtcProvider(`pencil-viewer-${roomId}`, ydoc, {
+      signaling: SIGNALING_SERVERS,
+    });
+
+    // Awareness (自分の presence)
+    provider.awareness.setLocalStateField('user', userRef.current);
+
+    // peers の監視 (名前/色/カーソル/選択をまとめて反映)
+    const updatePeers = () => {
+      const peers: CollabPeer[] = [];
+      provider.awareness.getStates().forEach((s, clientId) => {
+        if (clientId === ydoc.clientID) return;
+        const st = s as {
+          user?: { name: string; color: string };
+          cursor?: { x: number; y: number };
+          selection?: string[];
+        };
+        if (st.user) {
+          peers.push({
+            id: String(clientId),
+            name: st.user.name,
+            color: st.user.color,
+            cursor: st.cursor,
+            selection: st.selection,
+          });
+        }
+      });
+      setState((prev) => ({ ...prev, peers }));
+    };
+    provider.awareness.on('change', updatePeers);
+
+    ydocRef.current = ydoc;
+    providerRef.current = provider;
+
+    setState((prev) => ({ ...prev, connected: true, roomId }));
+  }, [disconnect]);
+
+  /** ルームを新規作成して接続。作成者の doc を seed する */
+  const createRoom = useCallback((doc: PenDocument): string => {
+    const roomId = generateRoomId();
+    joinRoom(roomId, doc);
+    return roomId;
+  }, [joinRoom]);
+
+  /** ローカルのドキュメント変更を Y.Doc に反映 (LOCAL_ORIGIN 付き) */
+  const syncDoc = useCallback((doc: PenDocument) => {
+    const ydoc = ydocRef.current;
+    if (!ydoc) return;
+    const ymap = ydoc.getMap('pen-document');
+    ydoc.transact(() => {
+      ymap.set('version', doc.version);
+      ymap.set('children', JSON.stringify(doc.children));
+    }, LOCAL_ORIGIN);
+  }, []);
+
+  /** 自分のカーソル位置を awareness に送信 (null でクリア) */
+  const setLocalCursor = useCallback((pos: { x: number; y: number } | null) => {
+    providerRef.current?.awareness.setLocalStateField('cursor', pos ?? undefined);
+  }, []);
+
+  /** 自分の選択ノードを awareness に送信 */
+  const setLocalSelection = useCallback((ids: string[]) => {
+    providerRef.current?.awareness.setLocalStateField('selection', ids);
+  }, []);
+
+  /** URL にルーム ID を付与した招待リンクを返す */
   const getRoomUrl = useCallback(() => {
     if (!state.roomId) return '';
     const url = new URL(window.location.href);
@@ -167,6 +212,14 @@ export function useCollab() {
     url.searchParams.delete('id');
     return url.toString();
   }, [state.roomId]);
+
+  /** ユーザー名を変更 (接続中なら awareness にも反映) */
+  const setUserName = useCallback((name: string) => {
+    setState((prev) => {
+      providerRef.current?.awareness.setLocalStateField('user', { name, color: prev.selfColor });
+      return { ...prev, userName: name };
+    });
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -183,6 +236,9 @@ export function useCollab() {
     syncDoc,
     disconnect,
     getRoomUrl,
-    setUserName: (name: string) => setState((prev) => ({ ...prev, userName: name })),
+    setUserName,
+    setRemoteHandler,
+    setLocalCursor,
+    setLocalSelection,
   };
 }
