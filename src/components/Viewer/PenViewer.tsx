@@ -7,6 +7,8 @@ import { FrameSearch } from './FrameSearch';
 import { EditorProvider, useEditor as useEditorInternal } from '../../pen/state/EditorContext';
 import { PropertyPanel } from './PropertyPanel';
 import { ExportButton } from './ExportButton';
+import { CommitButton } from '../../github/CommitButton';
+import { GitHubDirtyTracker } from '../../github/GitHubDirtyTracker';
 import { AutoIdDialog } from './AutoIdDialog';
 import { type Command } from './CommandPalette';
 import { CommandPaletteWrapper } from './CommandPaletteWrapper';
@@ -1004,6 +1006,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
 
   return (
     <EditorProvider doc={doc} rawDoc={rawDoc}>
+    <GitHubDirtyTracker />
     <CollabSync
       connected={collab.connected}
       joining={joinedViaUrl.current}
@@ -1126,6 +1129,8 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
           }}
           roomUrl={getRoomUrl()}
         />
+        <span className="viewer__separator" />
+        <CommitButton />
         <span className="viewer__separator" />
         <ExportButton />
         <span className="viewer__separator" />

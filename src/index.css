@@ -4301,3 +4301,341 @@ html,
 .lazy-fallback {
   min-height: 60vh;
 }
+
+/* ===========================================================================
+ * GitHub (git-backed .pen 保管庫) — 接続/ブラウズ/コミット UI
+ * =========================================================================== */
+
+.header__gh-connected {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.gh-dialog {
+  width: 520px;
+  max-height: 72vh;
+}
+
+.gh-connect,
+.gh-browse {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gh-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+.gh-hint--small {
+  font-size: 11px;
+}
+.gh-hint a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+.gh-hint a:hover {
+  text-decoration: underline;
+}
+
+.gh-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+.gh-input,
+.gh-select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  outline: none;
+}
+.gh-input:focus,
+.gh-select:focus {
+  border-color: var(--color-accent);
+}
+
+.gh-error {
+  font-size: 12px;
+  color: var(--color-error);
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 4px 0 0;
+}
+
+.gh-account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+.gh-avatar {
+  border-radius: 50%;
+}
+.gh-account__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.gh-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow-y: auto;
+  padding: 4px;
+}
+.gh-list--repos {
+  max-height: 160px;
+}
+.gh-list--files {
+  max-height: 220px;
+}
+.gh-list__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+.gh-list__item:hover {
+  background: var(--color-canvas);
+}
+.gh-list__item--active {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+.gh-list__item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.gh-list__name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gh-list__icon {
+  flex-shrink: 0;
+}
+.gh-badge {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.gh-branch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.gh-branch-row .gh-select {
+  flex: 1;
+  width: auto;
+}
+
+/* --- Commit ポップオーバー（ツールバー内） --- */
+.gh-commit-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  width: 320px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.gh-commit-pop__target {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--color-canvas);
+  border-radius: 8px;
+}
+.gh-commit-pop__repo {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.gh-commit-pop__path {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  word-break: break-all;
+}
+.gh-select--full {
+  width: 100%;
+}
+.gh-commit-btn {
+  font-weight: 600;
+}
+
+/* --- Landing: GitHub から開くエントリ --- */
+.lp__github-open {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 18px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.05s;
+}
+.lp__github-open:hover {
+  border-color: var(--color-accent);
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.12);
+}
+.lp__github-open:active {
+  transform: translateY(1px);
+}
+.lp__github-open-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+.lp__github-open-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.lp__github-open-text strong {
+  font-size: 14px;
+  color: var(--color-text);
+}
+.lp__github-open-text small {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.lp__github-open-arrow {
+  color: var(--color-accent);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* --- ヘッダー: 現在ファイル + 未コミット差分インジケータ --- */
+.header__gh-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 360px;
+  padding: 4px 10px;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+.header__gh-file:hover {
+  border-color: var(--color-accent);
+}
+.header__gh-file-dot {
+  color: #22c55e;
+  font-size: 10px;
+}
+.header__gh-file--dirty .header__gh-file-dot {
+  color: #f59e0b;
+}
+.header__gh-file-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.header__gh-file-branch {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+.header__gh-file-hist {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+/* --- 競合解決 UI（Commit ポップオーバー内） --- */
+.gh-conflict {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.gh-conflict__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+/* --- コミット履歴 --- */
+.gh-history {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.gh-history__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+.gh-history__item:hover {
+  background: var(--color-canvas);
+}
+.gh-history__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.gh-history__msg {
+  font-size: 13px;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gh-history__meta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.gh-history__meta code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
