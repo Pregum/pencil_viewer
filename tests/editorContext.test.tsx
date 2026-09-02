@@ -82,7 +82,7 @@ describe('EditorContext — basic selection & updates', () => {
     const { result } = renderHook(() => useEditor(), { wrapper: wrapperFor(doc) });
     act(() => result.current.selectNode('a'));
     act(() => result.current.toggleSelectNode('b'));
-    expect(result.current.state.selectedNodeIds.has('a')).toBe;
+    expect(result.current.state.selectedNodeIds.has('a')).toBe(true);
     expect(result.current.state.selectedNodeIds.has('b')).toBe(true);
     act(() => result.current.toggleSelectNode('a'));
     expect(result.current.state.selectedNodeIds.has('a')).toBe(false);

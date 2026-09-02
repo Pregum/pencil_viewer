@@ -49,6 +49,12 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # error のみを落とす。既存コードに 36 件の warn (React Compiler 系の
+      # 新ルールと exhaustive-deps) が残っており、これらは #78 で段階的に
+      # 潰してから --max-warnings=0 に締める。
+      - name: Lint
+        run: npm run lint
+
       - name: Test
         run: npm test
 
