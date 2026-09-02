@@ -102,7 +102,6 @@ function NodeItem({
   onToggleVisibility: (id: string) => void;
   onToggleLock: (id: string) => void;
 }) {
-  if (visibleIds && !visibleIds.has(node.id)) return null;
   const isSelected = selectedId === node.id;
   const isMulti = selectedIds.has(node.id);
   const children = hasChildren(node) ? node.children : [];
@@ -122,6 +121,11 @@ function NodeItem({
     },
     [node.id, onToggle],
   );
+
+  // Layers 検索 (#64) の絞り込みで非表示になる行。
+  // フックはすべて呼び終えてから return する — フックより前に返すと
+  // レンダー間で呼び出し数が変わり Rules of Hooks 違反になる。
+  const hidden = Boolean(visibleIds && !visibleIds.has(node.id));
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData('application/pencil-layer', JSON.stringify({ parentId, fromIdx: index, nodeId: node.id }));
@@ -157,6 +161,8 @@ function NodeItem({
       /* ignore */
     }
   };
+
+  if (hidden) return null;
 
   return (
     <div>
