@@ -189,6 +189,20 @@ git push
 | Beyond free | $0.293 / 1M input tokens · $2.253 / 1M output tokens |
 | **Typical monthly cost** | **$0** for personal use |
 
+## Releasing
+
+The version shown in the app header comes from `package.json` via `__APP_VERSION__`
+(injected at build time by `vite.config.ts`). Keep it in sync with the git tag:
+
+```bash
+npm version <patch|minor|major>   # bumps package.json and creates a vX.Y.Z tag
+git push --follow-tags
+gh release create vX.Y.Z --generate-notes
+```
+
+Pushing to `main` deploys to GitHub Pages automatically; tagging is only for
+marking releases.
+
 ## License
 
 [MIT](./LICENSE)
@@ -323,6 +337,21 @@ cd workers/ai-review && cp wrangler.toml.example wrangler.toml && npm install &&
 | クイックフィードバック | 素早い反復のための短く実用的なフィードバック |
 
 > **注意:** この機能は任意で、$0（Cloudflare Workers AI 無料枠）、完全にステートレスです --- デザインデータはサーバーに保存されません。
+
+## リリース手順
+
+アプリのヘッダに出るバージョンは `package.json` の値で、`vite.config.ts` の
+`define` がビルド時に `__APP_VERSION__` へ埋め込んでいる。git タグと
+ずれないよう `npm version` で一括更新する。
+
+```bash
+npm version <patch|minor|major>   # package.json を更新して vX.Y.Z タグを作る
+git push --follow-tags
+gh release create vX.Y.Z --generate-notes
+```
+
+`main` への push で GitHub Pages へ自動デプロイされる。タグはリリースの
+目印としてのみ使う。
 
 ## ライセンス
 

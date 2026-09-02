@@ -27,6 +27,11 @@ npm-debug.log*
 
 # Claude Code session data
 .claude/
+.codex/
+
+# シェルで "~/..." がクォートされて展開されないと、リテラルな ~ という
+# 名前のディレクトリが作られる。誤コミットを防ぐために無視する。
+/~/
 
 # Cloudflare Workers — 実 ID 入りの wrangler.toml はコミットしない
 # (テンプレートとして wrangler.toml.example をコミットする)
