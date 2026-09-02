@@ -65,6 +65,21 @@ function doc(children: PenNode[]): PenDocument {
 }
 const latest = () => providers[providers.length - 1];
 
+/**
+ * #68 で yjs / y-webrtc を動的 import に変えたため、joinRoom は
+ * import の解決を挟んでから Provider を据え付ける。マクロタスクを
+ * 1 回回して、その解決を待つ。
+ */
+async function flushDynamicImport() {
+  // import() の解決は 1 tick では終わらないことがあるため、
+  // Provider が据え付けられるまでマクロタスクを回す。
+  await act(async () => {
+    for (let i = 0; i < 50; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  });
+}
+
 beforeEach(() => {
   providers.length = 0;
   window.history.replaceState({}, '', '/');
@@ -84,26 +99,31 @@ describe('useCollab — 接続ライフサイクル', () => {
     expect(result.current.collab.selfColor).toMatch(/^#[0-9a-f]{6}$/i);
   });
 
-  it('createRoom は 8 文字の room ID を返して接続する', () => {
+  it('createRoom は 8 文字の room ID を返して接続する', async () => {
     const { result } = renderHook(() => useCollab());
     let roomId = '';
-    act(() => { roomId = result.current.createRoom(doc([rect('a')])); });
+    await act(async () => { roomId = result.current.createRoom(doc([rect('a')])); });
+
+    await flushDynamicImport();
 
     expect(roomId).toMatch(/^[a-z0-9]{8}$/);
     expect(result.current.collab.connected).toBe(true);
     expect(result.current.collab.roomId).toBe(roomId);
   });
 
-  it('room 名は pencil-viewer- プレフィックス付きで Provider に渡る', () => {
+  it('room 名は pencil-viewer- プレフィックス付きで Provider に渡る', async () => {
     const { result } = renderHook(() => useCollab());
     let roomId = '';
-    act(() => { roomId = result.current.createRoom(doc([])); });
+    await act(async () => { roomId = result.current.createRoom(doc([])); });
+    await flushDynamicImport();
     expect(latest().room).toBe(`pencil-viewer-${roomId}`);
   });
 
-  it('createRoom は初期ドキュメントを Y.Doc に seed する', () => {
+  it('createRoom は初期ドキュメントを Y.Doc に seed する', async () => {
     const { result } = renderHook(() => useCollab());
-    act(() => { result.current.createRoom(doc([rect('seeded', 42)])); });
+    await act(async () => { result.current.createRoom(doc([rect('seeded', 42)])); });
+
+    await flushDynamicImport();
 
     const ymap = latest().ydoc.getMap('pen-document');
     expect(ymap.get('version')).toBe('2.10');
@@ -112,18 +132,21 @@ describe('useCollab — 接続ライフサイクル', () => {
     expect(children[0].x).toBe(42);
   });
 
-  it('joinRoom に null を渡すと seed しない (参加者は相手の doc を潰さない)', () => {
+  it('joinRoom に null を渡すと seed しない (参加者は相手の doc を潰さない)', async () => {
     const { result } = renderHook(() => useCollab());
-    act(() => { result.current.joinRoom('abc12345', null); });
+    await act(async () => { result.current.joinRoom('abc12345', null); });
+
+    await flushDynamicImport();
 
     const ymap = latest().ydoc.getMap('pen-document');
     expect(ymap.get('children')).toBeUndefined();
     expect(result.current.collab.roomId).toBe('abc12345');
   });
 
-  it('disconnect で Provider を破棄して状態をリセットする', () => {
+  it('disconnect で Provider を破棄して状態をリセットする', async () => {
     const { result } = renderHook(() => useCollab());
-    act(() => { result.current.createRoom(doc([rect('a')])); });
+    await act(async () => { result.current.createRoom(doc([rect('a')])); });
+    await flushDynamicImport();
     const provider = latest();
 
     act(() => { result.current.disconnect(); });
@@ -134,23 +157,56 @@ describe('useCollab — 接続ライフサイクル', () => {
     expect(result.current.collab.peers).toEqual([]);
   });
 
-  it('連続 join では前の Provider が破棄される', () => {
+  it('連続 join では前の Provider が破棄される', async () => {
     const { result } = renderHook(() => useCollab());
-    act(() => { result.current.joinRoom('room0001', doc([])); });
+    await act(async () => { result.current.joinRoom('room0001', doc([])); });
+    await flushDynamicImport();
     const first = latest();
-    act(() => { result.current.joinRoom('room0002', doc([])); });
+    await act(async () => { result.current.joinRoom('room0002', doc([])); });
+
+    await flushDynamicImport();
 
     expect(first.destroyed).toBe(true);
     expect(providers).toHaveLength(2);
     expect(result.current.collab.roomId).toBe('room0002');
   });
 
-  it('unmount で Provider を破棄する', () => {
+  it('unmount で Provider を破棄する', async () => {
     const { result, unmount } = renderHook(() => useCollab());
-    act(() => { result.current.createRoom(doc([])); });
+    await act(async () => { result.current.createRoom(doc([])); });
+    await flushDynamicImport();
     const provider = latest();
     unmount();
     expect(provider.destroyed).toBe(true);
+  });
+
+  it('[PROBE] sync act + flush で Provider が作られるか', async () => {
+    const { result } = renderHook(() => useCollab());
+    act(() => { result.current.createRoom(doc([])); });
+    await flushDynamicImport();
+    expect(providers).toHaveLength(1);
+  });
+
+  it('動的 import の解決前に unmount しても Provider を作らない (#68 のリーク防止)', async () => {
+    const { result, unmount } = renderHook(() => useCollab());
+    act(() => { result.current.createRoom(doc([])); });
+
+    // import が解決する前に unmount する
+    unmount();
+    await flushDynamicImport();
+
+    expect(providers).toHaveLength(0);
+  });
+
+  it('動的 import の解決前に disconnect しても Provider を作らない', async () => {
+    const { result } = renderHook(() => useCollab());
+    act(() => { result.current.createRoom(doc([])); });
+    act(() => { result.current.disconnect(); });
+
+    await flushDynamicImport();
+
+    expect(providers).toHaveLength(0);
+    expect(result.current.collab.connected).toBe(false);
   });
 
   it('未接続で syncDoc を呼んでも例外にならない', () => {
@@ -160,20 +216,23 @@ describe('useCollab — 接続ライフサイクル', () => {
 });
 
 describe('useCollab — ドキュメント同期', () => {
-  it('syncDoc が Y.Map を更新する', () => {
+  it('syncDoc が Y.Map を更新する', async () => {
     const { result } = renderHook(() => useCollab());
-    act(() => { result.current.createRoom(doc([rect('a')])); });
+    await act(async () => { result.current.createRoom(doc([rect('a')])); });
+    await flushDynamicImport();
     act(() => { result.current.syncDoc(doc([rect('a'), rect('b', 30)])); });
 
     const children = JSON.parse(latest().ydoc.getMap('pen-document').get('children') as string);
     expect(children).toHaveLength(2);
   });
 
-  it('リモート更新が setRemoteHandler に登録したハンドラへ届く', () => {
+  it('リモート更新が setRemoteHandler に登録したハンドラへ届く', async () => {
     const { result } = renderHook(() => useCollab());
     const received: PenDocument[] = [];
     act(() => { result.current.setRemoteHandler((d) => received.push(d)); });
-    act(() => { result.current.createRoom(doc([rect('a')])); });
+    await act(async () => { result.current.createRoom(doc([rect('a')])); });
+
+    await flushDynamicImport();
 
     // リモート由来 (LOCAL_ORIGIN 以外) の書き込みを模す
     const ydoc = latest().ydoc;
@@ -189,11 +248,12 @@ describe('useCollab — ドキュメント同期', () => {
     expect((received[0].children[0] as RectangleNode).id).toBe('remote');
   });
 
-  it('自分の syncDoc はハンドラに返ってこない (エコー防止)', () => {
+  it('自分の syncDoc はハンドラに返ってこない (エコー防止)', async () => {
     const { result } = renderHook(() => useCollab());
     const received: PenDocument[] = [];
     act(() => { result.current.setRemoteHandler((d) => received.push(d)); });
-    act(() => { result.current.createRoom(doc([rect('a')])); });
+    await act(async () => { result.current.createRoom(doc([rect('a')])); });
+    await flushDynamicImport();
     act(() => { result.current.syncDoc(doc([rect('a'), rect('b')])); });
 
     expect(received).toHaveLength(0);
@@ -201,18 +261,22 @@ describe('useCollab — ドキュメント同期', () => {
 });
 
 describe('useCollab — awareness (presence)', () => {
-  it('接続時に自分の user を awareness へ載せる', () => {
+  it('接続時に自分の user を awareness へ載せる', async () => {
     const { result } = renderHook(() => useCollab());
-    act(() => { result.current.createRoom(doc([])); });
+    await act(async () => { result.current.createRoom(doc([])); });
+
+    await flushDynamicImport();
 
     const user = latest().awareness.local.user as { name: string; color: string };
     expect(user.name).toBe(result.current.collab.userName);
     expect(user.color).toBe(result.current.collab.selfColor);
   });
 
-  it('setLocalCursor がカーソル位置を送信し null でクリアする', () => {
+  it('setLocalCursor がカーソル位置を送信し null でクリアする', async () => {
     const { result } = renderHook(() => useCollab());
-    act(() => { result.current.createRoom(doc([])); });
+    await act(async () => { result.current.createRoom(doc([])); });
+
+    await flushDynamicImport();
 
     act(() => { result.current.setLocalCursor({ x: 12, y: 34 }); });
     expect(latest().awareness.local.cursor).toEqual({ x: 12, y: 34 });
@@ -221,25 +285,29 @@ describe('useCollab — awareness (presence)', () => {
     expect(latest().awareness.local.cursor).toBeUndefined();
   });
 
-  it('setLocalSelection が選択ノード ID を送信する', () => {
+  it('setLocalSelection が選択ノード ID を送信する', async () => {
     const { result } = renderHook(() => useCollab());
-    act(() => { result.current.createRoom(doc([])); });
+    await act(async () => { result.current.createRoom(doc([])); });
+    await flushDynamicImport();
     act(() => { result.current.setLocalSelection(['n1', 'n2']); });
     expect(latest().awareness.local.selection).toEqual(['n1', 'n2']);
   });
 
-  it('setUserName が state と awareness の両方を更新する', () => {
+  it('setUserName が state と awareness の両方を更新する', async () => {
     const { result } = renderHook(() => useCollab());
-    act(() => { result.current.createRoom(doc([])); });
+    await act(async () => { result.current.createRoom(doc([])); });
+    await flushDynamicImport();
     act(() => { result.current.setUserName('Hokusai'); });
 
     expect(result.current.collab.userName).toBe('Hokusai');
     expect((latest().awareness.local.user as { name: string }).name).toBe('Hokusai');
   });
 
-  it('awareness の change で peers が更新され、自分自身は除外される', () => {
+  it('awareness の change で peers が更新され、自分自身は除外される', async () => {
     const { result } = renderHook(() => useCollab());
-    act(() => { result.current.createRoom(doc([])); });
+    await act(async () => { result.current.createRoom(doc([])); });
+
+    await flushDynamicImport();
 
     const provider = latest();
     const selfId = provider.ydoc.clientID;
@@ -259,9 +327,11 @@ describe('useCollab — awareness (presence)', () => {
     });
   });
 
-  it('user フィールドを持たない awareness state は peers に含めない', () => {
+  it('user フィールドを持たない awareness state は peers に含めない', async () => {
     const { result } = renderHook(() => useCollab());
-    act(() => { result.current.createRoom(doc([])); });
+    await act(async () => { result.current.createRoom(doc([])); });
+
+    await flushDynamicImport();
 
     const provider = latest();
     provider.awareness.states.set(888, { cursor: { x: 0, y: 0 } }); // user なし
@@ -277,16 +347,19 @@ describe('useCollab — 招待リンク', () => {
     expect(result.current.getRoomUrl()).toBe('');
   });
 
-  it('room クエリを付与した URL を返す', () => {
+  it('room クエリを付与した URL を返す', async () => {
     const { result } = renderHook(() => useCollab());
-    act(() => { result.current.joinRoom('abcd1234', doc([])); });
+    await act(async () => { result.current.joinRoom('abcd1234', doc([])); });
+    await flushDynamicImport();
     expect(result.current.getRoomUrl()).toContain('room=abcd1234');
   });
 
-  it('src / id クエリは招待リンクから取り除く', () => {
+  it('src / id クエリは招待リンクから取り除く', async () => {
     window.history.replaceState({}, '', '/?src=https%3A%2F%2Fexample.com%2Fa.pen&id=xyz');
     const { result } = renderHook(() => useCollab());
-    act(() => { result.current.joinRoom('abcd1234', doc([])); });
+    await act(async () => { result.current.joinRoom('abcd1234', doc([])); });
+
+    await flushDynamicImport();
 
     const url = result.current.getRoomUrl();
     expect(url).toContain('room=abcd1234');
@@ -296,9 +369,10 @@ describe('useCollab — 招待リンク', () => {
 });
 
 describe('useCollab — シグナリング設定', () => {
-  it('VITE_COLLAB_SIGNALING 未設定なら signaling は空配列 (同一ブラウザのタブ間のみ)', () => {
+  it('VITE_COLLAB_SIGNALING 未設定なら signaling は空配列 (同一ブラウザのタブ間のみ)', async () => {
     const { result } = renderHook(() => useCollab());
-    act(() => { result.current.createRoom(doc([])); });
+    await act(async () => { result.current.createRoom(doc([])); });
+    await flushDynamicImport();
     expect(latest().opts.signaling).toEqual([]);
   });
 });

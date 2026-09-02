@@ -17,8 +17,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import * as Y from 'yjs';
-import { WebrtcProvider } from 'y-webrtc';
+import type * as YType from 'yjs';
+import type { WebrtcProvider } from 'y-webrtc';
 import type { PenDocument } from '../pen/types';
 
 export interface CollabPeer {
@@ -83,8 +83,14 @@ export function useCollab() {
     selfColor: PEER_COLORS[Math.floor(Math.random() * PEER_COLORS.length)],
   }));
 
-  const ydocRef = useRef<Y.Doc | null>(null);
+  const ydocRef = useRef<YType.Doc | null>(null);
   const providerRef = useRef<WebrtcProvider | null>(null);
+  /**
+   * join の世代番号。yjs / y-webrtc の動的 import 中に disconnect や
+   * 別ルームへの join が起きた場合、古い読み込みが完了しても
+   * Provider を据え付けないようにするためのガード。
+   */
+  const joinGenerationRef = useRef(0);
   /** リモート編集を受け取って EditorContext に流すハンドラ (CollabSync が登録) */
   const onDocUpdateRef = useRef<RemoteDocHandler | null>(null);
   /** awareness に書き込む user フィールドを最新に保つための参照 */
@@ -98,6 +104,7 @@ export function useCollab() {
 
   /** 切断 */
   const disconnect = useCallback(() => {
+    joinGenerationRef.current += 1;
     providerRef.current?.destroy();
     ydocRef.current?.destroy();
     providerRef.current = null;
@@ -105,14 +112,13 @@ export function useCollab() {
     setState((prev) => ({ ...prev, connected: false, roomId: null, peers: [] }));
   }, []);
 
-  /**
-   * ルームに接続する。
-   * @param roomId      接続先ルーム ID
-   * @param initialDoc  ルーム作成者なら seed する doc / 参加者は null
-   */
-  const joinRoom = useCallback((roomId: string, initialDoc: PenDocument | null) => {
-    disconnect();
-
+  /** 動的 import 済みの yjs / y-webrtc を使って実際にルームを構築する */
+  const setupRoom = useCallback((
+    Y: typeof YType,
+    WebrtcProvider: typeof import('y-webrtc').WebrtcProvider,
+    roomId: string,
+    initialDoc: PenDocument | null,
+  ) => {
     const ydoc = new Y.Doc();
     const ymap = ydoc.getMap('pen-document');
 
@@ -173,7 +179,37 @@ export function useCollab() {
     providerRef.current = provider;
 
     setState((prev) => ({ ...prev, connected: true, roomId }));
-  }, [disconnect]);
+  }, []);
+
+  /**
+   * ルームに接続する。
+   * @param roomId      接続先ルーム ID
+   * @param initialDoc  ルーム作成者なら seed する doc / 参加者は null
+   */
+  const joinRoom = useCallback((roomId: string, initialDoc: PenDocument | null) => {
+    disconnect(); // ここで世代が 1 進む
+    const generation = joinGenerationRef.current;
+
+    // yjs / y-webrtc は初期バンドルから外してある (#68)。
+    // 実際にルームへ入るときに初めて取りに行く。
+    void (async () => {
+      try {
+        const [Y, webrtc] = await Promise.all([import('yjs'), import('y-webrtc')]);
+
+        // 読み込み中に disconnect / 別ルームへの join が起きていたら破棄
+        if (joinGenerationRef.current !== generation) return;
+
+        setupRoom(Y, webrtc.WebrtcProvider, roomId, initialDoc);
+      } catch (err) {
+        // import 失敗や Provider の初期化失敗を握り潰さない。
+        // 接続できなかったことが分かるよう未接続状態に戻す。
+        console.error('[collab] failed to join room', err);
+        if (joinGenerationRef.current === generation) {
+          setState((prev) => ({ ...prev, connected: false, roomId: null }));
+        }
+      }
+    })();
+  }, [disconnect, setupRoom]);
 
   /** ルームを新規作成して接続。作成者の doc を seed する */
   const createRoom = useCallback((doc: PenDocument): string => {
@@ -224,6 +260,9 @@ export function useCollab() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      // 世代を進めておかないと、動的 import の解決中に unmount された場合に
+      // setupRoom が走って破棄されない Provider が残る。
+      joinGenerationRef.current += 1;
       providerRef.current?.destroy();
       ydocRef.current?.destroy();
     };
