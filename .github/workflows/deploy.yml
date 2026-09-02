@@ -39,6 +39,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # 本番バンドルに載る依存だけを対象にする。dev 依存 (vite/vitest チェーン) の
+      # 既知脆弱性は vite 5 -> 8 のメジャー更新が必要なため #67 で解消する。
+      - name: Audit (production dependencies)
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Typecheck
         run: npm run typecheck
 
