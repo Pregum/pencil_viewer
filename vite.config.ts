@@ -53,8 +53,8 @@ export default defineConfig(({ mode, command }) => {
         // 下回る位置に置いた歯止め。ここから下げないことだけを保証し、
         // 引き上げは #70 のフォローで段階的に行う。
         thresholds: {
-          lines: 23,
-          statements: 23,
+          lines: 24,
+          statements: 24,
           functions: 75,
           branches: 78,
         },
