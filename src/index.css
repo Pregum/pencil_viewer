@@ -4286,3 +4286,9 @@ html,
     width: 100%;
   }
 }
+
+/* Docs / Vision は動的 import なので、取得中の一瞬だけこの箱が入る。
+   高さを確保して header 直下のレイアウトが跳ねないようにする。 */
+.lazy-fallback {
+  min-height: 60vh;
+}

@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { useDocument } from './pen/state/useDocument';
 import { PenViewer } from './components/Viewer/PenViewer';
 import { Landing } from './components/Landing';
 import { ErrorView } from './components/ErrorView';
-import { Docs } from './components/Docs';
-import { Vision } from './components/Vision';
+// Docs と Vision は初期表示では開かれないうえ、docsContent.ts だけで
+// 1500 行ある。初期バンドルから外して開いたときに取りに行く。
+const Docs = lazy(() => import('./components/Docs').then((m) => ({ default: m.Docs })));
+const Vision = lazy(() => import('./components/Vision').then((m) => ({ default: m.Vision })));
 import { useI18n } from './i18n/I18nContext';
 import type { SupportedLocale } from './i18n/detectLocale';
 import { isShareEnabled, uploadPen, fetchSharedPen } from './utils/shareApi';
@@ -164,9 +166,17 @@ export function App() {
       </header>
 
       <main className="main">
-        {showVision && <Vision onBack={() => setShowVision(false)} locale={locale} />}
+        {showVision && (
+          <Suspense fallback={<div className="lazy-fallback" />}>
+            <Vision onBack={() => setShowVision(false)} locale={locale} />
+          </Suspense>
+        )}
 
-        {showDocs && !showVision && <Docs onBack={() => setShowDocs(false)} locale={locale} />}
+        {showDocs && !showVision && (
+          <Suspense fallback={<div className="lazy-fallback" />}>
+            <Docs onBack={() => setShowDocs(false)} locale={locale} />
+          </Suspense>
+        )}
 
         {!showDocs && !showVision && state.status === 'idle' && (
           <Landing

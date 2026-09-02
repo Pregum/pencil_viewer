@@ -9,10 +9,17 @@
  * lucide パッケージは PascalCase (例: "ArrowLeft") でエクスポートしている。
  */
 
+import { useEffect, useSyncExternalStore } from 'react';
 import type { IconFontNode } from '../types';
 import { usePaintRegistry } from '../paint/PaintContext';
 import { resolveFill, resolveFilter } from './paint';
-import { icons as lucideIcons } from 'lucide';
+import {
+  ensureLucideLoaded,
+  getLucideIcons,
+  lookupLucideIcon,
+  subscribeLucide,
+  type LucideIconData,
+} from './lucideIcons';
 
 const MATERIAL_FAMILIES: Record<string, string> = {
   'Material Symbols Outlined': 'Material Symbols Outlined',
@@ -20,18 +27,28 @@ const MATERIAL_FAMILIES: Record<string, string> = {
   'Material Symbols Sharp': 'Material Symbols Sharp',
 };
 
-/** kebab-case / snake_case → PascalCase */
-function toPascalCase(name: string): string {
-  return name.replace(/(^|[-_ ])([a-z0-9])/g, (_, __, c: string) => c.toUpperCase());
+/**
+ * lucide アイコンセットのロード状態を購読する。
+ * enabled が true (= lucide アイコンを描画しようとしている) のときだけ
+ * 動的 import を起動するので、lucide を使わない .pen では取得しない。
+ */
+function useLucideIcons(enabled: boolean) {
+  const icons = useSyncExternalStore(subscribeLucide, getLucideIcons, getLucideIcons);
+  useEffect(() => {
+    if (enabled) void ensureLucideLoaded();
+  }, [enabled]);
+  return icons;
 }
 
 /** lucide の IconNode 配列を SVG 子要素に変換 */
 function renderLucideElements(
-  iconData: [string, Record<string, string>][],
+  iconData: LucideIconData,
   fillColor: string,
 ): React.ReactNode[] {
   return iconData.map(([tag, attrs], i) => {
-    const props: Record<string, unknown> = { key: i };
+    // key は spread に混ぜず直接渡す。React 19 は key を含む props の
+    // spread を警告する (将来はエラーになる)。
+    const props: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(attrs)) {
       const reactKey = k.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
       // currentColor → 実際の色に置換
@@ -40,29 +57,23 @@ function renderLucideElements(
 
     switch (tag) {
       case 'path':
-        return <path {...props} />;
+        return <path key={i} {...props} />;
       case 'circle':
-        return <circle {...props} />;
+        return <circle key={i} {...props} />;
       case 'rect':
-        return <rect {...props} />;
+        return <rect key={i} {...props} />;
       case 'line':
-        return <line {...props} />;
+        return <line key={i} {...props} />;
       case 'polyline':
-        return <polyline {...props} />;
+        return <polyline key={i} {...props} />;
       case 'polygon':
-        return <polygon {...props} />;
+        return <polygon key={i} {...props} />;
       case 'ellipse':
-        return <ellipse {...props} />;
+        return <ellipse key={i} {...props} />;
       default:
         return null;
     }
   });
-}
-
-function getLucideIcon(name: string): [string, Record<string, string>][] | null {
-  const key = toPascalCase(name);
-  const entry = (lucideIcons as Record<string, [string, Record<string, string>][]>)[key];
-  return entry ?? null;
 }
 
 export function IconFont({ node }: { node: IconFontNode }) {
@@ -78,6 +89,10 @@ export function IconFont({ node }: { node: IconFontNode }) {
   const fill = resolveFill(node.fill, ctx);
   const filter = resolveFilter(ctx);
   const resolvedFill = fill === 'none' ? '#111827' : fill;
+
+  // フックは早期 return より前に呼ぶ。lucide 指定のときだけロードを起動する。
+  const isLucide = family === 'lucide' && name !== '';
+  const lucideReady = useLucideIcons(isLucide) !== null;
 
   // Material Symbols: リガチャ描画
   const isMaterial = family in MATERIAL_FAMILIES;
@@ -104,7 +119,11 @@ export function IconFont({ node }: { node: IconFontNode }) {
 
   // Lucide: SVG パスで描画
   if (family === 'lucide') {
-    const iconData = getLucideIcon(name);
+    // アイコンセットの取得中はプレースホルダを出さずに空で待つ。
+    // 一瞬プレースホルダが見えてからアイコンに差し替わるのを避ける。
+    if (!lucideReady) return <g />;
+
+    const iconData = lookupLucideIcon(name);
     if (iconData) {
       // lucide icons are designed on a 24x24 viewBox
       const scale = size / 24;
