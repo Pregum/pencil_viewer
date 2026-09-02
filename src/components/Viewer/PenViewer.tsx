@@ -776,7 +776,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   // Text objects (vim mode only): vif, vaf, vir, vic
   const vimCount = useRef('');
   const vimGPending = useRef(false);
-  const vimTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const vimTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const nudgeSelected = useCallback((direction: string, count: number) => {
     window.dispatchEvent(new CustomEvent('pencil-nudge', { detail: { direction, count } }));

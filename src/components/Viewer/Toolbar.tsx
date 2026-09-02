@@ -4,6 +4,7 @@
  * キーボードショートカットを提供する。
  */
 
+import type { JSX } from 'react';
 import { useEditor, type ActiveTool } from '../../pen/state/EditorContext';
 
 interface ToolDef {

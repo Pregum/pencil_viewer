@@ -53,7 +53,7 @@ function findNode(nodes: PenNode[], id: string): PenNode | null {
 export function VimTextObjects({ vimMode }: { vimMode: boolean }) {
   const { state, selectMultiple } = useEditor();
   const seq = useRef('');
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     if (!vimMode) return;

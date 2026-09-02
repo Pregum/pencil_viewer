@@ -15,9 +15,11 @@ export default defineConfig(({ mode, command }) => {
     build: {
       rollupOptions: {
         output: {
-          manualChunks: {
-            lucide: ['lucide'],
-          },
+          // vite 8 (rolldown) ではオブジェクト形式の manualChunks が廃止され、
+          // 関数形式のみになった。挙動は従来の { lucide: ['lucide'] } と同じで、
+          // lucide を単独チャンクに切り出す。
+          manualChunks: (id: string) =>
+            id.includes('node_modules/lucide') ? 'lucide' : undefined,
         },
       },
     },
