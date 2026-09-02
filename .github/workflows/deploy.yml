@@ -33,7 +33,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          # vite 8 / @vitejs/plugin-react 6 の engines は
+          # ^20.19.0 || >=22.12.0。LTS の 22 に合わせる。
+          node-version: '22'
           cache: npm
 
       - name: Install dependencies

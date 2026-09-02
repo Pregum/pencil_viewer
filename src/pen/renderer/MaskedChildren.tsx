@@ -15,6 +15,7 @@
  *   </g>
  */
 
+import type { JSX } from 'react';
 import type { PenNode } from '../types';
 import { PenNodeView } from './PenNode';
 
