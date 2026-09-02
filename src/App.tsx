@@ -162,6 +162,10 @@ export function App() {
             </svg>
           </a>
           <span className="header__license">MIT</span>
+          {/* 共有 URL 経由の不具合報告で、どのビルドの話か切り分けるため */}
+          <span className="header__version" title="Pencil Viewer version">
+            v{__APP_VERSION__}
+          </span>
         </div>
       </header>
 

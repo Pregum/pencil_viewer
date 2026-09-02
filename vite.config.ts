@@ -1,6 +1,11 @@
 /// <reference types="vitest" />
+import { readFileSync } from 'node:fs';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+
+// package.json の version をビルド時に埋め込む。共有 URL 経由で
+// 不具合報告を受けたときに、どのビルドの話か切り分けられるようにする。
+const pkgVersion = (JSON.parse(readFileSync('./package.json', 'utf-8')) as { version: string }).version;
 
 // GitHub Pages はプロジェクトページ形式(https://<user>.github.io/pencil_viewer/)で
 // 配信されるため、本番ビルド時はサブパス付きでアセットを吐く。
@@ -12,6 +17,9 @@ export default defineConfig(({ mode, command }) => {
   return {
     plugins: [react()],
     base: env.VITE_BASE ?? defaultBase,
+    define: {
+      __APP_VERSION__: JSON.stringify(pkgVersion),
+    },
     build: {
       rollupOptions: {
         output: {

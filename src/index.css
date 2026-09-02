@@ -129,6 +129,15 @@ html,
   letter-spacing: 0.3px;
 }
 
+/* バージョン表記。MIT バッジと並べるが、主役ではないので枠は付けない */
+.header__version {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--color-text-subtle);
+  letter-spacing: 0.3px;
+  font-variant-numeric: tabular-nums;
+}
+
 .main {
   flex: 1;
   display: flex;
