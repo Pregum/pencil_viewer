@@ -32,3 +32,6 @@ npm-debug.log*
 # (テンプレートとして wrangler.toml.example をコミットする)
 workers/*/wrangler.toml
 .wrangler/
+
+# Vitest coverage
+coverage

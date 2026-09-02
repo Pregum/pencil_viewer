@@ -27,6 +27,30 @@ export default defineConfig(({ mode, command }) => {
       environment: 'jsdom',
       globals: true,
       include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'html', 'lcov', 'json-summary'],
+        reportsDirectory: 'coverage',
+        // 計測対象は src のみ。設定ファイルや型定義だけのファイルは
+        // 分母に入れても意味がないので外す。
+        include: ['src/**/*.{ts,tsx}'],
+        exclude: [
+          'src/**/*.d.ts',
+          'src/main.tsx',
+          // 文言データ。ロジックが無く、含めるとカバレッジが実態より高く出る
+          'src/components/docsContent.ts',
+          'src/i18n/messages/**',
+        ],
+        // 現状値 (lines 23.7 / functions 78.6 / branches 80.9) をわずかに
+        // 下回る位置に置いた歯止め。ここから下げないことだけを保証し、
+        // 引き上げは #70 のフォローで段階的に行う。
+        thresholds: {
+          lines: 23,
+          statements: 23,
+          functions: 75,
+          branches: 78,
+        },
+      },
     },
   };
 });
