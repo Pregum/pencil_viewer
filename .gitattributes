@@ -1,0 +1,2 @@
+# 配布バンドルは生成物。PR の差分では畳んで、言語統計からも外す。
+tools/pen-audit/dist/** linguist-generated=true

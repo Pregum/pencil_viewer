@@ -1,0 +1,63 @@
+name: 'Pencil design check'
+description: 'Validate .pen files and report Five UI States coverage on the pull request.'
+author: 'Pregum'
+
+branding:
+  icon: 'check-square'
+  color: 'green'
+
+inputs:
+  paths:
+    description: |
+      Glob patterns for the files to check, one per line.
+      Supports **, * and ?. Lines starting with # are ignored.
+    required: false
+    default: '**/*.pen'
+  changed-only:
+    description: |
+      On a pull request, check only the files the pull request touches.
+      Set to false to check every matching file on every run.
+    required: false
+    default: 'true'
+  fail-on-parse-error:
+    description: 'Fail the check when a .pen file does not validate.'
+    required: false
+    default: 'true'
+  min-coverage:
+    description: |
+      Fail the check when any screen covers fewer than this percentage of the
+      five UI states. Leave empty to report coverage without enforcing it.
+    required: false
+    default: ''
+  comment:
+    description: 'Post the report as a single pull request comment, updated in place.'
+    required: false
+    default: 'true'
+  locale:
+    description: 'Report language: en, ja or zh.'
+    required: false
+    default: 'en'
+  working-directory:
+    description: 'Directory to search, relative to the workspace.'
+    required: false
+    default: '.'
+  token:
+    description: 'Token used to read changed files and write the comment.'
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  invalid-count:
+    description: 'Number of .pen files that failed validation.'
+  screen-count:
+    description: 'Number of screens analysed.'
+  average-coverage:
+    description: 'Mean state coverage across all screens, as a percentage.'
+  lowest-coverage:
+    description: 'Lowest state coverage of any single screen, as a percentage.'
+  failed:
+    description: 'true when the check failed.'
+
+runs:
+  using: 'node24'
+  main: 'dist/pen-audit.mjs'
