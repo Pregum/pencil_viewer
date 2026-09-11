@@ -9,26 +9,14 @@ import path from 'node:path';
 import { audit, verdict, type Locale } from './audit';
 import { collectPaths, matchesAny, readPenFiles } from './files';
 import { GitHubClient } from './github';
+import { readBoolInput, readInput, readLines } from './inputs';
 import { renderReport, truncateForComment } from './report';
 
 const LOCALES = new Set<Locale>(['en', 'ja', 'zh']);
 
-const input = (name: string, fallback = ''): string => {
-  const raw = process.env[`INPUT_${name.toUpperCase().replace(/[ -]/g, '_')}`];
-  return raw === undefined || raw.trim() === '' ? fallback : raw.trim();
-};
+const input = (name: string, fallback = ''): string => readInput(process.env, name, fallback);
 
-const boolInput = (name: string, fallback: boolean): boolean => {
-  const raw = input(name);
-  if (raw === '') return fallback;
-  return raw.toLowerCase() === 'true';
-};
-
-const lines = (raw: string): string[] =>
-  raw
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line !== '' && !line.startsWith('#'));
+const boolInput = (name: string, fallback: boolean): boolean => readBoolInput(process.env, name, fallback);
 
 async function writeFileLines(target: string | undefined, text: string): Promise<void> {
   if (!target) return;
@@ -47,7 +35,7 @@ async function main(): Promise<number> {
   const prefix = toPosix(path.relative(process.cwd(), root));
   const inRepo = (filePath: string): string =>
     prefix === '' || prefix.startsWith('..') ? filePath : `${prefix}/${filePath}`;
-  const patterns = lines(input('paths', '**/*.pen'));
+  const patterns = readLines(input('paths', '**/*.pen'));
   const changedOnly = boolInput('changed-only', true);
   const failOnParseError = boolInput('fail-on-parse-error', true);
   const wantComment = boolInput('comment', true);

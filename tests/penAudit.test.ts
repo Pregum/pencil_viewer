@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { audit, auditFile, verdict } from '../tools/pen-audit/src/audit';
 import { globToRegExp, matchesAny } from '../tools/pen-audit/src/files';
+import { inputEnvName, readBoolInput, readInput, readLines } from '../tools/pen-audit/src/inputs';
 import { GitHubClient, selectExistingComment, type IssueComment } from '../tools/pen-audit/src/github';
 import {
   COMMENT_MARKER,
@@ -28,6 +29,45 @@ const docText = (...names: string[]) =>
     version: '2.10',
     children: names.map((name, index) => frame(`f${index}`, name)),
   });
+
+describe('アクション入力の読み取り', () => {
+  it('GitHub はハイフンを保ったまま大文字にする', () => {
+    expect(inputEnvName('changed-only')).toBe('INPUT_CHANGED-ONLY');
+    expect(inputEnvName('paths')).toBe('INPUT_PATHS');
+  });
+
+  it('空白だけがアンダースコアになる', () => {
+    expect(inputEnvName('min coverage')).toBe('INPUT_MIN_COVERAGE');
+  });
+
+  it('GitHub が渡す名前で読める', () => {
+    expect(readBoolInput({ 'INPUT_CHANGED-ONLY': 'false' }, 'changed-only', true)).toBe(false);
+  });
+
+  it('手動実行用にアンダースコア版も読む', () => {
+    expect(readBoolInput({ INPUT_CHANGED_ONLY: 'false' }, 'changed-only', true)).toBe(false);
+  });
+
+  it('GitHub 形式を優先する', () => {
+    const env = { 'INPUT_CHANGED-ONLY': 'false', INPUT_CHANGED_ONLY: 'true' };
+    expect(readBoolInput(env, 'changed-only', true)).toBe(false);
+  });
+
+  it('未設定と空文字は既定値に落ちる', () => {
+    expect(readBoolInput({}, 'changed-only', true)).toBe(true);
+    expect(readBoolInput({ 'INPUT_CHANGED-ONLY': '   ' }, 'changed-only', true)).toBe(true);
+    expect(readInput({ INPUT_PATHS: '' }, 'paths', '**/*.pen')).toBe('**/*.pen');
+  });
+
+  it('true 以外はすべて false として扱う', () => {
+    expect(readBoolInput({ 'INPUT_CHANGED-ONLY': 'TRUE' }, 'changed-only', false)).toBe(true);
+    expect(readBoolInput({ 'INPUT_CHANGED-ONLY': 'yes' }, 'changed-only', true)).toBe(false);
+  });
+
+  it('複数行入力から空行とコメントを落とす', () => {
+    expect(readLines('a.pen\n\n  # メモ\n  b/*.pen  ')).toEqual(['a.pen', 'b/*.pen']);
+  });
+});
 
 describe('globToRegExp / matchesAny', () => {
   it('* は階層をまたがない', () => {
