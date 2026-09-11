@@ -80,7 +80,11 @@ async function main(): Promise<number> {
     annotate('error', inRepo(file.path), message);
   }
 
-  const context = `Scope: ${scope} · Patterns: ${patterns.join(', ')} · Root: ${root}`;
+  // 通常は走査範囲だけ。1 件も拾えなかったときは追跡できるように条件も添える
+  const context =
+    result.files.length === 0
+      ? `Scope: ${scope} · Patterns: ${patterns.join(', ')} · Root: ${root}`
+      : `Scope: ${scope}`;
   const body = renderReport(result, check, { locale, context });
   await writeFileLines(process.env.GITHUB_STEP_SUMMARY, body);
   console.log(body);
