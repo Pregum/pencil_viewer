@@ -106,9 +106,11 @@ The bundle is checked into the repository because a JavaScript action runs the f
 the checkout. CI rebuilds it and fails if the committed copy has drifted, so always run
 `npm run build:action` after touching `src/`.
 
-To try it without GitHub Actions:
+To try it without GitHub Actions, set the inputs as environment variables. GitHub keeps hyphens
+in the variable name, so `changed-only` becomes `INPUT_CHANGED-ONLY`. The underscore spelling
+works too, which is easier to type in a shell.
 
 ```bash
 INPUT_PATHS='public/samples/*.pen' INPUT_COMMENT=false INPUT_LOCALE=ja \
-  node tools/pen-audit/dist/pen-audit.mjs
+  INPUT_CHANGED_ONLY=false node tools/pen-audit/dist/pen-audit.mjs
 ```
