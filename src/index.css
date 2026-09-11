@@ -3396,323 +3396,466 @@ html,
    Landing Page
    ========================================================================== */
 
+/* ==========================================================================
+   Landing
+   --------------------------------------------------------------------------
+   主張は 1 つ:「.pen はあなたのリポジトリに置く」。
+   地は製図用紙の方眼、字は鉛筆の芯（graphite）、コミット済みを示す 1 色だけ
+   緑を持つ。エディタ側のパープルはここには持ち込まない（repo の面と
+   canvas の面を意図的に分けている）。
+   書体は index.html で既に読み込んでいる Inter / JetBrains Mono のみを使う。
+   ========================================================================== */
 .lp {
+  --lp-sheet: #ffffff;
+  --lp-grid: #e4e8e3;
+  --lp-ink: #1f2328;
+  --lp-ink-2: #5a636e;
+  --lp-ink-3: #8b939c;
+  --lp-lead: #3d4b5c;
+  --lp-line: #d7dcd6;
+  --lp-signal: #1f7a4d;
+  --lp-signal-soft: #e6f1ea;
+
+  /* このページに入れ子で置く既存パーツ（DropZone / UrlInput / SampleList）は
+     グローバルのパープルを参照している。ここだけ鉛筆側の色に差し替えて、
+     エディタ側のパープルには触れない。 */
+  --color-accent: #3d4b5c;
+  --color-accent-soft: #eef1ee;
+  --color-border: var(--lp-line);
+
   width: 100%;
-  max-width: 900px;
+  max-width: 1000px;
   margin: 0 auto;
-  padding: 0 20px 60px;
+  padding: 0 24px 72px;
   overflow-y: auto;
+  /* hero の方眼は左右にはみ出させて敷くので、横スクロールが出ないよう塞ぐ */
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  color: var(--lp-ink);
+  font-family:
+    Inter,
+    'Noto Sans JP',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  font-feature-settings: 'cv05';
+  /* 日本語を単語の途中で折らない。未対応ブラウザでは無視されるだけ */
+  word-break: auto-phrase;
 }
 
-/* Hero */
+/* --- Hero --------------------------------------------------------------- */
 .lp__hero {
-  text-align: center;
-  padding: 48px 0 32px;
+  position: relative;
+  padding: 64px 0 8px;
 }
-.lp__hero-badge {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--color-accent);
-  background: var(--color-accent-soft);
-  padding: 4px 12px;
-  border-radius: 999px;
-  margin-bottom: 16px;
+/* 製図用紙。hero の後ろにだけ敷き、下端で溶かす */
+.lp__hero::before {
+  content: '';
+  position: absolute;
+  inset: -8px -24px 0;
+  background-image:
+    linear-gradient(var(--lp-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--lp-grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%);
+  opacity: 0.75;
+  pointer-events: none;
 }
+.lp__hero > * {
+  position: relative;
+}
+
 .lp__title {
   margin: 0;
-  font-size: clamp(36px, 8vw, 56px);
-  font-weight: 800;
-  line-height: 1.1;
-  color: var(--color-text);
+  max-width: 780px;
+  font-size: clamp(34px, 5.6vw, 62px);
+  font-weight: 640;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  color: var(--lp-ink);
+  text-wrap: balance;
 }
-.lp__title-accent {
-  background: linear-gradient(135deg, #7c3aed, #ec4899);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.lp__lede {
+  margin: 22px 0 0;
+  max-width: 52ch;
+  font-size: 17px;
+  line-height: 1.62;
+  color: var(--lp-ink-2);
+  /* 最終行に 1 語だけ残さない */
+  text-wrap: pretty;
 }
-.lp__subtitle {
-  margin: 16px auto 0;
-  max-width: 480px;
-  font-size: 16px;
-  line-height: 1.6;
-  color: var(--color-text-muted);
-}
-.lp__subtitle a {
-  color: var(--color-accent);
+.lp__lede a {
+  color: var(--lp-ink);
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
   text-decoration: none;
-  font-weight: 600;
+  border-bottom: 1px solid var(--lp-line);
 }
-.lp__subtitle a:hover {
+.lp__lede a:hover {
+  border-bottom-color: var(--lp-ink);
+}
+
+.lp__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 30px;
+}
+.lp__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 22px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease;
+}
+.lp__action--solid {
+  background: var(--lp-ink);
+  color: #fff;
+}
+.lp__action--solid:hover {
+  background: var(--lp-lead);
+}
+.lp__action--quiet {
+  background: transparent;
+  color: var(--lp-ink);
+  border-color: var(--lp-line);
+}
+.lp__action--quiet:hover {
+  border-color: var(--lp-ink);
+}
+.lp__action:focus-visible {
+  outline: 2px solid var(--lp-lead);
+  outline-offset: 2px;
+}
+
+/* --- Hero の 1 枚: repo の中のファイル → それが描く画面 ------------------ */
+.lp__proof {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 220px;
+  align-items: center;
+  gap: 0;
+  margin: 44px 0 0;
+}
+.lp__proof-repo {
+  min-width: 0;
+  background: var(--lp-sheet);
+  border: 1px solid var(--lp-line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.lp__proof-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--lp-line);
+  background: #fbfcfb;
+}
+.lp__proof-path,
+.lp__proof-branch,
+.lp__proof-log code {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.lp__proof-path {
+  font-size: 13px;
+  color: var(--lp-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lp__proof-branch {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--lp-ink-2);
+  padding: 2px 8px;
+  border: 1px solid var(--lp-line);
+  border-radius: 999px;
+}
+.lp__proof-log {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+}
+.lp__proof-log li {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 16px;
+  font-size: 13.5px;
+  color: var(--lp-ink-2);
+  line-height: 1.4;
+}
+.lp__proof-log code {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--lp-ink-3);
+}
+.lp__proof-log li.is-latest {
+  color: var(--lp-ink);
+}
+.lp__proof-log li.is-latest code {
+  color: var(--lp-signal);
+}
+.lp__proof-log li span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp__proof-join {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lp__proof-join svg {
+  width: 64px;
+  height: 24px;
+  stroke: var(--lp-line);
+  stroke-width: 1.5;
+  fill: none;
+}
+
+.lp__proof-screen {
+  justify-self: end;
+}
+.lp__wire {
+  display: block;
+  width: 220px;
+  height: auto;
+  max-width: 100%;
+}
+.lp__wire-sheet {
+  fill: var(--lp-sheet);
+  stroke: var(--lp-line);
+}
+.lp__wire-box {
+  fill: none;
+  stroke: var(--lp-line);
+}
+.lp__wire-bar {
+  fill: #ccd2cf;
+}
+.lp__wire-bar-soft {
+  fill: #e2e6e2;
+}
+.lp__wire-fill {
+  fill: #eef1ee;
+}
+.lp__wire-cta {
+  fill: var(--lp-lead);
+}
+.lp__wire-new rect:first-child {
+  fill: var(--lp-signal-soft);
+  stroke: var(--lp-signal);
+  stroke-dasharray: 4 3;
+}
+.lp__wire-new-fill {
+  fill: #cfe4d8;
+}
+.lp__wire-new-bar {
+  fill: var(--lp-signal);
+}
+
+.lp__proof-caption {
+  grid-column: 1 / -1;
+  margin: 16px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--lp-ink-3);
+  max-width: 60ch;
+  text-wrap: pretty;
+}
+
+/* --- 以降の節は静かに ---------------------------------------------------- */
+.lp__section {
+  padding-top: 68px;
+}
+.lp__h2 {
+  margin: 0 0 26px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--lp-ink);
+}
+.lp__prose {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 15.5px;
+  line-height: 1.68;
+  color: var(--lp-ink-2);
+}
+
+.lp__list {
+  margin: 0;
+  display: grid;
+  gap: 0;
+}
+.lp__list-row {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 24px;
+  padding: 18px 0;
+  border-top: 1px solid var(--lp-line);
+}
+.lp__list-row:last-child {
+  border-bottom: 1px solid var(--lp-line);
+}
+.lp__list dt {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 560;
+  color: var(--lp-ink);
+  letter-spacing: -0.01em;
+}
+.lp__list dd {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.62;
+  color: var(--lp-ink-2);
+}
+
+.lp__facts {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+}
+.lp__facts li {
+  font-size: 13.5px;
+  color: var(--lp-ink-2);
+  padding-left: 16px;
+  position: relative;
+}
+.lp__facts li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--lp-signal);
+}
+
+/* --- Try ---------------------------------------------------------------- */
+.lp__try {
+  scroll-margin-top: 24px;
+}
+/* 既存の DropZone はランディング用に一段落ち着かせる（エディタ側の見た目は変えない） */
+.lp__try .dropzone {
+  padding: 30px 24px;
+  border-width: 1px;
+  border-radius: 10px;
+}
+.lp__try .dropzone__icon {
+  font-size: 26px;
+  margin-bottom: 8px;
+}
+.lp__try .dropzone__title {
+  font-size: 15px;
+  font-weight: 560;
+}
+.lp__try .dropzone__subtitle {
+  font-size: 12.5px;
+}
+.lp__try .idle {
+  margin: 26px 0 0;
+  max-width: 620px;
+  padding: 0;
+  gap: 18px;
+}
+.lp__repo-entry {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px 18px;
+  background: var(--lp-ink);
+  color: #fff;
+  border: 1px solid var(--lp-ink);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background-color 0.14s ease;
+}
+.lp__repo-entry:hover {
+  background: var(--lp-lead);
+  border-color: var(--lp-lead);
+}
+.lp__repo-entry:focus-visible {
+  outline: 2px solid var(--lp-lead);
+  outline-offset: 2px;
+}
+.lp__repo-entry-mark {
+  display: flex;
+  flex-shrink: 0;
+  color: #fff;
+}
+.lp__repo-entry-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.lp__repo-entry-text strong {
+  font-size: 15px;
+  font-weight: 560;
+}
+.lp__repo-entry-text small {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+/* --- Footer ------------------------------------------------------------- */
+.lp__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: 72px;
+  padding-top: 24px;
+  border-top: 1px solid var(--lp-line);
+  font-size: 13px;
+  color: var(--lp-ink-3);
+}
+.lp__footer a {
+  color: var(--lp-ink-2);
+  text-decoration: none;
+}
+.lp__footer a:hover {
+  color: var(--lp-ink);
   text-decoration: underline;
 }
 
-.lp__hero-visual {
-  margin: 24px auto;
-  max-width: 480px;
-}
-.lp__deco-svg {
-  width: 100%;
-  height: auto;
-}
-
-.lp__cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  padding: 12px 28px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #fff;
-  background: linear-gradient(135deg, #7c3aed, #6d28d9);
-  border-radius: 999px;
-  text-decoration: none;
-  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.3);
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease;
-}
-.lp__cta:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
-}
-
-/* --- AI Review featured banner --- */
-.lp__airev-banner {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap: 32px;
-  align-items: center;
-  margin: 32px 0;
-  padding: 28px 32px;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(168, 85, 247, 0.04));
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: 20px;
-  box-shadow: 0 4px 24px rgba(124, 58, 237, 0.06);
-  position: relative;
-  overflow: hidden;
-}
-.lp__airev-content {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-}
-.lp__airev-badge {
-  display: inline-block;
-  padding: 3px 10px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  color: #fff;
-  background: linear-gradient(90deg, #7c3aed, #a855f7);
-  border-radius: 999px;
-}
-.lp__airev-title {
-  font-size: 28px;
-  font-weight: 700;
-  margin: 4px 0 0;
-  background: linear-gradient(90deg, #7c3aed, #a855f7);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-}
-.lp__airev-tagline {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text);
-  margin: 0;
-}
-.lp__airev-desc {
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--color-text-muted);
-  margin: 4px 0 8px;
-}
-.lp__airev-bullets {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.lp__airev-bullets li {
-  font-size: 13px;
-  color: var(--color-text);
-  padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(124, 58, 237, 0.15);
-  border-radius: 8px;
-}
-.lp__airev-cta {
-  display: inline-flex;
-  align-items: center;
-  padding: 10px 20px;
-  background: linear-gradient(90deg, #7c3aed, #a855f7);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: 10px;
-  text-decoration: none;
-  transition:
-    transform 0.15s,
-    box-shadow 0.15s;
-  margin-top: 4px;
-}
-.lp__airev-cta:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.35);
-}
-.lp__airev-visual {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.lp__airev-visual svg {
-  width: 100%;
-  max-width: 320px;
-  height: auto;
-}
-
-/* Features grid */
-.lp__features {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin: 32px 0;
-}
-.lp__feature {
-  padding: 20px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-.lp__feature:hover {
-  border-color: var(--color-accent);
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.08);
-}
-.lp__feature-icon {
-  font-size: 28px;
-  margin-bottom: 10px;
-}
-.lp__feature h3 {
-  margin: 0 0 6px;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--color-text);
-}
-.lp__feature p {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--color-text-muted);
-}
-.lp__feature code {
-  font-size: 11px;
-  background: var(--color-canvas);
-  padding: 1px 4px;
-  border-radius: 3px;
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-}
-
-/* How it works */
-.lp__how {
-  margin: 40px 0;
-}
-.lp__section-title {
-  text-align: center;
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--color-text);
-  margin: 0 0 24px;
-}
-.lp__steps {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-}
-.lp__step {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 16px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  flex: 1;
-  max-width: 220px;
-}
-.lp__step-num {
-  width: 28px;
-  height: 28px;
-  background: var(--color-accent);
-  color: #fff;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  font-size: 13px;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-.lp__step-text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.lp__step-text strong {
-  font-size: 13px;
-  color: var(--color-text);
-}
-.lp__step-text span {
-  font-size: 11px;
-  color: var(--color-text-muted);
-  line-height: 1.4;
-}
-.lp__step-arrow {
-  font-size: 20px;
-  color: var(--color-text-subtle);
-  flex-shrink: 0;
-}
-
-/* Try it section */
-.lp__try {
-  margin: 40px 0;
-}
-.lp__try .idle {
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-/* Footer */
-.lp__footer {
-  text-align: center;
-  padding: 24px 0;
-  font-size: 12px;
-  color: var(--color-text-subtle);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  border-top: 1px solid var(--color-border);
-  margin-top: 20px;
-}
-.lp__footer a {
-  color: var(--color-text-muted);
-  text-decoration: none;
-  font-weight: 500;
-}
-.lp__footer a:hover {
-  color: var(--color-accent);
+@media (prefers-reduced-motion: reduce) {
+  .lp {
+    scroll-behavior: auto;
+  }
+  .lp__action,
+  .lp__repo-entry {
+    transition: none;
+  }
 }
 
 /* ==========================================================================
@@ -3853,55 +3996,60 @@ html,
 
   /* --- LP --- */
   .lp {
-    padding: 0 12px 40px;
+    padding: 0 16px 48px;
   }
   .lp__hero {
-    padding: 28px 0 20px;
+    padding: 36px 0 4px;
   }
-  .lp__airev-banner {
-    grid-template-columns: 1fr;
-    padding: 20px;
-    gap: 16px;
+  .lp__lede {
+    font-size: 15.5px;
+    margin-top: 18px;
   }
-  .lp__airev-title {
-    font-size: 22px;
-  }
-  .lp__airev-visual {
-    order: -1;
-  }
-  .lp__airev-visual svg {
-    max-width: 260px;
-  }
-  .lp__features {
-    grid-template-columns: repeat(2, 1fr);
+  .lp__actions {
     gap: 10px;
+    margin-top: 24px;
   }
-  .lp__feature {
-    padding: 14px;
+  .lp__action {
+    height: 42px;
+    padding: 0 18px;
+    font-size: 14px;
+    flex: 1 1 auto;
   }
-  .lp__feature-icon {
-    font-size: 22px;
-    margin-bottom: 6px;
+  /* 縦積みにして、ファイル → 画面 の向きも縦に倒す */
+  .lp__proof {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: stretch;
+    gap: 0;
+    margin-top: 36px;
   }
-  .lp__feature h3 {
-    font-size: 13px;
+  .lp__proof-join {
+    justify-self: start;
+    height: 56px;
+    padding-left: 28px;
   }
-  .lp__feature p {
-    font-size: 11px;
-  }
-  .lp__steps {
-    flex-direction: column;
-    gap: 8px;
-  }
-  .lp__step {
-    max-width: none;
-    width: 100%;
-  }
-  .lp__step-arrow {
+  .lp__proof-join svg {
     transform: rotate(90deg);
   }
-  .lp__section-title {
-    font-size: 18px;
+  .lp__proof-screen {
+    justify-self: start;
+  }
+  .lp__section {
+    padding-top: 48px;
+  }
+  .lp__list-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    padding: 14px 0;
+  }
+  .lp__facts {
+    gap: 8px 18px;
+  }
+  .lp__try .idle {
+    margin-top: 20px;
+  }
+  .lp__footer {
+    margin-top: 48px;
+    gap: 18px;
   }
 
   /* --- Error --- */
@@ -3956,8 +4104,8 @@ html,
   .viewer__frame-nav {
     display: none;
   }
-  .lp__features {
-    grid-template-columns: 1fr;
+  .lp__title {
+    font-size: 34px;
   }
 }
 
@@ -4760,55 +4908,6 @@ html,
 }
 .gh-commit-btn {
   font-weight: 600;
-}
-
-/* --- Landing: GitHub から開くエントリ --- */
-.lp__github-open {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 14px 18px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  cursor: pointer;
-  text-align: left;
-  transition:
-    border-color 0.15s,
-    box-shadow 0.15s,
-    transform 0.05s;
-}
-.lp__github-open:hover {
-  border-color: var(--color-accent);
-  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.12);
-}
-.lp__github-open:active {
-  transform: translateY(1px);
-}
-.lp__github-open-icon {
-  font-size: 24px;
-  flex-shrink: 0;
-}
-.lp__github-open-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-}
-.lp__github-open-text strong {
-  font-size: 14px;
-  color: var(--color-text);
-}
-.lp__github-open-text small {
-  font-size: 12px;
-  color: var(--color-text-muted);
-}
-.lp__github-open-arrow {
-  color: var(--color-accent);
-  font-size: 18px;
-  flex-shrink: 0;
 }
 
 /* --- ヘッダー: 現在ファイル + 未コミット差分インジケータ --- */
