@@ -45,15 +45,27 @@ export default tseslint.config(
       // 導入時に NodeTree.tsx の違反を 1 件直してゼロにした。
       'react-hooks/rules-of-hooks': 'error',
 
-      // 以下は eslint-plugin-react-hooks v6 で入った React Compiler 系の
-      // ルール。既存コードに 31 件あり、直すには実装の作り替えが要る。
-      // まず warn で可視化し、段階的に error へ上げる (#78)。
+      // eslint-plugin-react-hooks v6 で入った React Compiler 系のルール。
+      // 導入時は 31 件の違反があったが #78 で全て解消し、`npm run lint` は
+      // --max-warnings=0 で走る。warn のままにしてあるのは、新しい違反が出たとき
+      // エディタ上で赤ではなく黄色で出したいから。CI では警告 1 件でも落ちる。
       'react-hooks/exhaustive-deps': 'warn',
       'react-hooks/set-state-in-effect': 'warn',
       'react-hooks/refs': 'warn',
       'react-hooks/immutability': 'warn',
       'react-hooks/preserve-manual-memoization': 'warn',
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+    },
+  },
+  {
+    // Context の Provider と、それを読む use〜 フックは同じファイルに置いている。
+    // react-refresh は「component 以外を export すると Fast Refresh が効かない」と
+    // 警告するが、フックを別ファイルへ移すと import 元 46 ファイルの書き換えになる。
+    // 実行時の挙動には影響しない DX 上のルールなので、Context 専用ファイルに限って
+    // 落とす (#78)。
+    files: ['**/*Context.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
     },
   },
   {

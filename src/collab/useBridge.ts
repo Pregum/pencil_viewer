@@ -41,54 +41,57 @@ export function useBridge() {
   const onDocUpdateRef = useRef<((doc: PenDocument) => void) | null>(null);
   const currentDocRef = useRef<PenDocument | null>(null);
 
-  const connect = useCallback((url: string, doc: PenDocument, onDocUpdate: (doc: PenDocument) => void) => {
-    disconnect();
-
-    onDocUpdateRef.current = onDocUpdate;
-    currentDocRef.current = doc;
-
-    const ws = new WebSocket(url);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      setState({ connected: true, url });
-      // Send current document
-      ws.send(JSON.stringify({ type: 'pen-doc', doc }));
-    };
-
-    ws.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === 'pen-doc' && msg.doc) {
-          // Detect which nodes changed for animation
-          const changedIds = detectChangedNodes(currentDocRef.current, msg.doc);
-          currentDocRef.current = msg.doc;
-          onDocUpdateRef.current?.(msg.doc);
-          // Trigger edit animation
-          if (changedIds.length > 0) {
-            window.dispatchEvent(new CustomEvent('pencil-edit-animate', { detail: changedIds }));
-          }
-        }
-      } catch {
-        // ignore
-      }
-    };
-
-    ws.onclose = () => {
-      setState({ connected: false, url });
-      wsRef.current = null;
-    };
-
-    ws.onerror = () => {
-      ws.close();
-    };
-  }, []);
-
   const disconnect = useCallback(() => {
     wsRef.current?.close();
     wsRef.current = null;
     setState((prev) => ({ ...prev, connected: false }));
   }, []);
+
+  const connect = useCallback(
+    (url: string, doc: PenDocument, onDocUpdate: (doc: PenDocument) => void) => {
+      disconnect();
+
+      onDocUpdateRef.current = onDocUpdate;
+      currentDocRef.current = doc;
+
+      const ws = new WebSocket(url);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        setState({ connected: true, url });
+        // Send current document
+        ws.send(JSON.stringify({ type: 'pen-doc', doc }));
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === 'pen-doc' && msg.doc) {
+            // Detect which nodes changed for animation
+            const changedIds = detectChangedNodes(currentDocRef.current, msg.doc);
+            currentDocRef.current = msg.doc;
+            onDocUpdateRef.current?.(msg.doc);
+            // Trigger edit animation
+            if (changedIds.length > 0) {
+              window.dispatchEvent(new CustomEvent('pencil-edit-animate', { detail: changedIds }));
+            }
+          }
+        } catch {
+          // ignore
+        }
+      };
+
+      ws.onclose = () => {
+        setState({ connected: false, url });
+        wsRef.current = null;
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
+    },
+    [disconnect],
+  );
 
   const syncDoc = useCallback((doc: PenDocument) => {
     const ws = wsRef.current;

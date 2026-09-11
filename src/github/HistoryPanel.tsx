@@ -20,24 +20,31 @@ interface Props {
 
 export function HistoryPanel({ open, onClose, onRestore }: Props) {
   const { token, currentFile } = useGitHub();
-  const [commits, setCommits] = useState<CommitInfo[]>([]);
-  const [loading, setLoading] = useState(false);
+  /** 未取得は null。読み込み中かどうかはここから導く（state を増やさない） */
+  const [commits, setCommits] = useState<CommitInfo[] | null>(null);
   const [restoringSha, setRestoringSha] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const shouldLoad = open && !!token && !!currentFile;
+  // 「まだ結果もエラーも無い」= 読み込み中。effect の本体で setState(true) すると
+  // 描画が 1 往復余計に走る (react-hooks/set-state-in-effect, #78)。
+  const loading = shouldLoad && commits === null && error === null;
+  const commitList = commits ?? [];
+
   useEffect(() => {
-    if (!open || !token || !currentFile) return;
+    if (!shouldLoad || !token || !currentFile) return;
     let cancelled = false;
-    setLoading(true);
-    setError(null);
     listCommits(token, currentFile.owner, currentFile.repo, currentFile.path, currentFile.branch)
-      .then((cs) => !cancelled && setCommits(cs))
-      .catch((e) => !cancelled && setError(describeError(e)))
-      .finally(() => !cancelled && setLoading(false));
+      .then((cs) => {
+        if (cancelled) return;
+        setCommits(cs);
+        setError(null);
+      })
+      .catch((e) => !cancelled && setError(describeError(e)));
     return () => {
       cancelled = true;
     };
-  }, [open, token, currentFile]);
+  }, [shouldLoad, token, currentFile]);
 
   const handleRestore = useCallback(
     async (commit: CommitInfo) => {
@@ -46,7 +53,13 @@ export function HistoryPanel({ open, onClose, onRestore }: Props) {
       setError(null);
       try {
         // その commit 時点の中身を取得（ref = commit sha）
-        const file = await getPenFile(token, currentFile.owner, currentFile.repo, currentFile.path, commit.sha);
+        const file = await getPenFile(
+          token,
+          currentFile.owner,
+          currentFile.repo,
+          currentFile.path,
+          commit.sha,
+        );
         const fileName = currentFile.path.split('/').pop() ?? currentFile.path;
         // sha は現在の tip を維持（次の Commit が tip を正しく更新できるように）
         onRestore(file.text, { ...currentFile }, fileName);
@@ -79,17 +92,22 @@ export function HistoryPanel({ open, onClose, onRestore }: Props) {
             <p className="gh-hint">GitHub から開いたファイルがありません。</p>
           ) : loading ? (
             <p className="gh-hint">履歴を読み込み中…</p>
-          ) : commits.length === 0 ? (
+          ) : commitList.length === 0 ? (
             <p className="gh-hint">このファイルのコミットはまだありません。</p>
           ) : (
             <div className="gh-history">
-              {commits.map((c, i) => (
+              {commitList.map((c, i) => (
                 <div key={c.sha} className="gh-history__item">
                   <div className="gh-history__main">
                     <span className="gh-history__msg">{firstLine(c.message)}</span>
                     <span className="gh-history__meta">
-                      {c.authorLogin ?? c.authorName ?? 'unknown'} · {formatDate(c.date)} · <code>{c.sha.slice(0, 7)}</code>
-                      {i === 0 && <span className="gh-badge" style={{ marginLeft: 6 }}>latest</span>}
+                      {c.authorLogin ?? c.authorName ?? 'unknown'} · {formatDate(c.date)} ·{' '}
+                      <code>{c.sha.slice(0, 7)}</code>
+                      {i === 0 && (
+                        <span className="gh-badge" style={{ marginLeft: 6 }}>
+                          latest
+                        </span>
+                      )}
                     </span>
                   </div>
                   <button
@@ -105,7 +123,7 @@ export function HistoryPanel({ open, onClose, onRestore }: Props) {
             </div>
           )}
           {error && <p className="gh-error">{error}</p>}
-          {currentFile && commits.length > 0 && (
+          {currentFile && commitList.length > 0 && (
             <p className="gh-hint gh-hint--small" style={{ marginTop: 10 }}>
               「復元」は旧版をエディタに読み込みます。<strong>Commit</strong> して初めて repo に反映されます。
             </p>

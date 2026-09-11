@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { collectSelectionColors, replaceColor } from '../src/components/Viewer/SelectionColorsPanel';
+import { collect as collectSelectionColors, replaceColor } from '../src/components/Viewer/selectionColors';
 import type { PenNode } from '../src/pen/types';
 
 function rect(id: string, extra: Record<string, unknown> = {}): PenNode {
@@ -27,23 +27,24 @@ describe('collectSelectionColors', () => {
   });
 
   it('handles solid fill object form ({type:"color",color:...})', () => {
-    const m = collectSelectionColors([
-      rect('a', { fill: { type: 'color', color: '#abcdef' } }),
-    ]);
+    const m = collectSelectionColors([rect('a', { fill: { type: 'color', color: '#abcdef' } })]);
     expect(m.has('#ABCDEF')).toBe(true);
   });
 
   it('handles fill arrays (first color)', () => {
-    const m = collectSelectionColors([
-      rect('a', { fill: ['#FF0000', '#0000FF'] }),
-    ]);
+    const m = collectSelectionColors([rect('a', { fill: ['#FF0000', '#0000FF'] })]);
     expect(m.has('#FF0000')).toBe(true);
   });
 
   it('recurses into frame children', () => {
     const m = collectSelectionColors([
       {
-        type: 'frame', id: 'f', x: 0, y: 0, width: 100, height: 100,
+        type: 'frame',
+        id: 'f',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
         children: [rect('a', { fill: '#111111' })],
       } as unknown as PenNode,
     ]);
@@ -71,9 +72,7 @@ describe('replaceColor', () => {
   });
 
   it('replaces color inside stroke.fill', () => {
-    const before = [
-      rect('a', { stroke: { thickness: 1, fill: '#000000' } }),
-    ];
+    const before = [rect('a', { stroke: { thickness: 1, fill: '#000000' } })];
     const { nodes, replaced } = replaceColor(before, '#000000', '#FF0000');
     expect(replaced).toBe(1);
     const s = (nodes[0] as { stroke?: { fill?: string } }).stroke;
@@ -81,9 +80,7 @@ describe('replaceColor', () => {
   });
 
   it('replaces inside {type:"color",color:...} object', () => {
-    const before = [
-      rect('a', { fill: { type: 'color', color: '#ABCDEF' } }),
-    ];
+    const before = [rect('a', { fill: { type: 'color', color: '#ABCDEF' } })];
     const { nodes, replaced } = replaceColor(before, '#ABCDEF', '#111111');
     expect(replaced).toBe(1);
     const f = (nodes[0] as { fill?: { color?: string } }).fill;
@@ -105,7 +102,12 @@ describe('replaceColor', () => {
   it('recurses into frame children', () => {
     const before = [
       {
-        type: 'frame', id: 'f', x: 0, y: 0, width: 100, height: 100,
+        type: 'frame',
+        id: 'f',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
         children: [rect('a', { fill: '#FF0000' })],
       } as unknown as PenNode,
     ];

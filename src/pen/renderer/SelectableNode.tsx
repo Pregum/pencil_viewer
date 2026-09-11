@@ -5,7 +5,14 @@
 import { useCallback, useRef, useState } from 'react';
 import type { PenNode } from '../types';
 import { useEditor } from '../state/EditorContext';
-import { computeSnap, computeResizeSnap, computeEqualSpaceSnap, type SnapGuide, type SnapRect, type EqualSpaceGuide } from '../state/snapEngine';
+import {
+  computeSnap,
+  computeResizeSnap,
+  computeEqualSpaceSnap,
+  type SnapGuide,
+  type SnapRect,
+  type EqualSpaceGuide,
+} from '../state/snapEngine';
 import { applyConstraints, type ChildGeom } from '../layout/constraints';
 import type { NodeConstraints } from '../types';
 
@@ -17,7 +24,18 @@ interface Props {
 const HANDLE_SIZE = 8;
 
 export function SelectableNode({ node, children }: Props) {
-  const { state, selectNode, toggleSelectNode, updateNodeSilent, updateManySilent, pushUndoCheckpoint, beginEditing, beginPathEditing, cloneNodesAtTop, detachFromParentIfOutside } = useEditor();
+  const {
+    state,
+    selectNode,
+    toggleSelectNode,
+    updateNodeSilent,
+    updateManySilent,
+    pushUndoCheckpoint,
+    beginEditing,
+    beginPathEditing,
+    cloneNodesAtTop,
+    detachFromParentIfOutside,
+  } = useEditor();
   const isLocked = (node as { locked?: boolean }).locked === true;
   const isSelected = state.selectedNodeId === node.id && !isLocked;
   const isMultiSelected = state.selectedNodeIds.has(node.id) && !isLocked;
@@ -36,16 +54,16 @@ export function SelectableNode({ node, children }: Props) {
   /** マルチ選択ドラッグ時、選択全ノードの開始 x,y,w,h */
   const multiStart = useRef<Array<{ id: string; x0: number; y0: number; w: number; h: number }>>([]);
   /** リサイズ時、この node の直接の子の開始 geom + constraints（frame のみ） */
-  const childrenStart = useRef<Array<{ id: string; x: number; y: number; w: number; h: number; constraints?: NodeConstraints }>>([]);
+  const childrenStart = useRef<
+    Array<{ id: string; x: number; y: number; w: number; h: number; constraints?: NodeConstraints }>
+  >([]);
 
   const x = node.x ?? 0;
   const y = node.y ?? 0;
-  const width = typeof (node as { width?: unknown }).width === 'number'
-    ? ((node as { width: number }).width)
-    : 0;
-  const height = typeof (node as { height?: unknown }).height === 'number'
-    ? ((node as { height: number }).height)
-    : 0;
+  const width =
+    typeof (node as { width?: unknown }).width === 'number' ? (node as { width: number }).width : 0;
+  const height =
+    typeof (node as { height?: unknown }).height === 'number' ? (node as { height: number }).height : 0;
   // NodeBase.rotation(度) を SVG rotate(angle, cx, cy) で適用。
   // Pencil 仕様: rotation は「反時計回り正」(docs.pencil.dev/for-developers/the-pen-format)。
   // SVG の rotate() は y-down 画面座標で時計回り正のため、符号を反転して合わせる。
@@ -127,9 +145,10 @@ export function SelectableNode({ node, children }: Props) {
         const ctm = svg?.getScreenCTM();
         const cornerClientX = ctm ? ctm.a * x + ctm.e : 0;
         const cornerClientY = ctm ? ctm.d * y + ctm.f : 0;
-        const rNow = typeof (node as { cornerRadius?: unknown }).cornerRadius === 'number'
-          ? (node as { cornerRadius: number }).cornerRadius
-          : 0;
+        const rNow =
+          typeof (node as { cornerRadius?: unknown }).cornerRadius === 'number'
+            ? (node as { cornerRadius: number }).cornerRadius
+            : 0;
         isRadiusing.current = true;
         radiusStart.current = { radius: rNow, cornerX: cornerClientX, cornerY: cornerClientY };
         dragStart.current = { x: e.clientX, y: e.clientY };
@@ -159,13 +178,18 @@ export function SelectableNode({ node, children }: Props) {
         setActivityLabel('resize');
         // frame / group リサイズ時: layout='none' の direct children をスナップショット
         if (node.type === 'frame' || node.type === 'group') {
-          const layout = (node as { layout?: string }).layout ?? (node.type === 'group' ? 'none' : 'horizontal');
+          const layout =
+            (node as { layout?: string }).layout ?? (node.type === 'group' ? 'none' : 'horizontal');
           const children = (node as { children?: PenNode[] }).children ?? [];
           if (layout === 'none' && children.length > 0) {
             childrenStart.current = children
               .map((c) => {
-                const cw = typeof (c as { width?: unknown }).width === 'number' ? (c as { width: number }).width : 0;
-                const ch = typeof (c as { height?: unknown }).height === 'number' ? (c as { height: number }).height : 0;
+                const cw =
+                  typeof (c as { width?: unknown }).width === 'number' ? (c as { width: number }).width : 0;
+                const ch =
+                  typeof (c as { height?: unknown }).height === 'number'
+                    ? (c as { height: number }).height
+                    : 0;
                 if (cw <= 0 || ch <= 0) return null;
                 return {
                   id: c.id,
@@ -223,7 +247,20 @@ export function SelectableNode({ node, children }: Props) {
 
       (e.target as SVGElement).setPointerCapture(e.pointerId);
     },
-    [isSelected, isMultiSelected, x, y, width, height, rotation, pushUndoCheckpoint, cloneNodesAtTop, state.doc.children, state.selectedNodeIds, node.id, node.type],
+    [
+      isSelected,
+      isMultiSelected,
+      x,
+      y,
+      width,
+      height,
+      rotation,
+      pushUndoCheckpoint,
+      cloneNodesAtTop,
+      state.doc.children,
+      state.selectedNodeIds,
+      node,
+    ],
   );
 
   const handlePointerMove = useCallback(
@@ -253,7 +290,8 @@ export function SelectableNode({ node, children }: Props) {
         // 画面座標 (y-down) での angle は CW 正。Pencil の rotation は CCW 正なので
         // 差分を引き算で適用する（CW ドラッグ → rotation 減少）
         const currentAngle = Math.atan2(e.clientY - pivot.y, e.clientX - pivot.x) * (180 / Math.PI);
-        let nextRotation = rotateStart.current.originalRotation - (currentAngle - rotateStart.current.startAngle);
+        let nextRotation =
+          rotateStart.current.originalRotation - (currentAngle - rotateStart.current.startAngle);
         // Shift で 15 度スナップ
         if (e.shiftKey) {
           nextRotation = Math.round(nextRotation / 15) * 15;
@@ -287,11 +325,17 @@ export function SelectableNode({ node, children }: Props) {
         const svgUnitsPerPixel = ctm ? 1 / ctm.a : 1;
         const threshold = 6 * svgUnitsPerPixel;
 
-        if (multiStart.current.length >= 1 && (multiStart.current.length > 1 || multiStart.current[0].id !== node.id)) {
+        if (
+          multiStart.current.length >= 1 &&
+          (multiStart.current.length > 1 || multiStart.current[0].id !== node.id)
+        ) {
           // --- マルチ選択 or Alt+ドラッグ複製（1件でもクローンID側を動かす） ---
           const movingIds = new Set(multiStart.current.map((m) => m.id));
           // 選択セット全体の bounding box（開始位置から delta 適用後）を計算してスナップ
-          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          let minX = Infinity,
+            minY = Infinity,
+            maxX = -Infinity,
+            maxY = -Infinity;
           for (const m of multiStart.current) {
             const nx = m.x0 + dx;
             const ny = m.y0 + dy;
@@ -300,12 +344,20 @@ export function SelectableNode({ node, children }: Props) {
             maxX = Math.max(maxX, nx + m.w);
             maxY = Math.max(maxY, ny + m.h);
           }
-          const unionMoving: SnapRect = { id: '__multi__', x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+          const unionMoving: SnapRect = {
+            id: '__multi__',
+            x: minX,
+            y: minY,
+            width: maxX - minX,
+            height: maxY - minY,
+          };
           const statics = state.doc.children
             .filter((n) => !movingIds.has(n.id))
             .map((n) => {
-              const nw = typeof (n as { width?: unknown }).width === 'number' ? (n as { width: number }).width : 0;
-              const nh = typeof (n as { height?: unknown }).height === 'number' ? (n as { height: number }).height : 0;
+              const nw =
+                typeof (n as { width?: unknown }).width === 'number' ? (n as { width: number }).width : 0;
+              const nh =
+                typeof (n as { height?: unknown }).height === 'number' ? (n as { height: number }).height : 0;
               if (nw <= 0 || nh <= 0) return null;
               return { id: n.id, x: n.x ?? 0, y: n.y ?? 0, width: nw, height: nh } as SnapRect;
             })
@@ -317,12 +369,13 @@ export function SelectableNode({ node, children }: Props) {
           updateManySilent(
             multiStart.current.map((m) => ({
               nodeId: m.id,
-              patch: { x: Math.round(m.x0 + dx + snapDx), y: Math.round(m.y0 + dy + snapDy) } as Partial<PenNode>,
+              patch: {
+                x: Math.round(m.x0 + dx + snapDx),
+                y: Math.round(m.y0 + dy + snapDy),
+              } as Partial<PenNode>,
             })),
           );
-          window.dispatchEvent(
-            new CustomEvent<SnapGuide[]>('pencil-snap-guides', { detail: snap.guides }),
-          );
+          window.dispatchEvent(new CustomEvent<SnapGuide[]>('pencil-snap-guides', { detail: snap.guides }));
         } else {
           // --- 単一選択ドラッグ ---
           const rawX = nodeStart.current.x + dx;
@@ -330,14 +383,22 @@ export function SelectableNode({ node, children }: Props) {
           const staticsRaw = state.doc.children
             .filter((n) => n.id !== node.id)
             .map((n) => {
-              const nw = typeof (n as { width?: unknown }).width === 'number' ? (n as { width: number }).width : 0;
-              const nh = typeof (n as { height?: unknown }).height === 'number' ? (n as { height: number }).height : 0;
+              const nw =
+                typeof (n as { width?: unknown }).width === 'number' ? (n as { width: number }).width : 0;
+              const nh =
+                typeof (n as { height?: unknown }).height === 'number' ? (n as { height: number }).height : 0;
               if (nw <= 0 || nh <= 0) return null;
               return { id: n.id, x: n.x ?? 0, y: n.y ?? 0, width: nw, height: nh } as SnapRect;
             })
             .filter((r): r is SnapRect => r !== null);
 
-          const moving: SnapRect = { id: node.id, x: rawX, y: rawY, width: nodeStart.current.w, height: nodeStart.current.h };
+          const moving: SnapRect = {
+            id: node.id,
+            x: rawX,
+            y: rawY,
+            width: nodeStart.current.w,
+            height: nodeStart.current.h,
+          };
           const snap = computeSnap(moving, staticsRaw, threshold);
 
           // 等間隔スナップ（エッジスナップが効いてない軸のみ補完適用）
@@ -360,9 +421,7 @@ export function SelectableNode({ node, children }: Props) {
             y: Math.round(finalY),
           } as Partial<PenNode>);
 
-          window.dispatchEvent(
-            new CustomEvent<SnapGuide[]>('pencil-snap-guides', { detail: snap.guides }),
-          );
+          window.dispatchEvent(new CustomEvent<SnapGuide[]>('pencil-snap-guides', { detail: snap.guides }));
           window.dispatchEvent(
             new CustomEvent<EqualSpaceGuide[]>('pencil-equal-space-guides', { detail: equalGuides }),
           );
@@ -411,8 +470,10 @@ export function SelectableNode({ node, children }: Props) {
         const staticsRaw = state.doc.children
           .filter((n) => n.id !== node.id)
           .map((n) => {
-            const nw = typeof (n as { width?: unknown }).width === 'number' ? (n as { width: number }).width : 0;
-            const nh = typeof (n as { height?: unknown }).height === 'number' ? (n as { height: number }).height : 0;
+            const nw =
+              typeof (n as { width?: unknown }).width === 'number' ? (n as { width: number }).width : 0;
+            const nh =
+              typeof (n as { height?: unknown }).height === 'number' ? (n as { height: number }).height : 0;
             if (nw <= 0 || nh <= 0) return null;
             return { id: n.id, x: n.x ?? 0, y: n.y ?? 0, width: nw, height: nh } as SnapRect;
           })
@@ -458,7 +519,10 @@ export function SelectableNode({ node, children }: Props) {
           const oldH = nodeStart.current.h;
           const patches = childrenStart.current.map((cs) => {
             const geom: ChildGeom = {
-              x: cs.x, y: cs.y, width: cs.w, height: cs.h,
+              x: cs.x,
+              y: cs.y,
+              width: cs.w,
+              height: cs.h,
               constraints: cs.constraints,
             };
             const r = applyConstraints(geom, oldW, oldH, snapped.width, snapped.height);
@@ -475,12 +539,21 @@ export function SelectableNode({ node, children }: Props) {
           updateManySilent(patches);
         }
 
-        window.dispatchEvent(
-          new CustomEvent<SnapGuide[]>('pencil-snap-guides', { detail: snapped.guides }),
-        );
+        window.dispatchEvent(new CustomEvent<SnapGuide[]>('pencil-snap-guides', { detail: snapped.guides }));
       }
     },
-    [node.id, updateNodeSilent, updateManySilent, screenToSvgDelta, state.doc.children],
+    [
+      node.id,
+      updateNodeSilent,
+      updateManySilent,
+      screenToSvgDelta,
+      state.doc.children,
+      // グリッドスナップ設定を落とすと、途中で切り替えても効かない (#78)
+      state.gridSnap,
+      state.gridSize,
+      width,
+      height,
+    ],
   );
 
   const handlePointerUp = useCallback(() => {
@@ -508,14 +581,15 @@ export function SelectableNode({ node, children }: Props) {
   }, [detachFromParentIfOutside, node.id]);
 
   // Resize handle positions
-  const handles = isSelected && width > 0 && height > 0
-    ? [
-        { id: 'nw', cx: x, cy: y, cursor: 'nw-resize' },
-        { id: 'ne', cx: x + width, cy: y, cursor: 'ne-resize' },
-        { id: 'sw', cx: x, cy: y + height, cursor: 'sw-resize' },
-        { id: 'se', cx: x + width, cy: y + height, cursor: 'se-resize' },
-      ]
-    : [];
+  const handles =
+    isSelected && width > 0 && height > 0
+      ? [
+          { id: 'nw', cx: x, cy: y, cursor: 'nw-resize' },
+          { id: 'ne', cx: x + width, cy: y, cursor: 'ne-resize' },
+          { id: 'sw', cx: x, cy: y + height, cursor: 'sw-resize' },
+          { id: 'se', cx: x + width, cy: y + height, cursor: 'se-resize' },
+        ]
+      : [];
 
   return (
     <g
@@ -548,49 +622,44 @@ export function SelectableNode({ node, children }: Props) {
         />
       )}
       {/* ドラッグ/リサイズ/回転中のフローティングラベル */}
-      {activityLabel && width > 0 && height > 0 && (() => {
-        const text =
-          activityLabel === 'drag'
-            ? `${Math.round(x)}, ${Math.round(y)}`
-            : activityLabel === 'resize'
-            ? `${Math.round(width)} × ${Math.round(height)}`
-            : activityLabel === 'rotate'
-            ? `${Math.round(rotation)}°`
-            : activityLabel === 'radius'
-            ? `r ${typeof (node as { cornerRadius?: unknown }).cornerRadius === 'number' ? (node as { cornerRadius: number }).cornerRadius : 0}`
-            : '';
-        const padding = 6;
-        // テキスト長に応じてバッジ幅を概算
-        const charW = 7;
-        const boxW = text.length * charW + padding * 2;
-        const boxH = 18;
-        const cx = x + width / 2 - boxW / 2;
-        const cy = y + height + 8;
-        return (
-          <g pointerEvents="none">
-            <rect
-              x={cx}
-              y={cy}
-              width={boxW}
-              height={boxH}
-              rx={3}
-              fill="#4F46E5"
-              opacity={0.95}
-            />
-            <text
-              x={cx + boxW / 2}
-              y={cy + boxH / 2 + 4}
-              fontSize={11}
-              fontFamily="system-ui, sans-serif"
-              fontWeight={600}
-              fill="#FFFFFF"
-              textAnchor="middle"
-            >
-              {text}
-            </text>
-          </g>
-        );
-      })()}
+      {activityLabel &&
+        width > 0 &&
+        height > 0 &&
+        (() => {
+          const text =
+            activityLabel === 'drag'
+              ? `${Math.round(x)}, ${Math.round(y)}`
+              : activityLabel === 'resize'
+                ? `${Math.round(width)} × ${Math.round(height)}`
+                : activityLabel === 'rotate'
+                  ? `${Math.round(rotation)}°`
+                  : activityLabel === 'radius'
+                    ? `r ${typeof (node as { cornerRadius?: unknown }).cornerRadius === 'number' ? (node as { cornerRadius: number }).cornerRadius : 0}`
+                    : '';
+          const padding = 6;
+          // テキスト長に応じてバッジ幅を概算
+          const charW = 7;
+          const boxW = text.length * charW + padding * 2;
+          const boxH = 18;
+          const cx = x + width / 2 - boxW / 2;
+          const cy = y + height + 8;
+          return (
+            <g pointerEvents="none">
+              <rect x={cx} y={cy} width={boxW} height={boxH} rx={3} fill="#4F46E5" opacity={0.95} />
+              <text
+                x={cx + boxW / 2}
+                y={cy + boxH / 2 + 4}
+                fontSize={11}
+                fontFamily="system-ui, sans-serif"
+                fontWeight={600}
+                fill="#FFFFFF"
+                textAnchor="middle"
+              >
+                {text}
+              </text>
+            </g>
+          );
+        })()}
       {/* Selection outline (pointerEvents=none so children stay clickable) */}
       {isSelected && width > 0 && height > 0 && (
         <>
@@ -624,10 +693,12 @@ export function SelectableNode({ node, children }: Props) {
           {/* 角丸ハンドル: rectangle / frame / image のみ。左上の内側に小さなオレンジ丸。*/}
           {(node.type === 'rectangle' || node.type === 'frame' || node.type === 'image') &&
             width > 20 &&
-            height > 20 && (() => {
-              const rNow = typeof (node as { cornerRadius?: unknown }).cornerRadius === 'number'
-                ? (node as { cornerRadius: number }).cornerRadius
-                : 0;
+            height > 20 &&
+            (() => {
+              const rNow =
+                typeof (node as { cornerRadius?: unknown }).cornerRadius === 'number'
+                  ? (node as { cornerRadius: number }).cornerRadius
+                  : 0;
               const offset = Math.max(10, rNow);
               return (
                 <circle

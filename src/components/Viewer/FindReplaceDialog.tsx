@@ -59,15 +59,21 @@ export function FindReplaceDialog({ onClose, onFocusNode }: Props) {
   const count = matches.length;
   const current = count > 0 ? matches[idx % count] : null;
 
-  // 検索結果が変わったら idx を reset
-  useEffect(() => {
+  // 検索条件が変わったら idx を reset。
+  // effect ではなくレンダー中に調整する（React 公式の "Adjusting state when a
+  // prop changes" パターン）。effect でやると 1 往復余計に描画される (#78)。
+  const searchKey = `${caseSensitive ? 'cs' : 'ci'}:${query}`;
+  const [prevSearchKey, setPrevSearchKey] = useState(searchKey);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
     setIdx(0);
-  }, [query, caseSensitive]);
+  }
 
   const focusOn = (node: PenNode) => {
     selectNode(node.id);
     const w = typeof (node as { width?: unknown }).width === 'number' ? (node as { width: number }).width : 0;
-    const h = typeof (node as { height?: unknown }).height === 'number' ? (node as { height: number }).height : 0;
+    const h =
+      typeof (node as { height?: unknown }).height === 'number' ? (node as { height: number }).height : 0;
     if (w > 0 && h > 0 && onFocusNode) {
       onFocusNode({ x: node.x ?? 0, y: node.y ?? 0, width: w, height: h });
     }
@@ -124,16 +130,26 @@ export function FindReplaceDialog({ onClose, onFocusNode }: Props) {
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
-              if (e.shiftKey) prev(); else next();
+              if (e.shiftKey) prev();
+              else next();
             }
           }}
         />
-        <span className="find-replace__count">
-          {query ? `${count === 0 ? 0 : idx + 1} / ${count}` : ''}
-        </span>
-        <button className="find-replace__btn" title="Previous (Shift+Enter)" onClick={prev} disabled={count === 0}>↑</button>
-        <button className="find-replace__btn" title="Next (Enter)" onClick={next} disabled={count === 0}>↓</button>
-        <button className="find-replace__close" title="Close (Esc)" onClick={onClose}>✕</button>
+        <span className="find-replace__count">{query ? `${count === 0 ? 0 : idx + 1} / ${count}` : ''}</span>
+        <button
+          className="find-replace__btn"
+          title="Previous (Shift+Enter)"
+          onClick={prev}
+          disabled={count === 0}
+        >
+          ↑
+        </button>
+        <button className="find-replace__btn" title="Next (Enter)" onClick={next} disabled={count === 0}>
+          ↓
+        </button>
+        <button className="find-replace__close" title="Close (Esc)" onClick={onClose}>
+          ✕
+        </button>
       </div>
       <div className="find-replace__row">
         <input
@@ -150,8 +166,16 @@ export function FindReplaceDialog({ onClose, onFocusNode }: Props) {
           />
           Aa
         </label>
-        <button className="find-replace__btn" onClick={replaceOne} disabled={count === 0 || !query}>Replace</button>
-        <button className="find-replace__btn find-replace__btn--primary" onClick={replaceAll} disabled={count === 0 || !query}>All</button>
+        <button className="find-replace__btn" onClick={replaceOne} disabled={count === 0 || !query}>
+          Replace
+        </button>
+        <button
+          className="find-replace__btn find-replace__btn--primary"
+          onClick={replaceAll}
+          disabled={count === 0 || !query}
+        >
+          All
+        </button>
       </div>
     </div>
   );

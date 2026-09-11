@@ -32,36 +32,38 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [repos, setRepos] = useState<GitHubRepo[]>([]);
+  /** 未取得は null。読み込み中かどうかはここから導く（state を増やさない） */
+  const [repos, setRepos] = useState<GitHubRepo[] | null>(null);
   const [repoFilter, setRepoFilter] = useState('');
   const [selectedRepo, setSelectedRepo] = useState<GitHubRepo | null>(null);
   const [branches, setBranches] = useState<string[]>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [penFiles, setPenFiles] = useState<PenEntry[]>([]);
-  const [loadingRepos, setLoadingRepos] = useState(false);
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [openingPath, setOpeningPath] = useState<string | null>(null);
 
+  const shouldLoadRepos = open && connected && !!token;
+  // 「まだ結果もエラーも無い」= 読み込み中。effect の本体で setState(true) すると
+  // 描画が 1 往復余計に走る (react-hooks/set-state-in-effect, #78)。
+  const loadingRepos = shouldLoadRepos && repos === null && error === null;
+
   // 接続済みになったらリポジトリ一覧をロード
   useEffect(() => {
-    if (!open || !connected || !token) return;
+    if (!shouldLoadRepos || !token) return;
     let cancelled = false;
-    setLoadingRepos(true);
-    setError(null);
     listRepos(token)
       .then((r) => {
-        if (!cancelled) setRepos(r);
+        if (cancelled) return;
+        setRepos(r);
+        setError(null);
       })
       .catch((e) => {
         if (!cancelled) setError(describeError(e));
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingRepos(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [open, connected, token]);
+  }, [shouldLoadRepos, token]);
 
   // リポジトリ選択 → ブランチ + .pen 一覧ロード
   const selectRepo = useCallback(
@@ -77,7 +79,9 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
         const bs = await listBranches(token, repo.owner, repo.name);
         const names = bs.map((b) => b.name);
         setBranches(names);
-        const branch = names.includes(repo.defaultBranch) ? repo.defaultBranch : names[0] ?? repo.defaultBranch;
+        const branch = names.includes(repo.defaultBranch)
+          ? repo.defaultBranch
+          : (names[0] ?? repo.defaultBranch);
         setSelectedBranch(branch);
         const files = await listPenFiles(token, repo.owner, repo.name, branch);
         setPenFiles(files);
@@ -131,7 +135,13 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
       setOpeningPath(entry.path);
       setError(null);
       try {
-        const file = await getPenFile(token, selectedRepo.owner, selectedRepo.name, entry.path, selectedBranch);
+        const file = await getPenFile(
+          token,
+          selectedRepo.owner,
+          selectedRepo.name,
+          entry.path,
+          selectedBranch,
+        );
         const ref: GitHubFileRef = {
           owner: selectedRepo.owner,
           repo: selectedRepo.name,
@@ -153,9 +163,10 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
 
   if (!open) return null;
 
+  const allRepos = repos ?? [];
   const filteredRepos = repoFilter.trim()
-    ? repos.filter((r) => r.fullName.toLowerCase().includes(repoFilter.trim().toLowerCase()))
-    : repos;
+    ? allRepos.filter((r) => r.fullName.toLowerCase().includes(repoFilter.trim().toLowerCase()))
+    : allRepos;
 
   return (
     <div className="dialog-backdrop" onMouseDown={onClose}>
@@ -174,8 +185,8 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
           {!connected ? (
             <div className="gh-connect">
               <p className="gh-hint">
-                あなたの GitHub リポジトリに .pen を git-backed で読み書きします。
-                サーバーは介在しません — トークンはこの端末にだけ保存され、通信は GitHub と直接行われます。
+                あなたの GitHub リポジトリに .pen を git-backed で読み書きします。 サーバーは介在しません —
+                トークンはこの端末にだけ保存され、通信は GitHub と直接行われます。
               </p>
               <label className="gh-label" htmlFor="gh-token">
                 Personal Access Token
@@ -217,7 +228,9 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
           ) : (
             <div className="gh-browse">
               <div className="gh-account">
-                {user?.avatarUrl && <img className="gh-avatar" src={user.avatarUrl} alt="" width={20} height={20} />}
+                {user?.avatarUrl && (
+                  <img className="gh-avatar" src={user.avatarUrl} alt="" width={20} height={20} />
+                )}
                 <span className="gh-account__name">{user?.login}</span>
                 <span style={{ flex: 1 }} />
                 <button type="button" className="button button--ghost button--sm" onClick={disconnect}>
@@ -280,7 +293,8 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
                     <p className="gh-hint">読み込み中…</p>
                   ) : penFiles.length === 0 ? (
                     <p className="gh-hint">
-                      このブランチに .pen はありません。エディタで作成して「Commit」すると、ここに貯まっていきます。
+                      このブランチに .pen
+                      はありません。エディタで作成して「Commit」すると、ここに貯まっていきます。
                     </p>
                   ) : (
                     <div className="gh-list gh-list--files">

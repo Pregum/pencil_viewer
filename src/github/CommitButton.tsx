@@ -43,12 +43,12 @@ export function CommitButton() {
   const [flash, setFlash] = useState(false);
 
   // saveAs 用
-  const [repos, setRepos] = useState<GitHubRepo[]>([]);
+  /** 未取得は null。読み込み中かどうかはここから導く（state を増やさない） */
+  const [repos, setRepos] = useState<GitHubRepo[] | null>(null);
   const [repoFullName, setRepoFullName] = useState('');
   const [branches, setBranches] = useState<string[]>([]);
   const [branch, setBranch] = useState('');
   const [path, setPath] = useState('');
-  const [loadingRepos, setLoadingRepos] = useState(false);
 
   const popRef = useRef<HTMLDivElement>(null);
 
@@ -64,28 +64,9 @@ export function CommitButton() {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  // saveAs モードでポップオーバーを開いたらリポジトリ一覧をロード
-  useEffect(() => {
-    if (!open || mode !== 'saveAs' || !token || repos.length > 0) return;
-    let cancelled = false;
-    setLoadingRepos(true);
-    listRepos(token)
-      .then((r) => {
-        if (cancelled) return;
-        setRepos(r);
-        if (r[0]) void selectRepoForSaveAs(r[0].fullName, r);
-      })
-      .catch((e) => !cancelled && setError(describeError(e)))
-      .finally(() => !cancelled && setLoadingRepos(false));
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, mode, token]);
-
   const selectRepoForSaveAs = useCallback(
     async (fullName: string, repoList?: GitHubRepo[]) => {
-      const list = repoList ?? repos;
+      const list = repoList ?? repos ?? [];
       const repo = list.find((r) => r.fullName === fullName);
       if (!repo || !token) return;
       setRepoFullName(fullName);
@@ -94,13 +75,34 @@ export function CommitButton() {
         const bs = await listBranches(token, repo.owner, repo.name);
         const names = bs.map((b) => b.name);
         setBranches(names);
-        setBranch(names.includes(repo.defaultBranch) ? repo.defaultBranch : names[0] ?? repo.defaultBranch);
+        setBranch(names.includes(repo.defaultBranch) ? repo.defaultBranch : (names[0] ?? repo.defaultBranch));
       } catch (e) {
         setError(describeError(e));
       }
     },
     [repos, token],
   );
+
+  const shouldLoadRepos = open && mode === 'saveAs' && !!token && repos === null;
+  // 「まだ結果もエラーも無い」= 読み込み中。effect の本体で setState(true) すると
+  // 描画が 1 往復余計に走る (react-hooks/set-state-in-effect, #78)。
+  const loadingRepos = shouldLoadRepos && error === null;
+
+  // saveAs モードでポップオーバーを開いたらリポジトリ一覧をロード
+  useEffect(() => {
+    if (!shouldLoadRepos || !token) return;
+    let cancelled = false;
+    listRepos(token)
+      .then((r) => {
+        if (cancelled) return;
+        setRepos(r);
+        if (r[0]) void selectRepoForSaveAs(r[0].fullName, r);
+      })
+      .catch((e) => !cancelled && setError(describeError(e)));
+    return () => {
+      cancelled = true;
+    };
+  }, [shouldLoadRepos, token, selectRepoForSaveAs]);
 
   const handleButtonClick = useCallback(() => {
     if (!connected) {
@@ -151,7 +153,7 @@ export function CommitButton() {
         });
         updateCurrentFileSha(sha);
       } else {
-        const repo = repos.find((r) => r.fullName === repoFullName);
+        const repo = repos?.find((r) => r.fullName === repoFullName);
         if (!repo) {
           setError('リポジトリを選択してください。');
           setCommitting(false);
@@ -187,7 +189,20 @@ export function CommitButton() {
     } finally {
       setCommitting(false);
     }
-  }, [token, mode, currentFile, penJson, message, repos, repoFullName, path, branch, setCurrentFile, updateCurrentFileSha, onCommitted]);
+  }, [
+    token,
+    mode,
+    currentFile,
+    penJson,
+    message,
+    repos,
+    repoFullName,
+    path,
+    branch,
+    setCurrentFile,
+    updateCurrentFileSha,
+    onCommitted,
+  ]);
 
   /** 競合解決: 自分の変更でリモートを上書き（最新 sha を取り直して再コミット）。 */
   const forcePush = useCallback(async () => {
@@ -196,7 +211,13 @@ export function CommitButton() {
     setError(null);
     const committed = penJson();
     try {
-      const latest = await getPenFile(token, currentFile.owner, currentFile.repo, currentFile.path, currentFile.branch);
+      const latest = await getPenFile(
+        token,
+        currentFile.owner,
+        currentFile.repo,
+        currentFile.path,
+        currentFile.branch,
+      );
       const { sha } = await commitPenFile(token, {
         owner: currentFile.owner,
         repo: currentFile.repo,
@@ -230,7 +251,13 @@ export function CommitButton() {
     }
   }, [reloadLatest]);
 
-  const label = flash ? '✓ Committed' : connected ? (mode === 'update' ? 'Commit' : 'Save to GitHub') : 'Save to GitHub';
+  const label = flash
+    ? '✓ Committed'
+    : connected
+      ? mode === 'update'
+        ? 'Commit'
+        : 'Save to GitHub'
+      : 'Save to GitHub';
 
   return (
     <div ref={popRef} style={{ position: 'relative' }}>
@@ -274,83 +301,87 @@ export function CommitButton() {
               </button>
             </div>
           ) : (
-          <>
-          {mode === 'update' && currentFile ? (
             <>
-              <div className="gh-commit-pop__target">
-                <span className="gh-commit-pop__repo">
-                  {currentFile.owner}/{currentFile.repo}
-                </span>
-                <span className="gh-commit-pop__path">
-                  {currentFile.path} @ {currentFile.branch}
-                </span>
-              </div>
-            </>
-          ) : (
-            <>
-              {loadingRepos ? (
-                <p className="gh-hint">リポジトリを読み込み中…</p>
+              {mode === 'update' && currentFile ? (
+                <>
+                  <div className="gh-commit-pop__target">
+                    <span className="gh-commit-pop__repo">
+                      {currentFile.owner}/{currentFile.repo}
+                    </span>
+                    <span className="gh-commit-pop__path">
+                      {currentFile.path} @ {currentFile.branch}
+                    </span>
+                  </div>
+                </>
               ) : (
                 <>
-                  <label className="gh-label">リポジトリ</label>
-                  <select
-                    className="gh-select gh-select--full"
-                    value={repoFullName}
-                    onChange={(e) => void selectRepoForSaveAs(e.target.value)}
-                  >
-                    {repos.map((r) => (
-                      <option key={r.fullName} value={r.fullName}>
-                        {r.fullName}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="gh-branch-row">
-                    <label className="gh-label" style={{ margin: 0 }}>
-                      ブランチ
-                    </label>
-                    <select className="gh-select" value={branch} onChange={(e) => setBranch(e.target.value)}>
-                      {branches.map((b) => (
-                        <option key={b} value={b}>
-                          {b}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <label className="gh-label">保存先パス</label>
-                  <input
-                    className="gh-input"
-                    value={path}
-                    onChange={(e) => setPath(e.target.value)}
-                    placeholder="designs/untitled.pen"
-                  />
+                  {loadingRepos ? (
+                    <p className="gh-hint">リポジトリを読み込み中…</p>
+                  ) : (
+                    <>
+                      <label className="gh-label">リポジトリ</label>
+                      <select
+                        className="gh-select gh-select--full"
+                        value={repoFullName}
+                        onChange={(e) => void selectRepoForSaveAs(e.target.value)}
+                      >
+                        {(repos ?? []).map((r) => (
+                          <option key={r.fullName} value={r.fullName}>
+                            {r.fullName}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="gh-branch-row">
+                        <label className="gh-label" style={{ margin: 0 }}>
+                          ブランチ
+                        </label>
+                        <select
+                          className="gh-select"
+                          value={branch}
+                          onChange={(e) => setBranch(e.target.value)}
+                        >
+                          {branches.map((b) => (
+                            <option key={b} value={b}>
+                              {b}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <label className="gh-label">保存先パス</label>
+                      <input
+                        className="gh-input"
+                        value={path}
+                        onChange={(e) => setPath(e.target.value)}
+                        placeholder="designs/untitled.pen"
+                      />
+                    </>
+                  )}
                 </>
               )}
+
+              <label className="gh-label">コミットメッセージ</label>
+              <input
+                className="gh-input"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !committing) void doCommit();
+                }}
+                autoFocus
+              />
+
+              {error && <p className="gh-error">{error}</p>}
+
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={() => void doCommit()}
+                disabled={committing}
+                style={{ marginTop: 8, width: '100%' }}
+              >
+                {committing ? 'コミット中…' : mode === 'update' ? 'Commit' : 'Create & Commit'}
+              </button>
             </>
-          )}
-
-          <label className="gh-label">コミットメッセージ</label>
-          <input
-            className="gh-input"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !committing) void doCommit();
-            }}
-            autoFocus
-          />
-
-          {error && <p className="gh-error">{error}</p>}
-
-          <button
-            type="button"
-            className="button button--primary"
-            onClick={() => void doCommit()}
-            disabled={committing}
-            style={{ marginTop: 8, width: '100%' }}
-          >
-            {committing ? 'コミット中…' : mode === 'update' ? 'Commit' : 'Create & Commit'}
-          </button>
-          </>
           )}
         </div>
       )}

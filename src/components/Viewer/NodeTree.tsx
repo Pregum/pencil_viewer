@@ -11,19 +11,38 @@ import { filterNodeTree } from '../../utils/filterNodeTree';
 
 const EYE_ON = (
   <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-    <path d="M8 3C4 3 1.5 8 1.5 8S4 13 8 13 14.5 8 14.5 8 12 3 8 3Z" stroke="currentColor" strokeWidth="1.2" />
+    <path
+      d="M8 3C4 3 1.5 8 1.5 8S4 13 8 13 14.5 8 14.5 8 12 3 8 3Z"
+      stroke="currentColor"
+      strokeWidth="1.2"
+    />
     <circle cx="8" cy="8" r="2" fill="currentColor" />
   </svg>
 );
 const EYE_OFF = (
   <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
     <path d="M3 3L13 13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-    <path d="M8 3C4 3 1.5 8 1.5 8S4 13 8 13 14.5 8 14.5 8" stroke="currentColor" strokeWidth="1.2" opacity="0.5" />
+    <path
+      d="M8 3C4 3 1.5 8 1.5 8S4 13 8 13 14.5 8 14.5 8"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      opacity="0.5"
+    />
   </svg>
 );
 const LOCK_ON = (
   <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-    <rect x="3" y="7" width="10" height="7" rx="1" stroke="currentColor" strokeWidth="1.2" fill="currentColor" fillOpacity="0.2" />
+    <rect
+      x="3"
+      y="7"
+      width="10"
+      height="7"
+      rx="1"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      fill="currentColor"
+      fillOpacity="0.2"
+    />
     <path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" strokeWidth="1.2" fill="none" />
   </svg>
 );
@@ -128,7 +147,10 @@ function NodeItem({
   const hidden = Boolean(visibleIds && !visibleIds.has(node.id));
 
   const handleDragStart = (e: React.DragEvent) => {
-    e.dataTransfer.setData('application/pencil-layer', JSON.stringify({ parentId, fromIdx: index, nodeId: node.id }));
+    e.dataTransfer.setData(
+      'application/pencil-layer',
+      JSON.stringify({ parentId, fromIdx: index, nodeId: node.id }),
+    );
     e.dataTransfer.effectAllowed = 'move';
     e.stopPropagation();
   };
@@ -184,9 +206,7 @@ function NodeItem({
         ) : (
           <span className="node-tree__toggle-spacer" />
         )}
-        <span className={`node-tree__type node-tree__type--${node.type}`}>
-          {typeIcon}
-        </span>
+        <span className={`node-tree__type node-tree__type--${node.type}`}>{typeIcon}</span>
         <span className="node-tree__name" title={name}>
           {name}
         </span>
@@ -194,7 +214,10 @@ function NodeItem({
           type="button"
           className={`node-tree__icon-btn${!visible ? ' node-tree__icon-btn--active' : ''}`}
           title={visible ? 'Hide (Cmd+Shift+H)' : 'Show'}
-          onClick={(e) => { e.stopPropagation(); onToggleVisibility(node.id); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleVisibility(node.id);
+          }}
         >
           {visible ? EYE_ON : EYE_OFF}
         </button>
@@ -202,7 +225,10 @@ function NodeItem({
           type="button"
           className={`node-tree__icon-btn${locked ? ' node-tree__icon-btn--active' : ''}`}
           title={locked ? 'Unlock (Cmd+Shift+L)' : 'Lock'}
-          onClick={(e) => { e.stopPropagation(); onToggleLock(node.id); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleLock(node.id);
+          }}
         >
           {locked ? LOCK_ON : LOCK_OFF}
         </button>
@@ -233,40 +259,46 @@ function NodeItem({
 export function NodeTree({ collapsed, onTogglePanel }: { collapsed?: boolean; onTogglePanel?: () => void }) {
   const { state, selectNode, reorderChildren, updateNode } = useEditor();
 
-  const toggleVisibility = useCallback((id: string) => {
-    // 対象ノードの現在値を引き直して反転
-    const find = (nodes: PenNode[]): PenNode | null => {
-      for (const n of nodes) {
-        if (n.id === id) return n;
-        if ('children' in n && Array.isArray((n as { children?: PenNode[] }).children)) {
-          const found = find((n as { children: PenNode[] }).children);
-          if (found) return found;
+  const toggleVisibility = useCallback(
+    (id: string) => {
+      // 対象ノードの現在値を引き直して反転
+      const find = (nodes: PenNode[]): PenNode | null => {
+        for (const n of nodes) {
+          if (n.id === id) return n;
+          if ('children' in n && Array.isArray((n as { children?: PenNode[] }).children)) {
+            const found = find((n as { children: PenNode[] }).children);
+            if (found) return found;
+          }
         }
-      }
-      return null;
-    };
-    const node = find(state.doc.children);
-    if (!node) return;
-    const currentlyVisible = (node as { enabled?: boolean }).enabled !== false;
-    updateNode(id, { enabled: !currentlyVisible } as Partial<PenNode>);
-  }, [state.doc.children, updateNode]);
+        return null;
+      };
+      const node = find(state.doc.children);
+      if (!node) return;
+      const currentlyVisible = (node as { enabled?: boolean }).enabled !== false;
+      updateNode(id, { enabled: !currentlyVisible } as Partial<PenNode>);
+    },
+    [state.doc.children, updateNode],
+  );
 
-  const toggleLock = useCallback((id: string) => {
-    const find = (nodes: PenNode[]): PenNode | null => {
-      for (const n of nodes) {
-        if (n.id === id) return n;
-        if ('children' in n && Array.isArray((n as { children?: PenNode[] }).children)) {
-          const found = find((n as { children: PenNode[] }).children);
-          if (found) return found;
+  const toggleLock = useCallback(
+    (id: string) => {
+      const find = (nodes: PenNode[]): PenNode | null => {
+        for (const n of nodes) {
+          if (n.id === id) return n;
+          if ('children' in n && Array.isArray((n as { children?: PenNode[] }).children)) {
+            const found = find((n as { children: PenNode[] }).children);
+            if (found) return found;
+          }
         }
-      }
-      return null;
-    };
-    const node = find(state.doc.children);
-    if (!node) return;
-    const currentlyLocked = (node as { locked?: boolean }).locked === true;
-    updateNode(id, { locked: !currentlyLocked } as Partial<PenNode>);
-  }, [state.doc.children, updateNode]);
+        return null;
+      };
+      const node = find(state.doc.children);
+      if (!node) return;
+      const currentlyLocked = (node as { locked?: boolean }).locked === true;
+      updateNode(id, { locked: !currentlyLocked } as Partial<PenNode>);
+    },
+    [state.doc.children, updateNode],
+  );
   const listRef = useRef<HTMLDivElement>(null);
 
   // 展開状態の管理（トップレベルはデフォルト展開）
@@ -287,44 +319,55 @@ export function NodeTree({ collapsed, onTogglePanel }: { collapsed?: boolean; on
 
   // -- 検索フィルタ
   const [query, setQuery] = useState('');
-  const filter = useMemo(
-    () => filterNodeTree(state.doc.children, query),
-    [state.doc.children, query],
-  );
+  const filter = useMemo(() => filterNodeTree(state.doc.children, query), [state.doc.children, query]);
   const filterActive = query.trim().length > 0;
   const visibleIds = filterActive ? filter.visible : null;
 
-  // フィルタ中はヒットの祖先を自動展開
-  useEffect(() => {
-    if (!filterActive) return;
-    if (filter.autoExpand.size === 0) return;
+  // 自動展開はレンダー中に反映する。effect で setExpandedIds すると、
+  // 畳んだままのツリーが 1 フレーム描かれてから開く (#78)。
+  // 「一度開いたら以後はユーザーの操作を尊重する」という元の挙動を保つため、
+  // きっかけ（フィルタ結果 / 選択ノード）が変わった瞬間だけ足し込む。
+  const expandOnce = useCallback((ids: Iterable<string>) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
-      for (const id of filter.autoExpand) next.add(id);
-      return next;
+      let added = false;
+      for (const id of ids) {
+        if (!next.has(id)) {
+          next.add(id);
+          added = true;
+        }
+      }
+      return added ? next : prev;
     });
-  }, [filterActive, filter.autoExpand]);
+  }, []);
 
-  // 選択変更時: 祖先を自動展開 + スクロール
+  // フィルタ中はヒットの祖先を自動展開
+  const autoExpandKey = filterActive ? Array.from(filter.autoExpand).sort().join('\u0000') : '';
+  const [prevAutoExpandKey, setPrevAutoExpandKey] = useState(autoExpandKey);
+  if (autoExpandKey !== prevAutoExpandKey) {
+    setPrevAutoExpandKey(autoExpandKey);
+    if (autoExpandKey) expandOnce(filter.autoExpand);
+  }
+
+  // 選択変更時: 祖先を自動展開
+  const [prevSelectedId, setPrevSelectedId] = useState(state.selectedNodeId);
+  if (state.selectedNodeId !== prevSelectedId) {
+    setPrevSelectedId(state.selectedNodeId);
+    if (state.selectedNodeId) {
+      expandOnce(collectAncestorIds(state.doc.children, state.selectedNodeId));
+    }
+  }
+
+  // 選択ノードへスクロール（展開のレンダリング後に走らせる）
   useEffect(() => {
     if (!state.selectedNodeId) return;
-
-    // 祖先を展開
-    const ancestors = collectAncestorIds(state.doc.children, state.selectedNodeId);
-    if (ancestors.size > 0) {
-      setExpandedIds((prev) => {
-        const next = new Set(prev);
-        for (const id of ancestors) next.add(id);
-        return next;
-      });
-    }
-
-    // 少し待ってからスクロール（展開のレンダリング後）
-    requestAnimationFrame(() => {
-      const el = listRef.current?.querySelector(`[data-node-id="${state.selectedNodeId}"]`);
+    const id = state.selectedNodeId;
+    const raf = requestAnimationFrame(() => {
+      const el = listRef.current?.querySelector(`[data-node-id="${id}"]`);
       el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     });
-  }, [state.selectedNodeId, state.doc.children]);
+    return () => cancelAnimationFrame(raf);
+  }, [state.selectedNodeId]);
 
   if (collapsed) {
     return (
