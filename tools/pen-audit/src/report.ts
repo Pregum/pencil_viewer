@@ -151,6 +151,8 @@ export function renderReport(result: AuditResult, check: Verdict, options: Rende
 
   if (result.files.length === 0) {
     lines.push(t.noFiles, '');
+    // 何を探したかを必ず添える。paths の書き間違いはこれが無いと追えない
+    if (options.context) lines.push(`<sub>${options.context}</sub>`, '');
     return lines.join('\n');
   }
 

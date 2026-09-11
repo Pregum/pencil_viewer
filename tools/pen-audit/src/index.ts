@@ -92,7 +92,8 @@ async function main(): Promise<number> {
     annotate('error', inRepo(file.path), message);
   }
 
-  const body = renderReport(result, check, { locale, context: `Scope: ${scope}` });
+  const context = `Scope: ${scope} · Patterns: ${patterns.join(', ')} · Root: ${root}`;
+  const body = renderReport(result, check, { locale, context });
   await writeFileLines(process.env.GITHUB_STEP_SUMMARY, body);
   console.log(body);
 
