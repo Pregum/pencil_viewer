@@ -170,10 +170,7 @@ interface RawTreeEntry {
 /** git tree のレスポンスから .pen の blob だけを抜き出してパス順にソート。 */
 export function filterPenEntries(tree: RawTreeEntry[]): PenEntry[] {
   return tree
-    .filter(
-      (e) =>
-        e.type === 'blob' && typeof e.path === 'string' && isPenPath(e.path) && typeof e.sha === 'string',
-    )
+    .filter((e) => e.type === 'blob' && typeof e.path === 'string' && isPenPath(e.path) && typeof e.sha === 'string')
     .map((e) => ({ path: e.path as string, sha: e.sha as string }))
     .sort((a, b) => a.path.localeCompare(b.path));
 }
@@ -205,8 +202,7 @@ async function ghFetch(token: string, path: string, init?: RequestInit): Promise
     if (res.status === 401) message = 'トークンが無効か期限切れです。再接続してください。';
     else if (res.status === 403) message = `アクセスが拒否されました（権限不足 or レート制限）: ${message}`;
     else if (res.status === 404) message = '見つかりません（パス/権限を確認してください）。';
-    else if (res.status === 409)
-      message = '競合が発生しました。リポジトリ側が更新されています。最新を取得し直してください。';
+    else if (res.status === 409) message = '競合が発生しました。リポジトリ側が更新されています。最新を取得し直してください。';
     throw new GitHubError(res.status, message);
   }
 
@@ -239,26 +235,25 @@ export async function listRepos(token: string): Promise<GitHubRepo[]> {
     pushed_at: string | null;
     permissions?: { push?: boolean };
   }>;
-  return (
-    repos
-      // push 権限のあるリポジトリのみ（資産を書き込めるものだけ見せる）
-      .filter((r) => r.permissions?.push !== false)
-      .map((r) => ({
-        fullName: r.full_name,
-        name: r.name,
-        owner: r.owner.login,
-        defaultBranch: r.default_branch,
-        private: r.private,
-        pushedAt: r.pushed_at,
-      }))
-  );
+  return repos
+    // push 権限のあるリポジトリのみ（資産を書き込めるものだけ見せる）
+    .filter((r) => r.permissions?.push !== false)
+    .map((r) => ({
+      fullName: r.full_name,
+      name: r.name,
+      owner: r.owner.login,
+      defaultBranch: r.default_branch,
+      private: r.private,
+      pushedAt: r.pushed_at,
+    }));
 }
 
 /** リポジトリのブランチ一覧。 */
 export async function listBranches(token: string, owner: string, repo: string): Promise<GitHubBranch[]> {
-  const branches = (await ghFetch(token, `/repos/${owner}/${repo}/branches?per_page=100`)) as Array<{
-    name: string;
-  }>;
+  const branches = (await ghFetch(
+    token,
+    `/repos/${owner}/${repo}/branches?per_page=100`,
+  )) as Array<{ name: string }>;
   return branches.map((b) => ({ name: b.name }));
 }
 
@@ -340,14 +335,10 @@ export async function commitPenFile(token: string, params: CommitParams): Promis
   };
   if (params.sha) body.sha = params.sha;
 
-  const res = (await ghFetch(
-    token,
-    `/repos/${params.owner}/${params.repo}/contents/${encodePath(params.path)}`,
-    {
-      method: 'PUT',
-      body: JSON.stringify(body),
-    },
-  )) as { content?: { sha: string } };
+  const res = (await ghFetch(token, `/repos/${params.owner}/${params.repo}/contents/${encodePath(params.path)}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  })) as { content?: { sha: string } };
 
   if (!res.content?.sha) {
     throw new GitHubError(500, 'コミットは成功しましたが新しい sha を取得できませんでした。');
