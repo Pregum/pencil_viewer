@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useGitHub } from './GitHubContext';
 import {
   GitHubError,
+  classifyToken,
   getPenFile,
   listBranches,
   listPenFiles,
@@ -29,6 +30,8 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
   const { token, user, connected, connect, disconnect } = useGitHub();
 
   const [tokenInput, setTokenInput] = useState('');
+  // 入力中のトークンが classic なら注意書きを出す。判定は前置きだけで完結する
+  const tokenKind = classifyToken(tokenInput);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,7 +80,9 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
         const bs = await listBranches(token, repo.owner, repo.name);
         const names = bs.map((b) => b.name);
         setBranches(names);
-        const branch = names.includes(repo.defaultBranch) ? repo.defaultBranch : names[0] ?? repo.defaultBranch;
+        const branch = names.includes(repo.defaultBranch)
+          ? repo.defaultBranch
+          : (names[0] ?? repo.defaultBranch);
         setSelectedBranch(branch);
         const files = await listPenFiles(token, repo.owner, repo.name, branch);
         setPenFiles(files);
@@ -131,7 +136,13 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
       setOpeningPath(entry.path);
       setError(null);
       try {
-        const file = await getPenFile(token, selectedRepo.owner, selectedRepo.name, entry.path, selectedBranch);
+        const file = await getPenFile(
+          token,
+          selectedRepo.owner,
+          selectedRepo.name,
+          entry.path,
+          selectedBranch,
+        );
         const ref: GitHubFileRef = {
           owner: selectedRepo.owner,
           repo: selectedRepo.name,
@@ -174,8 +185,8 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
           {!connected ? (
             <div className="gh-connect">
               <p className="gh-hint">
-                あなたの GitHub リポジトリに .pen を git-backed で読み書きします。
-                サーバーは介在しません — トークンはこの端末にだけ保存され、通信は GitHub と直接行われます。
+                あなたの GitHub リポジトリに .pen を git-backed で読み書きします。 サーバーは介在しません —
+                トークンはこの端末にだけ保存され、通信は GitHub と直接行われます。
               </p>
               <label className="gh-label" htmlFor="gh-token">
                 Personal Access Token
@@ -184,7 +195,7 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
                 id="gh-token"
                 type="password"
                 className="gh-input"
-                placeholder="ghp_... または github_pat_..."
+                placeholder="github_pat_..."
                 value={tokenInput}
                 onChange={(e) => setTokenInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -193,7 +204,8 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
                 autoFocus
               />
               <p className="gh-hint gh-hint--small">
-                必要な権限: <code>Contents</code>（Read &amp; Write）。
+                必要な権限は <code>Contents</code>（Read &amp;
+                Write）だけです。対象リポジトリは使うものだけを選び、 有効期限は短めにしてください。
                 <a
                   href="https://github.com/settings/tokens?type=beta"
                   target="_blank"
@@ -203,6 +215,14 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
                   Fine-grained token を作成 ↗
                 </a>
               </p>
+              {tokenKind === 'classic' && (
+                <p className="gh-warn" role="status">
+                  classic トークンのようです。classic の <code>repo</code>{' '}
+                  スコープは対象を選べず、あなたがアクセスできる private
+                  を含む全リポジトリの読み書きに及びます。
+                  漏れたときの範囲を狭めるため、リポジトリを限定できる fine-grained token を薦めます。
+                </p>
+              )}
               {error && <p className="gh-error">{error}</p>}
               <button
                 type="button"
@@ -217,7 +237,9 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
           ) : (
             <div className="gh-browse">
               <div className="gh-account">
-                {user?.avatarUrl && <img className="gh-avatar" src={user.avatarUrl} alt="" width={20} height={20} />}
+                {user?.avatarUrl && (
+                  <img className="gh-avatar" src={user.avatarUrl} alt="" width={20} height={20} />
+                )}
                 <span className="gh-account__name">{user?.login}</span>
                 <span style={{ flex: 1 }} />
                 <button type="button" className="button button--ghost button--sm" onClick={disconnect}>
@@ -280,7 +302,8 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
                     <p className="gh-hint">読み込み中…</p>
                   ) : penFiles.length === 0 ? (
                     <p className="gh-hint">
-                      このブランチに .pen はありません。エディタで作成して「Commit」すると、ここに貯まっていきます。
+                      このブランチに .pen
+                      はありません。エディタで作成して「Commit」すると、ここに貯まっていきます。
                     </p>
                   ) : (
                     <div className="gh-list gh-list--files">

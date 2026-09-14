@@ -82,6 +82,33 @@ export interface GitHubFileRef {
 }
 
 // ---------------------------------------------------------------------------
+// トークンの種類判定
+// ---------------------------------------------------------------------------
+
+export type TokenKind = 'fine-grained' | 'classic' | 'unknown';
+
+/**
+ * 貼られたトークンが fine-grained か classic かを前置きから判定する。
+ *
+ * 漏えい時の影響が大きく違うので、UI で警告を出すために使う。
+ * classic の `repo` スコープは対象を選べず、アクセスできる全リポジトリ
+ * （private を含む）の読み書きに及ぶ。fine-grained ならリポジトリ単位で
+ * 絞れるので、万一漏れても被害がその範囲に留まる。
+ *
+ * 判定は前置きだけで、GitHub には問い合わせない。実際の権限までは
+ * 分からないので、あくまで注意喚起に使う。
+ */
+export function classifyToken(token: string): TokenKind {
+  const t = token.trim();
+  if (t.startsWith('github_pat_')) return 'fine-grained';
+  // ghp_ = classic PAT, gho_ = OAuth, ghu_/ghs_ = GitHub App, ghr_ = refresh
+  if (/^gh[pousr]_/.test(t)) return 'classic';
+  // 2021 年以前に発行された 40 桁の 16 進。今も有効なものが残っている
+  if (/^[0-9a-f]{40}$/i.test(t)) return 'classic';
+  return 'unknown';
+}
+
+// ---------------------------------------------------------------------------
 // トークン保持（localStorage）
 // ---------------------------------------------------------------------------
 
@@ -143,7 +170,10 @@ interface RawTreeEntry {
 /** git tree のレスポンスから .pen の blob だけを抜き出してパス順にソート。 */
 export function filterPenEntries(tree: RawTreeEntry[]): PenEntry[] {
   return tree
-    .filter((e) => e.type === 'blob' && typeof e.path === 'string' && isPenPath(e.path) && typeof e.sha === 'string')
+    .filter(
+      (e) =>
+        e.type === 'blob' && typeof e.path === 'string' && isPenPath(e.path) && typeof e.sha === 'string',
+    )
     .map((e) => ({ path: e.path as string, sha: e.sha as string }))
     .sort((a, b) => a.path.localeCompare(b.path));
 }
@@ -175,7 +205,8 @@ async function ghFetch(token: string, path: string, init?: RequestInit): Promise
     if (res.status === 401) message = 'トークンが無効か期限切れです。再接続してください。';
     else if (res.status === 403) message = `アクセスが拒否されました（権限不足 or レート制限）: ${message}`;
     else if (res.status === 404) message = '見つかりません（パス/権限を確認してください）。';
-    else if (res.status === 409) message = '競合が発生しました。リポジトリ側が更新されています。最新を取得し直してください。';
+    else if (res.status === 409)
+      message = '競合が発生しました。リポジトリ側が更新されています。最新を取得し直してください。';
     throw new GitHubError(res.status, message);
   }
 
@@ -208,25 +239,26 @@ export async function listRepos(token: string): Promise<GitHubRepo[]> {
     pushed_at: string | null;
     permissions?: { push?: boolean };
   }>;
-  return repos
-    // push 権限のあるリポジトリのみ（資産を書き込めるものだけ見せる）
-    .filter((r) => r.permissions?.push !== false)
-    .map((r) => ({
-      fullName: r.full_name,
-      name: r.name,
-      owner: r.owner.login,
-      defaultBranch: r.default_branch,
-      private: r.private,
-      pushedAt: r.pushed_at,
-    }));
+  return (
+    repos
+      // push 権限のあるリポジトリのみ（資産を書き込めるものだけ見せる）
+      .filter((r) => r.permissions?.push !== false)
+      .map((r) => ({
+        fullName: r.full_name,
+        name: r.name,
+        owner: r.owner.login,
+        defaultBranch: r.default_branch,
+        private: r.private,
+        pushedAt: r.pushed_at,
+      }))
+  );
 }
 
 /** リポジトリのブランチ一覧。 */
 export async function listBranches(token: string, owner: string, repo: string): Promise<GitHubBranch[]> {
-  const branches = (await ghFetch(
-    token,
-    `/repos/${owner}/${repo}/branches?per_page=100`,
-  )) as Array<{ name: string }>;
+  const branches = (await ghFetch(token, `/repos/${owner}/${repo}/branches?per_page=100`)) as Array<{
+    name: string;
+  }>;
   return branches.map((b) => ({ name: b.name }));
 }
 
@@ -308,10 +340,14 @@ export async function commitPenFile(token: string, params: CommitParams): Promis
   };
   if (params.sha) body.sha = params.sha;
 
-  const res = (await ghFetch(token, `/repos/${params.owner}/${params.repo}/contents/${encodePath(params.path)}`, {
-    method: 'PUT',
-    body: JSON.stringify(body),
-  })) as { content?: { sha: string } };
+  const res = (await ghFetch(
+    token,
+    `/repos/${params.owner}/${params.repo}/contents/${encodePath(params.path)}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    },
+  )) as { content?: { sha: string } };
 
   if (!res.content?.sha) {
     throw new GitHubError(500, 'コミットは成功しましたが新しい sha を取得できませんでした。');
