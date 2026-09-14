@@ -1,10 +1,22 @@
 name: Pencil design check
 
+# .pen かアクション自身が変わったときだけ走らせる。これを入れないと、
+# .pen を 1 つも触らないコードだけの PR にもサンプルのレポートが
+# コメントされてノイズになる。
 on:
   push:
     branches: [main]
+    paths:
+      - '**/*.pen'
+      - 'tools/pen-audit/**'
+      - '.github/workflows/pen-audit.yml'
   pull_request:
     branches: [main]
+    # GitHub Actions は YAML のアンカーを解釈しないので、同じ内容を書き下す
+    paths:
+      - '**/*.pen'
+      - 'tools/pen-audit/**'
+      - '.github/workflows/pen-audit.yml'
   workflow_dispatch:
 
 permissions:
