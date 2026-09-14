@@ -92,6 +92,28 @@ describe('GitHubPanel', () => {
       expect(screen.getByRole('button', { name: '接続する' })).toHaveProperty('disabled', true);
     });
 
+    it('classic トークンを入れると影響範囲の警告を出す', () => {
+      renderPanel();
+      expect(screen.queryByText(/classic トークンのようです/)).toBeNull();
+
+      typeInto(screen.getByLabelText('Personal Access Token'), `ghp_${'a'.repeat(36)}`);
+      expect(screen.getByText(/classic トークンのようです/)).toBeTruthy();
+    });
+
+    it('fine-grained トークンなら警告を出さない', () => {
+      renderPanel();
+      typeInto(screen.getByLabelText('Personal Access Token'), `github_pat_${'a'.repeat(22)}`);
+      expect(screen.queryByText(/classic トークンのようです/)).toBeNull();
+    });
+
+    it('警告を出しても接続自体は止めない', () => {
+      // fine-grained を使えない環境があるので、警告は出すが操作は塞がない
+      renderPanel();
+      typeInto(screen.getByLabelText('Personal Access Token'), `ghp_${'a'.repeat(36)}`);
+      expect(screen.getByText(/classic トークンのようです/)).toBeTruthy();
+      expect(screen.getByRole('button', { name: '接続する' })).toHaveProperty('disabled', false);
+    });
+
     it('トークンを入れて接続すると、ユーザー名が出てリポジトリを取りに行く', async () => {
       renderPanel();
       await connect();
