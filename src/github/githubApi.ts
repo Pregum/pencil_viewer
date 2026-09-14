@@ -82,6 +82,33 @@ export interface GitHubFileRef {
 }
 
 // ---------------------------------------------------------------------------
+// トークンの種類判定
+// ---------------------------------------------------------------------------
+
+export type TokenKind = 'fine-grained' | 'classic' | 'unknown';
+
+/**
+ * 貼られたトークンが fine-grained か classic かを前置きから判定する。
+ *
+ * 漏えい時の影響が大きく違うので、UI で警告を出すために使う。
+ * classic の `repo` スコープは対象を選べず、アクセスできる全リポジトリ
+ * （private を含む）の読み書きに及ぶ。fine-grained ならリポジトリ単位で
+ * 絞れるので、万一漏れても被害がその範囲に留まる。
+ *
+ * 判定は前置きだけで、GitHub には問い合わせない。実際の権限までは
+ * 分からないので、あくまで注意喚起に使う。
+ */
+export function classifyToken(token: string): TokenKind {
+  const t = token.trim();
+  if (t.startsWith('github_pat_')) return 'fine-grained';
+  // ghp_ = classic PAT, gho_ = OAuth, ghu_/ghs_ = GitHub App, ghr_ = refresh
+  if (/^gh[pousr]_/.test(t)) return 'classic';
+  // 2021 年以前に発行された 40 桁の 16 進。今も有効なものが残っている
+  if (/^[0-9a-f]{40}$/i.test(t)) return 'classic';
+  return 'unknown';
+}
+
+// ---------------------------------------------------------------------------
 // トークン保持（localStorage）
 // ---------------------------------------------------------------------------
 

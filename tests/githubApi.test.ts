@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { utf8ToBase64, base64ToUtf8, isPenPath, filterPenEntries } from '../src/github/githubApi';
+import {
+  utf8ToBase64,
+  base64ToUtf8,
+  isPenPath,
+  filterPenEntries,
+  classifyToken,
+} from '../src/github/githubApi';
 
 describe('githubApi pure helpers', () => {
   describe('base64 round-trip (UTF-8 safe)', () => {
@@ -53,5 +59,45 @@ describe('githubApi pure helpers', () => {
     it('handles empty tree', () => {
       expect(filterPenEntries([])).toEqual([]);
     });
+  });
+});
+
+describe('classifyToken', () => {
+  it('github_pat_ 始まりは fine-grained', () => {
+    expect(classifyToken('github_pat_11ABCDE0Y0abcdefghijkl_mnopqrstuvwxyz')).toBe('fine-grained');
+  });
+
+  it('ghp_ 始まりは classic', () => {
+    expect(classifyToken('ghp_abcdefghijklmnopqrstuvwxyz0123456789')).toBe('classic');
+  });
+
+  it('OAuth / GitHub App のトークンも classic 扱いにする', () => {
+    // fine-grained ではない = リポジトリ単位で絞れていない可能性がある
+    for (const prefix of ['gho_', 'ghu_', 'ghs_', 'ghr_']) {
+      expect(classifyToken(`${prefix}abcdefghijklmnopqrstuvwxyz012345`)).toBe('classic');
+    }
+  });
+
+  it('2021 年以前の 40 桁 16 進も classic', () => {
+    expect(classifyToken('a'.repeat(40))).toBe('classic');
+    expect(classifyToken('0123456789ABCDEF0123456789abcdef01234567')).toBe('classic');
+  });
+
+  it('40 桁でも 16 進でなければ unknown', () => {
+    expect(classifyToken('z'.repeat(40))).toBe('unknown');
+  });
+
+  it('前後の空白は無視する', () => {
+    expect(classifyToken('  github_pat_abc  ')).toBe('fine-grained');
+  });
+
+  it('空文字や判別できないものは unknown', () => {
+    expect(classifyToken('')).toBe('unknown');
+    expect(classifyToken('   ')).toBe('unknown');
+    expect(classifyToken('not-a-token')).toBe('unknown');
+  });
+
+  it('github_pat_ を含んでいても先頭でなければ fine-grained としない', () => {
+    expect(classifyToken('xgithub_pat_abc')).toBe('unknown');
   });
 });

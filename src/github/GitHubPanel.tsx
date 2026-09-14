@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useGitHub } from './GitHubContext';
 import {
   GitHubError,
+  classifyToken,
   getPenFile,
   listBranches,
   listPenFiles,
@@ -29,6 +30,8 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
   const { token, user, connected, connect, disconnect } = useGitHub();
 
   const [tokenInput, setTokenInput] = useState('');
+  // 入力中のトークンが classic なら注意書きを出す。判定は前置きだけで完結する
+  const tokenKind = classifyToken(tokenInput);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -195,7 +198,7 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
                 id="gh-token"
                 type="password"
                 className="gh-input"
-                placeholder="ghp_... または github_pat_..."
+                placeholder="github_pat_..."
                 value={tokenInput}
                 onChange={(e) => setTokenInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -204,7 +207,7 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
                 autoFocus
               />
               <p className="gh-hint gh-hint--small">
-                必要な権限: <code>Contents</code>（Read &amp; Write）。
+                必要な権限は <code>Contents</code>（Read &amp; Write）だけです。対象リポジトリは使うものだけを選び、有効期限は短めにしてください。
                 <a
                   href="https://github.com/settings/tokens?type=beta"
                   target="_blank"
@@ -214,6 +217,11 @@ export function GitHubPanel({ open, onClose, onOpenFile }: Props) {
                   Fine-grained token を作成 ↗
                 </a>
               </p>
+              {tokenKind === 'classic' && (
+                <p className="gh-warn" role="status">
+                  classic トークンのようです。classic の <code>repo</code> スコープは対象を選べず、あなたがアクセスできる private を含む全リポジトリの読み書きに及びます。漏れたときの範囲を狭めるため、リポジトリを限定できる fine-grained token を薦めます。
+                </p>
+              )}
               {error && <p className="gh-error">{error}</p>}
               <button
                 type="button"
