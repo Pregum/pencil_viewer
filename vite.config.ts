@@ -49,14 +49,15 @@ export default defineConfig(({ mode, command }) => {
           'src/components/docsContent.ts',
           'src/i18n/messages/**',
         ],
-        // 現状値 (lines 28.1 / functions 81.2 / branches 81.7) をわずかに
+        // 現状値 (lines 34.4 / functions 81.5 / branches 83.1) をわずかに
         // 下回る位置に置いた歯止め。ここから下げないことだけを保証する。
-        // #80 で src/github の UI テストを足して 23.7 -> 28.1 に引き上げた。
+        // #80 の経過: 23.7 (導入時) -> 28.1 (src/github の UI テスト)
+        //   -> 34.4 (NodeTree / usePanZoom / useViewerShortcuts / useFrameNavigation)
         thresholds: {
-          lines: 28,
-          statements: 28,
+          lines: 34,
+          statements: 34,
           functions: 80,
-          branches: 81,
+          branches: 82,
         },
       },
     },
