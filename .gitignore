@@ -1,6 +1,10 @@
 node_modules
 dist
 dist-ssr
+
+# pen-audit の配布バンドルだけは例外。JavaScript アクションはリポジトリに
+# 置かれたファイルをそのまま実行するので、ビルド済みを入れておく必要がある。
+!tools/pen-audit/dist/
 *.local
 *.tsbuildinfo
 

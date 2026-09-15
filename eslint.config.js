@@ -18,7 +18,7 @@ import prettier from 'eslint-config-prettier';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', 'workers/**/dist/**', '~/**'],
+    ignores: ['dist/**', 'node_modules/**', 'workers/**/dist/**', 'tools/**/dist/**', '~/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -70,7 +70,7 @@ export default tseslint.config(
   },
   {
     // Cloudflare Worker と Node スクリプトはブラウザ以外のグローバルを使う
-    files: ['workers/**/*.{ts,js}', 'tools/**/*.{ts,js}'],
+    files: ['workers/**/*.{ts,js}', 'tools/**/*.{ts,js,mjs}'],
     languageOptions: {
       globals: { ...globals.node, ...globals.worker },
     },
