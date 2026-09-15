@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PenDocument, PenNode } from '../../pen/types';
 import { computeViewBox } from '../../pen/renderer/viewBox';
 import { CanvasContent } from './CanvasContent';
-import { usePanZoom, type Camera } from './usePanZoom';
+import { usePanZoom } from './usePanZoom';
+import { collectFrames } from './frames';
+import { useFrameNavigation } from './useFrameNavigation';
+import { usePresentMode } from './usePresentMode';
+import { useViewerShortcuts } from './useViewerShortcuts';
 import { ShortcutsDialog } from './ShortcutsDialog';
 import { FrameSearch } from './FrameSearch';
 import { EditorProvider, useEditor as useEditorInternal } from '../../pen/state/EditorContext';
@@ -54,46 +58,7 @@ import { Rulers } from './Rulers';
 import { PagesPanel } from './PagesPanel';
 import { ComponentsPanel } from './ComponentsPanel';
 
-/** Collect all frame/group nodes with absolute bounds */
-export interface FrameEntry {
-  id: string;
-  name: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-function collectFrames(nodes: PenNode[]): FrameEntry[] {
-  const result: FrameEntry[] = [];
-  for (const node of nodes) {
-    if (node.type === 'frame' || node.type === 'group') {
-      const w = typeof node.width === 'number' ? node.width : 0;
-      const h = typeof node.height === 'number' ? node.height : 0;
-      if (w > 0 && h > 0) {
-        result.push({
-          id: node.id,
-          name: node.name ?? node.id,
-          x: node.x ?? 0,
-          y: node.y ?? 0,
-          width: w,
-          height: h,
-        });
-      }
-    }
-  }
-  return result;
-}
-
-/**
- * Camera state: we track a "camera" viewBox in SVG coordinate space.
- * The SVG viewBox is set to this camera, so the browser re-renders
- * the vector art at full resolution at any zoom level.
- */
-interface HistoryEntry {
-  camera: Camera;
-  activeFrameId: string | null;
-}
+export type { FrameEntry } from './frames';
 
 function VimBadge() {
   const { state } = useEditorInternal();
@@ -133,6 +98,28 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
 
   const svgRef = useRef<SVGSVGElement>(null);
 
+  // フレーム単位のナビゲーション (ハイライト / 履歴 / Vim 移動) (#71)
+  const {
+    activeFrameId,
+    setActiveFrameId,
+    canGoBack,
+    canGoForward,
+    navigateBack,
+    navigateForward,
+    zoomToFrame,
+    resetView,
+    navigateVim,
+  } = useFrameNavigation({ frames, camera, setCamera, zoomToRect, fitToDocument });
+
+  // Present モード + Smart Animate (#71)
+  const { presentMode, setPresentMode, transition } = usePresentMode({
+    docChildren: doc.children,
+    frames,
+    svgRef,
+    zoomToRect,
+    setActiveFrameId,
+  });
+
   // P2P Collab
   const {
     collab,
@@ -147,15 +134,8 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   } = useCollab();
   const { bridge, connectBridge, disconnectBridge } = useBridge();
 
-  /** 招待リンク (?room=) 経由で開いたか */
-  const joinedViaUrl = useRef(new URLSearchParams(window.location.search).has('room'));
-
-  // Active frame highlight
-  const [activeFrameId, setActiveFrameId] = useState<string | null>(null);
-
-  // Navigation history
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
+  /** 招待リンク (?room=) 経由で開いたか。マウント時に一度だけ判定する */
+  const [joinedViaUrl] = useState(() => new URLSearchParams(window.location.search).has('room'));
 
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showFrameSearch, setShowFrameSearch] = useState(false);
@@ -176,68 +156,6 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const [showStyles, setShowStyles] = useState(false);
   const [showSelectionColors, setShowSelectionColors] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
-  const [presentMode, setPresentMode] = useState(false);
-  const [presentIdx, setPresentIdx] = useState(0);
-  /** presentMode 中のクリックリスナーから最新のスライド番号を読むための控え */
-  const presentIdxRef = useRef(presentIdx);
-  useEffect(() => {
-    presentIdxRef.current = presentIdx;
-  }, [presentIdx]);
-  // Smart Animate トランジション状態
-  const [transition, setTransition] = useState<null | {
-    fromIdx: number;
-    toIdx: number;
-    duration: number;
-    easing: 'linear' | 'ease-out' | 'ease-in' | 'ease-in-out';
-    smartAnimate: boolean;
-    progress: number;
-    startTime: number;
-  }>(null);
-
-  // Push current state to history
-  const pushHistory = useCallback(
-    (frameId: string | null) => {
-      const entry: HistoryEntry = { camera: { ...camera }, activeFrameId: frameId };
-      setHistory((prev) => [...prev.slice(0, historyIndex + 1), entry]);
-      setHistoryIndex((prev) => prev + 1);
-    },
-    [camera, historyIndex],
-  );
-
-  const applyHistoryEntry = useCallback(
-    (entry: HistoryEntry) => {
-      setCamera(entry.camera);
-      setActiveFrameId(entry.activeFrameId);
-    },
-    [setCamera],
-  );
-
-  const navigateBack = useCallback(() => {
-    if (historyIndex <= 0) return;
-    if (historyIndex === history.length - 1) {
-      setHistory((prev) => [...prev, { camera: { ...camera }, activeFrameId }]);
-    }
-    const newIdx = historyIndex - 1;
-    setHistoryIndex(newIdx);
-    applyHistoryEntry(history[newIdx]);
-  }, [historyIndex, history, camera, activeFrameId, applyHistoryEntry]);
-
-  const navigateForward = useCallback(() => {
-    if (historyIndex >= history.length - 1) return;
-    const newIdx = historyIndex + 1;
-    setHistoryIndex(newIdx);
-    applyHistoryEntry(history[newIdx]);
-  }, [historyIndex, history, applyHistoryEntry]);
-
-  // Zoom to a specific frame
-  const zoomToFrame = useCallback(
-    (frame: FrameEntry) => {
-      pushHistory(frame.id);
-      setActiveFrameId(frame.id);
-      zoomToRect(frame);
-    },
-    [pushHistory, zoomToRect],
-  );
 
   // Collab: 招待リンク (?room=) で開いた場合は自動で入室
   useEffect(() => {
@@ -270,498 +188,29 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
     };
   }, [collab.connected, setLocalCursor, containerRef]);
 
-  // Present モード: active frame に自動ズーム（transition 中はスキップ）
-  useEffect(() => {
-    if (!presentMode) return;
-    if (transition) return;
-    if (frames.length === 0) return;
-    const target = frames[Math.max(0, Math.min(frames.length - 1, presentIdx))];
-    if (!target) return;
-    zoomToRect({ x: target.x, y: target.y, width: target.width, height: target.height });
-    setActiveFrameId(target.id);
-  }, [presentMode, presentIdx, frames, zoomToRect, transition]);
-
-  // transition 中は from/to bbox を補間したビューを camera に設定
-  useEffect(() => {
-    if (!transition) return;
-    const from = frames[transition.fromIdx];
-    const to = frames[transition.toIdx];
-    if (!from || !to) return;
-    const t = transition.progress;
-    const ix = from.x + (to.x - from.x) * t;
-    const iy = from.y + (to.y - from.y) * t;
-    const iw = from.width + (to.width - from.width) * t;
-    const ih = from.height + (to.height - from.height) * t;
-    zoomToRect({ x: ix, y: iy, width: iw, height: ih });
-  }, [transition, frames, zoomToRect]);
-
-  // Present モード時に onTap 付きノードをクリックで遷移
-  useEffect(() => {
-    if (!presentMode) return;
-    const svg = svgRef.current;
-    if (!svg) return;
-
-    // node tree から id → onTap を引く
-    const tapMap = new Map<string, string>();
-    const walk = (nodes: PenNode[]) => {
-      for (const n of nodes) {
-        const t = (n as { onTap?: string }).onTap;
-        if (t) tapMap.set(n.id, t);
-        const children = (n as { children?: PenNode[] }).children;
-        if (children) walk(children);
-      }
-    };
-    walk(doc.children);
-    if (tapMap.size === 0) return;
-
-    const onClick = (e: PointerEvent) => {
-      // クリックされた DOM target から SVG <g> を辿り、対応するノード ID を探す
-      let el: Element | null = e.target as Element;
-      while (el) {
-        // SelectableNode 由来の <title> などから推定しづらいので、
-        // data 属性で記録するのが確実。SelectableNode は title しか埋めてないので
-        // 代替として元ノードツリーを「点在判定」で検索する。
-        el = el.parentElement as Element | null;
-      }
-      // SVG 座標に変換して doc を走査し、クリック点を含むノードを探す
-      const ctm = svg.getScreenCTM();
-      if (!ctm) return;
-      const x = (e.clientX - ctm.e) / ctm.a;
-      const y = (e.clientY - ctm.f) / ctm.d;
-      // top-level から逆順（前面優先）で探す
-      const findHit = (nodes: PenNode[]): string | null => {
-        for (let i = nodes.length - 1; i >= 0; i--) {
-          const n = nodes[i];
-          const nx = n.x ?? 0;
-          const ny = n.y ?? 0;
-          const nw =
-            typeof (n as { width?: unknown }).width === 'number' ? (n as { width: number }).width : 0;
-          const nh =
-            typeof (n as { height?: unknown }).height === 'number' ? (n as { height: number }).height : 0;
-          if (nw > 0 && nh > 0 && x >= nx && x <= nx + nw && y >= ny && y <= ny + nh) {
-            // children から先にヒットしたら優先
-            const children = (n as { children?: PenNode[] }).children;
-            if (children) {
-              // frame の場合は子のローカル座標に変換
-              const localX = x - nx;
-              const localY = y - ny;
-              const hit = (function findLocal(ns: PenNode[]): string | null {
-                for (let j = ns.length - 1; j >= 0; j--) {
-                  const m = ns[j];
-                  const mx = m.x ?? 0;
-                  const my = m.y ?? 0;
-                  const mw =
-                    typeof (m as { width?: unknown }).width === 'number' ? (m as { width: number }).width : 0;
-                  const mh =
-                    typeof (m as { height?: unknown }).height === 'number'
-                      ? (m as { height: number }).height
-                      : 0;
-                  if (
-                    mw > 0 &&
-                    mh > 0 &&
-                    localX >= mx &&
-                    localX <= mx + mw &&
-                    localY >= my &&
-                    localY <= my + mh
-                  ) {
-                    const gc = (m as { children?: PenNode[] }).children;
-                    if (gc) {
-                      // さらに深く探す
-                      const deeper = findLocal(gc);
-                      if (deeper && tapMap.has(deeper)) return deeper;
-                    }
-                    if (tapMap.has(m.id)) return m.id;
-                  }
-                }
-                return null;
-              })(children);
-              if (hit) return hit;
-            }
-            if (tapMap.has(n.id)) return n.id;
-          }
-        }
-        return null;
-      };
-      const hitId = findHit(doc.children);
-      if (hitId) {
-        const target = tapMap.get(hitId);
-        if (target) {
-          const idx = frames.findIndex((f) => f.id === target);
-          if (idx >= 0) {
-            e.preventDefault();
-            e.stopPropagation();
-            // 当該ノードの onTapTransition を取り出して transition を開始
-            const findTrans = (
-              nodes: PenNode[],
-            ):
-              | {
-                  duration?: number;
-                  easing?: 'linear' | 'ease-out' | 'ease-in' | 'ease-in-out';
-                  smartAnimate?: boolean;
-                }
-              | undefined => {
-              for (const n of nodes) {
-                if (n.id === hitId)
-                  return (
-                    n as {
-                      onTapTransition?: {
-                        duration?: number;
-                        easing?: 'linear' | 'ease-out' | 'ease-in' | 'ease-in-out';
-                        smartAnimate?: boolean;
-                      };
-                    }
-                  ).onTapTransition;
-                const children = (n as { children?: PenNode[] }).children;
-                if (children) {
-                  const v = findTrans(children);
-                  if (v !== undefined) return v;
-                }
-              }
-              return undefined;
-            };
-            const trans = findTrans(doc.children);
-            const duration = trans?.duration ?? 0;
-            if (duration > 0) {
-              setTransition({
-                // リスナーは presentMode 中に貼りっぱなしなので、クリック時点の
-                // 最新スライド番号を ref から読む（deps に入れると貼り直しになる）
-                fromIdx: presentIdxRef.current,
-                toIdx: idx,
-                duration,
-                easing: trans?.easing ?? 'ease-out',
-                smartAnimate: trans?.smartAnimate ?? true,
-                progress: 0,
-                startTime: performance.now(),
-              });
-            } else {
-              setPresentIdx(idx);
-            }
-          }
-        }
-      }
-    };
-    svg.addEventListener('pointerdown', onClick as EventListener, true);
-    return () => svg.removeEventListener('pointerdown', onClick as EventListener, true);
-  }, [presentMode, doc.children, frames, svgRef]);
-
-  // Smart Animate: rAF ループで progress を更新、完了したら presentIdx を切替
-  useEffect(() => {
-    if (!transition) return;
-    let raf = 0;
-    const tick = () => {
-      const now = performance.now();
-      const elapsed = now - transition.startTime;
-      const p = Math.max(0, Math.min(1, elapsed / transition.duration));
-      setTransition((prev) => (prev ? { ...prev, progress: p } : null));
-      if (p < 1) {
-        raf = requestAnimationFrame(tick);
-      } else {
-        // 完了: presentIdx を切替して transition クリア
-        setPresentIdx(transition.toIdx);
-        setTransition(null);
-      }
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transition?.startTime]);
-
-  // Present モード時のフレーム遷移 & 終了キー
-  useEffect(() => {
-    if (!presentMode) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setPresentMode(false);
-        return;
-      }
-      if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
-        e.preventDefault();
-        setPresentIdx((i) => Math.min(frames.length - 1, i + 1));
-        return;
-      }
-      if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-        e.preventDefault();
-        setPresentIdx((i) => Math.max(0, i - 1));
-        return;
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [presentMode, frames.length]);
-
-  // Space key for hand tool
-  /** 「全体を表示」: カメラを doc 全体に合わせ、フレームの選択も外す */
-  const resetView = useCallback(() => {
-    fitToDocument();
-    setActiveFrameId(null);
-  }, [fitToDocument]);
-
-  // Vim-like frame navigation: [count]h/j/k/l
-  // Text objects (vim mode only): vif, vaf, vir, vic
-  const vimCount = useRef('');
-  const vimGPending = useRef(false);
-  const vimTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  const nudgeSelected = useCallback((direction: string, count: number) => {
-    window.dispatchEvent(new CustomEvent('pencil-nudge', { detail: { direction, count } }));
-  }, []);
-
-  const navigateVim = useCallback(
-    (direction: 'h' | 'j' | 'k' | 'l', count: number) => {
-      if (frames.length === 0) return;
-
-      const sortedByX = [...frames].sort((a, b) => a.x - b.x || a.y - b.y);
-      const sortedByY = [...frames].sort((a, b) => a.y - b.y || a.x - b.x);
-
-      const currentId = activeFrameId;
-      let sorted: FrameEntry[];
-      let step: number;
-
-      switch (direction) {
-        case 'l':
-          sorted = sortedByX;
-          step = count;
-          break;
-        case 'h':
-          sorted = sortedByX;
-          step = -count;
-          break;
-        case 'j':
-          sorted = sortedByY;
-          step = count;
-          break;
-        case 'k':
-          sorted = sortedByY;
-          step = -count;
-          break;
-      }
-
-      const currentIdx = currentId ? sorted.findIndex((f) => f.id === currentId) : -1;
-      const startIdx = currentIdx >= 0 ? currentIdx : step > 0 ? -1 : sorted.length;
-      const targetIdx = Math.max(0, Math.min(sorted.length - 1, startIdx + step));
-      const target = sorted[targetIdx];
-      if (!target) return;
-
-      // 少し引いたビュー: ターゲットの前後3フレーム分のバウンディングボックスを表示
-      const contextRange = 3;
-      const lo = Math.max(0, targetIdx - contextRange);
-      const hi = Math.min(sorted.length - 1, targetIdx + contextRange);
-      let minX = Infinity,
-        minY = Infinity,
-        maxX = -Infinity,
-        maxY = -Infinity;
-      for (let i = lo; i <= hi; i++) {
-        const f = sorted[i];
-        minX = Math.min(minX, f.x);
-        minY = Math.min(minY, f.y);
-        maxX = Math.max(maxX, f.x + f.width);
-        maxY = Math.max(maxY, f.y + f.height);
-      }
-      const pad = 60;
-      pushHistory(target.id);
-      setActiveFrameId(target.id);
-      zoomToRect({
-        x: minX - pad,
-        y: minY - pad,
-        width: maxX - minX + pad * 2,
-        height: maxY - minY + pad * 2,
-      });
-    },
-    [frames, activeFrameId, pushHistory, zoomToRect],
-  );
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      const mod = e.ctrlKey || e.metaKey;
-
-      // Skip vim keys when typing in inputs
-      const tag = (e.target as HTMLElement).tagName;
-      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-
-      if (mod && e.key === '[') {
-        e.preventDefault();
-        navigateBack();
-      } else if (mod && e.key === ']') {
-        e.preventDefault();
-        navigateForward();
-      } else if (mod && e.shiftKey && e.key === 'p') {
-        e.preventDefault();
-        setShowCommandPalette((v) => !v);
-      } else if (mod && !e.shiftKey && e.key === 'p') {
-        e.preventDefault();
-        setShowFrameSearch((v) => !v);
-      } else if (mod && e.key === 'i') {
-        e.preventDefault();
-        setShowAutoId((v) => !v);
-      } else if (mod && e.key === '/') {
-        e.preventDefault();
-        setShowShortcuts((v) => !v);
-      } else if (mod && e.key === ';') {
-        // Cmd+; でルーラー表示トグル（Cmd+R はブラウザ予約のため避ける）
-        e.preventDefault();
-        setShowRulers((v) => !v);
-      } else if (e.shiftKey && !mod && !e.altKey && e.key === '1') {
-        // Shift+1: Fit to view
-        if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
-          e.preventDefault();
-          resetView();
-        }
-      } else if (e.shiftKey && !mod && !e.altKey && e.key === '2') {
-        // Shift+2: Zoom to selected node (similar to F)
-        if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
-          e.preventDefault();
-          window.dispatchEvent(new Event('pencil-zoom-to-selected'));
-        }
-      } else if (mod && !e.shiftKey && e.key === 'f') {
-        // Cmd+F で Find & Replace
-        e.preventDefault();
-        setShowFindReplace((v) => !v);
-      } else if (mod && (e.key === 'k' || e.key === 'K')) {
-        // Cmd+K で AI Design Generator を開く
-        if (isAIGenerateEnabled()) {
-          e.preventDefault();
-          setShowAIGenerate((v) => !v);
-        }
-      } else if (mod && e.key === 'Enter') {
-        // Cmd+Enter で Present mode トグル
-        e.preventDefault();
-        setPresentMode((v) => !v);
-      } else if (mod && e.key === '.') {
-        // Cmd+. で Focus mode トグル（UI 全消し、編集は可能）
-        e.preventDefault();
-        setFocusMode((v) => !v);
-      } else if (mod && e.shiftKey && (e.key === 'd' || e.key === 'D')) {
-        // Cmd+Shift+D で Dev Inspect パネル
-        e.preventDefault();
-        setShowDevInspect((v) => !v);
-      } else if (mod && e.key === '0') {
-        e.preventDefault();
-        resetView();
-      } else if (mod && e.key === '1') {
-        e.preventDefault();
-        zoomTo100();
-      } else if (mod && (e.key === '=' || e.key === '+')) {
-        e.preventDefault();
-        zoomByFactor(1.25);
-      } else if (mod && e.key === '-') {
-        e.preventDefault();
-        zoomByFactor(1 / 1.25);
-      } else if (!mod && !isInput && vimMode) {
-        // Vim-style keybindings (vim mode only)
-        // Number prefix: accumulate digits
-        if (/^[0-9]$/.test(e.key)) {
-          vimCount.current += e.key;
-          clearTimeout(vimTimeout.current);
-          vimTimeout.current = setTimeout(() => {
-            vimCount.current = '';
-            vimGPending.current = false;
-          }, 1500);
-          return;
-        }
-        // g prefix: next h/j/k/l will do frame jump
-        if (e.key === 'g' && !vimGPending.current) {
-          vimGPending.current = true;
-          clearTimeout(vimTimeout.current);
-          vimTimeout.current = setTimeout(() => {
-            vimGPending.current = false;
-            vimCount.current = '';
-          }, 1500);
-          return;
-        }
-        // Shift + H/J/K/L: camera half-page scroll
-        if (e.key === 'H' || e.key === 'J' || e.key === 'K' || e.key === 'L') {
-          e.preventDefault();
-          const dir = e.key.toLowerCase();
-          const el = containerRef.current;
-          const aspect = el ? el.clientWidth / el.clientHeight : 16 / 9;
-          // ズーム倍率は prev から読む。camera を閉じ込めると、ズーム後も
-          // 登録時の倍率でスクロールしてしまう（リスナーは貼りっぱなしのため）
-          setCamera((prev) => {
-            const halfW = prev.svgWidth / 2;
-            const halfH = prev.svgWidth / aspect / 2;
-            return {
-              ...prev,
-              cx: prev.cx + (dir === 'l' ? halfW : dir === 'h' ? -halfW : 0),
-              cy: prev.cy + (dir === 'j' ? halfH : dir === 'k' ? -halfH : 0),
-            };
-          });
-          return;
-        }
-        if (e.key === 'h' || e.key === 'j' || e.key === 'k' || e.key === 'l') {
-          e.preventDefault();
-          const count = Math.max(1, parseInt(vimCount.current) || 1);
-          vimCount.current = '';
-          clearTimeout(vimTimeout.current);
-          if (vimGPending.current) {
-            // g + h/j/k/l: frame jump
-            vimGPending.current = false;
-            navigateVim(e.key, count);
-          } else if (document.querySelector('.node-tree__item--selected')) {
-            // Node selected: nudge node by pixels
-            nudgeSelected(e.key, count);
-          } else {
-            // No selection: pan camera
-            setCamera((prev) => {
-              const step = prev.svgWidth * 0.05 * count; // 5% of view per press
-              return {
-                ...prev,
-                cx: prev.cx + (e.key === 'l' ? step : e.key === 'h' ? -step : 0),
-                cy: prev.cy + (e.key === 'j' ? step : e.key === 'k' ? -step : 0),
-              };
-            });
-          }
-          return;
-        }
-        // i / I (Shift+i): enter insert mode on editable node
-        if (e.key === 'i' || e.key === 'I') {
-          e.preventDefault();
-          window.dispatchEvent(new Event('pencil-enter-insert'));
-          return;
-        }
-        // F (Shift+f) to zoom-focus on selected node
-        if (e.key === 'F') {
-          e.preventDefault();
-          window.dispatchEvent(new Event('pencil-zoom-to-selected'));
-          return;
-        }
-        // / to open search (vim-style)
-        if (e.key === '/') {
-          e.preventDefault();
-          setShowFrameSearch(true);
-          return;
-        }
-        // Esc to deselect
-        if (e.key === 'Escape') {
-          setActiveFrameId(null);
-        }
-        // Reset g pending on other keys
-        vimGPending.current = false;
-      } else if (!mod && !isInput && !vimMode) {
-        // Non-vim: / still opens search
-        if (e.key === '/') {
-          e.preventDefault();
-          setShowFrameSearch(true);
-        }
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-    // vimMode を落とすと、モード切替がこのリスナーに伝わらない（実害のある stale）。
-    // nudgeSelected は useCallback([]) で安定なので依存に入れても再登録は増えない。
-  }, [
-    setCamera,
+  // Keyboard shortcuts (#71)
+  useViewerShortcuts({
+    vimMode,
     containerRef,
-    zoomByFactor,
-    resetView,
-    zoomTo100,
+    setCamera,
+    setActiveFrameId,
     navigateBack,
     navigateForward,
     navigateVim,
-    nudgeSelected,
-    vimMode,
-  ]);
+    resetView,
+    zoomTo100,
+    zoomByFactor,
+    setShowCommandPalette,
+    setShowFrameSearch,
+    setShowAutoId,
+    setShowShortcuts,
+    setShowRulers,
+    setShowFindReplace,
+    setShowAIGenerate,
+    setShowDevInspect,
+    setPresentMode,
+    setFocusMode,
+  });
 
   const cursor = isSpaceHeld.current || isPanning.current ? 'grab' : 'default';
 
@@ -770,7 +219,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
       <GitHubDirtyTracker />
       <CollabSync
         connected={collab.connected}
-        joining={joinedViaUrl.current}
+        joining={joinedViaUrl}
         syncDoc={syncCollabDoc}
         setRemoteHandler={setRemoteHandler}
         setLocalSelection={setLocalSelection}
@@ -818,7 +267,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
                   type="button"
                   className="viewer__zoom-btn"
                   title="Back (Cmd+[)"
-                  disabled={historyIndex <= 0}
+                  disabled={!canGoBack}
                   onClick={navigateBack}
                 >
                   &#9664;
@@ -827,7 +276,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
                   type="button"
                   className="viewer__zoom-btn"
                   title="Forward (Cmd+])"
-                  disabled={historyIndex >= history.length - 1}
+                  disabled={!canGoForward}
                   onClick={navigateForward}
                 >
                   &#9654;
