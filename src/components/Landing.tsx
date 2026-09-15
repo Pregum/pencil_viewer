@@ -7,10 +7,14 @@ export function Landing({
   onFile,
   onUrl,
   onSample,
+  onGitHub,
+  githubConnected,
 }: {
   onFile: (f: File) => void;
   onUrl: (url: string) => void;
   onSample: (name: string) => void;
+  onGitHub: () => void;
+  githubConnected: boolean;
 }) {
   const { t } = useI18n();
 
@@ -126,6 +130,14 @@ export function Landing({
         <div className="idle">
           <DropZone onFile={onFile} />
           <div className="idle__divider"><span>or</span></div>
+          <button type="button" className="lp__github-open" onClick={onGitHub}>
+            <span className="lp__github-open-icon">🗂️</span>
+            <span className="lp__github-open-text">
+              <strong>{githubConnected ? 'GitHub のリポジトリから開く' : 'GitHub に接続して .pen を開く'}</strong>
+              <small>あなたの repo に git-backed で保存・蓄積（サーバー不要・$0）</small>
+            </span>
+            <span className="lp__github-open-arrow">→</span>
+          </button>
           <UrlInput onSubmit={onUrl} />
           <SampleList onPick={onSample} />
         </div>

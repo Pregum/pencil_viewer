@@ -10,6 +10,10 @@ const Vision = lazy(() => import('./components/Vision').then((m) => ({ default: 
 import { useI18n } from './i18n/I18nContext';
 import type { SupportedLocale } from './i18n/detectLocale';
 import { isShareEnabled, uploadPen, fetchSharedPen } from './utils/shareApi';
+import { useGitHub } from './github/GitHubContext';
+import { GitHubPanel } from './github/GitHubPanel';
+import { HistoryPanel } from './github/HistoryPanel';
+import { getPenFile, type GitHubFileRef } from './github/githubApi';
 
 const LOCALES: { code: SupportedLocale; label: string }[] = [
   { code: 'en', label: 'EN' },
@@ -20,10 +24,64 @@ const LOCALES: { code: SupportedLocale; label: string }[] = [
 export function App() {
   const { state, loadFile, loadUrl, loadSample, loadEmpty, reset } = useDocument();
   const { locale, setLocale, t } = useI18n();
+  const {
+    panelOpen,
+    openPanel,
+    closePanel,
+    setCurrentFile,
+    connected,
+    currentFile,
+    dirty,
+    setForceDirty,
+    registerReloadHandler,
+    token,
+    historyOpen,
+    openHistory,
+    closeHistory,
+  } = useGitHub();
 
   const [showDocs, setShowDocs] = useState(false);
   const [showVision, setShowVision] = useState(false);
   const [shareStatus, setShareStatus] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle');
+  // ロードのたびに増やすキー。これを PenViewer の key にして EditorProvider を
+  // 確実に remount させる（別ファイルを開く/最新を再取得しても editor が stale にならない）。
+  const [loadNonce, setLoadNonce] = useState(0);
+
+  // GitHub から .pen を開く: テキストを File 化して loadFile に流し、参照を記録する
+  const handleOpenFromGitHub = useCallback(
+    (text: string, ref: GitHubFileRef, fileName: string) => {
+      const file = new File([text], fileName, { type: 'application/json' });
+      void loadFile(file);
+      setCurrentFile(ref);
+      setForceDirty(false);
+      setLoadNonce((n) => n + 1);
+    },
+    [loadFile, setCurrentFile, setForceDirty],
+  );
+
+  // 履歴からの復元: 旧版をエディタに読み込む。repo tip はまだ別なので forceDirty を立て、
+  // Commit して初めて「その版に戻す」コミットが作られる。
+  const handleRestore = useCallback(
+    (text: string, ref: GitHubFileRef, fileName: string) => {
+      const file = new File([text], fileName, { type: 'application/json' });
+      void loadFile(file);
+      setCurrentFile(ref);
+      setForceDirty(true);
+      setLoadNonce((n) => n + 1);
+    },
+    [loadFile, setCurrentFile, setForceDirty],
+  );
+
+  // 競合時にエディタへ「最新を取得」するハンドラを GitHubContext に登録
+  useEffect(() => {
+    registerReloadHandler(async () => {
+      if (!token || !currentFile) return;
+      const f = await getPenFile(token, currentFile.owner, currentFile.repo, currentFile.path, currentFile.branch);
+      const name = currentFile.path.split('/').pop() ?? currentFile.path;
+      handleOpenFromGitHub(f.text, { ...currentFile, sha: f.sha }, name);
+    });
+    return () => registerReloadHandler(null);
+  }, [registerReloadHandler, token, currentFile, handleOpenFromGitHub]);
 
   // ?src= または ?id= クエリから自動読み込み
   useEffect(() => {
@@ -83,7 +141,23 @@ export function App() {
         <span className="brand">✏️ Pencil Viewer</span>
         {state.status === 'ready' && (
           <div className="header__file">
-            <span>{sourceLabel}</span>
+            {currentFile ? (
+              <button
+                type="button"
+                className={`header__gh-file${dirty ? ' header__gh-file--dirty' : ''}`}
+                onClick={openHistory}
+                title={`${currentFile.owner}/${currentFile.repo} @ ${currentFile.branch}${dirty ? '（未コミットの変更あり）' : ''} — クリックで履歴`}
+              >
+                <span className="header__gh-file-dot" aria-hidden>
+                  {dirty ? '●' : '✓'}
+                </span>
+                <span className="header__gh-file-path">{currentFile.path}</span>
+                <span className="header__gh-file-branch">@{currentFile.branch}</span>
+                <span className="header__gh-file-hist">🕑</span>
+              </button>
+            ) : (
+              <span>{sourceLabel}</span>
+            )}
             {isShareEnabled() && (
               <button
                 type="button"
@@ -111,7 +185,7 @@ export function App() {
             <button
               type="button"
               className="button button--ghost header__back-btn"
-              onClick={reset}
+              onClick={() => { reset(); setCurrentFile(null); }}
               title={t('header.back')}
               aria-label={t('header.back')}
             >
@@ -121,6 +195,14 @@ export function App() {
           </div>
         )}
         <div className="header__links">
+          <button
+            type="button"
+            className={`button button--ghost button--sm header__docs-btn${connected ? ' header__gh-connected' : ''}`}
+            onClick={openPanel}
+            title="GitHub に .pen を読み書き"
+          >
+            {connected ? '🟢 GitHub' : 'GitHub'}
+          </button>
           <button
             type="button"
             className="button button--ghost button--sm header__docs-btn"
@@ -187,6 +269,8 @@ export function App() {
             onFile={(f) => void loadFile(f)}
             onUrl={(url) => void loadUrl(url)}
             onSample={(name) => void loadSample(name)}
+            onGitHub={openPanel}
+            githubConnected={connected}
           />
         )}
 
@@ -212,8 +296,13 @@ export function App() {
           />
         )}
 
-        {!showDocs && !showVision && state.status === 'ready' && <PenViewer doc={state.doc} rawDoc={state.rawDoc} />}
+        {!showDocs && !showVision && state.status === 'ready' && (
+          <PenViewer key={loadNonce} doc={state.doc} rawDoc={state.rawDoc} />
+        )}
       </main>
+
+      <GitHubPanel open={panelOpen} onClose={closePanel} onOpenFile={handleOpenFromGitHub} />
+      <HistoryPanel open={historyOpen} onClose={closeHistory} onRestore={handleRestore} />
     </div>
   );
 }
