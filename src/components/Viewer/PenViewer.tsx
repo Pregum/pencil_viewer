@@ -114,8 +114,19 @@ function VimBadge() {
 }
 
 export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocument }) {
-  const baseVb = computeViewBox(doc);
+  const baseVb = useMemo(() => computeViewBox(doc), [doc]);
   const frames = useMemo(() => collectFrames(doc.children), [doc]);
+
+  // ズーム上下限で svgWidth をクランプする。camera を更新する各 callback の
+  // 依存に入れるので useCallback で参照を安定させる
+  const clampSvgWidth = useCallback(
+    (w: number) => {
+      const minW = baseVb.width / MAX_SCALE;
+      const maxW = baseVb.width / MIN_SCALE;
+      return Math.min(maxW, Math.max(minW, w));
+    },
+    [baseVb.width],
+  );
 
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -264,7 +275,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         svgWidth: clampSvgWidth(svgWidth),
       });
     },
-    [],
+    [clampSvgWidth],
   );
 
   // Zoom to a specific frame
@@ -276,12 +287,6 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
     },
     [pushHistory, zoomToRect],
   );
-
-  function clampSvgWidth(w: number) {
-    const minW = baseVb.width / MAX_SCALE;
-    const maxW = baseVb.width / MIN_SCALE;
-    return Math.min(maxW, Math.max(minW, w));
-  }
 
   // キャンバスのクライアントサイズ追跡（ルーラー用）
   useEffect(() => {
@@ -481,7 +486,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
     };
     svg.addEventListener('pointerdown', onClick as EventListener, true);
     return () => svg.removeEventListener('pointerdown', onClick as EventListener, true);
-  }, [presentMode, doc.children, frames, svgRef]);
+  }, [presentMode, presentIdx, doc.children, frames, svgRef]);
 
   // Smart Animate: rAF ループで progress を更新、完了したら presentIdx を切替
   useEffect(() => {
@@ -598,7 +603,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
 
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [camera.svgWidth]);
+  }, [camera.svgWidth, clampSvgWidth]);
 
   // Pan: space+drag, middle-button drag, alt+drag, or touch drag (1 本指)
   // Pinch zoom: タッチ 2 本指
@@ -723,7 +728,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         cy: cameraStart.current.cy - dy,
       });
     },
-    [],
+    [clampSvgWidth],
   );
 
   const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -754,7 +759,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
       ...prev,
       svgWidth: clampSvgWidth(prev.svgWidth / factor),
     }));
-  }, []);
+  }, [clampSvgWidth]);
 
   const resetView = useCallback(() => {
     setCamera({
@@ -930,15 +935,17 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         if (e.key === 'H' || e.key === 'J' || e.key === 'K' || e.key === 'L') {
           e.preventDefault();
           const dir = e.key.toLowerCase();
-          const halfW = camera.svgWidth / 2;
           const el = containerRef.current;
           const aspect = el ? el.clientWidth / el.clientHeight : 16 / 9;
-          const halfH = (camera.svgWidth / aspect) / 2;
-          setCamera((prev) => ({
-            ...prev,
-            cx: prev.cx + (dir === 'l' ? halfW : dir === 'h' ? -halfW : 0),
-            cy: prev.cy + (dir === 'j' ? halfH : dir === 'k' ? -halfH : 0),
-          }));
+          setCamera((prev) => {
+            const halfW = prev.svgWidth / 2;
+            const halfH = (prev.svgWidth / aspect) / 2;
+            return {
+              ...prev,
+              cx: prev.cx + (dir === 'l' ? halfW : dir === 'h' ? -halfW : 0),
+              cy: prev.cy + (dir === 'j' ? halfH : dir === 'k' ? -halfH : 0),
+            };
+          });
           return;
         }
         if (e.key === 'h' || e.key === 'j' || e.key === 'k' || e.key === 'l') {
@@ -955,12 +962,14 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             nudgeSelected(e.key, count);
           } else {
             // No selection: pan camera
-            const step = camera.svgWidth * 0.05 * count; // 5% of view per press
-            setCamera((prev) => ({
-              ...prev,
-              cx: prev.cx + (e.key === 'l' ? step : e.key === 'h' ? -step : 0),
-              cy: prev.cy + (e.key === 'j' ? step : e.key === 'k' ? -step : 0),
-            }));
+            setCamera((prev) => {
+              const step = prev.svgWidth * 0.05 * count; // 5% of view per press
+              return {
+                ...prev,
+                cx: prev.cx + (e.key === 'l' ? step : e.key === 'h' ? -step : 0),
+                cy: prev.cy + (e.key === 'j' ? step : e.key === 'k' ? -step : 0),
+              };
+            });
           }
           return;
         }
@@ -998,7 +1007,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [zoomByFactor, resetView, zoomTo100, navigateBack, navigateForward, navigateVim]);
+  }, [zoomByFactor, resetView, zoomTo100, navigateBack, navigateForward, navigateVim, nudgeSelected, vimMode]);
 
   const cursor = isSpaceHeld.current || isPanning.current ? 'grab' : 'default';
 

@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { collectSelectionColors, replaceColor } from '../src/components/Viewer/SelectionColorsPanel';
+import { collect, replaceColor } from '../src/pen/selectionColors';
 import type { PenNode } from '../src/pen/types';
 
 function rect(id: string, extra: Record<string, unknown> = {}): PenNode {
   return { type: 'rectangle', id, x: 0, y: 0, width: 10, height: 10, ...extra } as PenNode;
 }
 
-describe('collectSelectionColors', () => {
+describe('collect', () => {
   it('collects fill colors with node references', () => {
-    const m = collectSelectionColors([
+    const m = collect([
       rect('a', { fill: '#FF0000' }),
       rect('b', { fill: '#FF0000' }),
       rect('c', { fill: '#00FF00' }),
@@ -19,7 +19,7 @@ describe('collectSelectionColors', () => {
   });
 
   it('collects stroke colors and marks kind', () => {
-    const m = collectSelectionColors([
+    const m = collect([
       rect('a', { fill: '#FFFFFF', stroke: { thickness: 1, fill: '#000000' } }),
     ]);
     expect(m.get('#FFFFFF')?.kinds.has('fill')).toBe(true);
@@ -27,21 +27,21 @@ describe('collectSelectionColors', () => {
   });
 
   it('handles solid fill object form ({type:"color",color:...})', () => {
-    const m = collectSelectionColors([
+    const m = collect([
       rect('a', { fill: { type: 'color', color: '#abcdef' } }),
     ]);
     expect(m.has('#ABCDEF')).toBe(true);
   });
 
   it('handles fill arrays (first color)', () => {
-    const m = collectSelectionColors([
+    const m = collect([
       rect('a', { fill: ['#FF0000', '#0000FF'] }),
     ]);
     expect(m.has('#FF0000')).toBe(true);
   });
 
   it('recurses into frame children', () => {
-    const m = collectSelectionColors([
+    const m = collect([
       {
         type: 'frame', id: 'f', x: 0, y: 0, width: 100, height: 100,
         children: [rect('a', { fill: '#111111' })],
@@ -51,7 +51,7 @@ describe('collectSelectionColors', () => {
   });
 
   it('ignores nodes without color', () => {
-    const m = collectSelectionColors([rect('a')]);
+    const m = collect([rect('a')]);
     expect(m.size).toBe(0);
   });
 });

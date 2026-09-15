@@ -30,7 +30,8 @@ function findNode(nodes: PenNode[], id: string): PenNode | null {
 export function FloatingTextToolbar({ svgRef }: Props) {
   const { state, updateNodeSilent } = useEditor();
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
-  const [colorOpen, setColorOpen] = useState(false);
+  /** ColorPicker の anchor 矩形。null = 閉じている。開く瞬間にスウォッチを測る */
+  const [colorAnchor, setColorAnchor] = useState<DOMRect | null>(null);
   const swatchRef = useRef<HTMLButtonElement>(null);
 
   const editingId = state.editingNodeId;
@@ -147,14 +148,17 @@ export function FloatingTextToolbar({ svgRef }: Props) {
         className="float-text-toolbar__color"
         style={{ background: fill }}
         title={`Color: ${fill}`}
-        onClick={() => setColorOpen((v) => !v)}
+        onClick={() => {
+          const rect = swatchRef.current?.getBoundingClientRect() ?? null;
+          setColorAnchor((prev) => (prev ? null : rect));
+        }}
       />
-      {colorOpen && (
+      {colorAnchor && (
         <ColorPicker
           color={fill.startsWith('#') ? fill.slice(0, 7) : '#111827'}
-          anchorRect={swatchRef.current?.getBoundingClientRect() ?? null}
+          anchorRect={colorAnchor}
           onChange={(hex) => patch({ fill: hex })}
-          onClose={() => setColorOpen(false)}
+          onClose={() => setColorAnchor(null)}
         />
       )}
     </div>

@@ -56,10 +56,6 @@ export function CommandPalette({ commands, onClose }: Props) {
   }, [onClose]);
 
   useEffect(() => {
-    setSelectedIdx(0);
-  }, [query]);
-
-  useEffect(() => {
     const list = listRef.current;
     if (!list) return;
     const item = list.children[selectedIdx] as HTMLElement | undefined;
@@ -101,7 +97,11 @@ export function CommandPalette({ commands, onClose }: Props) {
           type="text"
           placeholder="> Type a command..."
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            // 検索語が変わったら選択位置を先頭に戻す
+            setQuery(e.target.value);
+            setSelectedIdx(0);
+          }}
           onKeyDown={handleKeyDown}
         />
         <div className="frame-search__list" ref={listRef}>

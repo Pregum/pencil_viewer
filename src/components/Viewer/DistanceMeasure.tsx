@@ -111,10 +111,18 @@ export function DistanceMeasure({ svgRef, svgScale }: Props) {
     const down = (e: KeyboardEvent) => {
       if (e.altKey) setAltDown(true);
     };
+    // Alt を離したらホバー対象も忘れる。次に Alt を押した瞬間に
+    // 前回のホバー先が一瞬描かれるのを防ぐ
     const up = (e: KeyboardEvent) => {
-      if (!e.altKey) setAltDown(false);
+      if (!e.altKey) {
+        setAltDown(false);
+        setHoverId(null);
+      }
     };
-    const blur = () => setAltDown(false);
+    const blur = () => {
+      setAltDown(false);
+      setHoverId(null);
+    };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     window.addEventListener('blur', blur);
@@ -127,10 +135,7 @@ export function DistanceMeasure({ svgRef, svgScale }: Props) {
 
   // ホバー位置を追跡
   useEffect(() => {
-    if (!altDown || !state.selectedNodeId) {
-      setHoverId(null);
-      return;
-    }
+    if (!altDown || !state.selectedNodeId) return;
     const svg = svgRef.current;
     if (!svg) return;
 

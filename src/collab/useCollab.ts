@@ -95,7 +95,9 @@ export function useCollab() {
   const onDocUpdateRef = useRef<RemoteDocHandler | null>(null);
   /** awareness に書き込む user フィールドを最新に保つための参照 */
   const userRef = useRef({ name: state.userName, color: state.selfColor });
-  userRef.current = { name: state.userName, color: state.selfColor };
+  useEffect(() => {
+    userRef.current = { name: state.userName, color: state.selfColor };
+  }, [state.userName, state.selfColor]);
 
   /** CollabSync から呼ぶ: リモート doc 受信ハンドラを登録 */
   const setRemoteHandler = useCallback((cb: RemoteDocHandler | null) => {

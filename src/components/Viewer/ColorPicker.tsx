@@ -77,7 +77,24 @@ export function ColorPicker({ color, onChange, onClose, anchorRect }: Props) {
   const [hue, setHue] = useState(hsv.h);
   const [sat, setSat] = useState(hsv.s);
   const [val, setVal] = useState(hsv.v);
-  const [hexInput, setHexInput] = useState(color);
+  const [hexInput, setHexInput] = useState(color.toUpperCase());
+
+  // prop の color が外から変わった場合に同期する。
+  // effect で setState すると 1 フレーム古い色が描かれてから再描画されるので、
+  // 直前の prop を覚えておいて render 中に state を合わせる
+  // (React 公式の "adjusting state when a prop changes" パターン)
+  const [prevColor, setPrevColor] = useState(color);
+  if (color !== prevColor) {
+    setPrevColor(color);
+    const r = hexToRgb(color);
+    if (r) {
+      const h = rgbToHsv(r.r, r.g, r.b);
+      setHue(h.h);
+      setSat(h.s);
+      setVal(h.v);
+      setHexInput(color.toUpperCase());
+    }
+  }
 
   const slRef = useRef<HTMLDivElement>(null);
   const hueRef = useRef<HTMLDivElement>(null);
@@ -92,17 +109,6 @@ export function ColorPicker({ color, onChange, onClose, anchorRect }: Props) {
     window.addEventListener('mousedown', onDown);
     return () => window.removeEventListener('mousedown', onDown);
   }, [onClose]);
-
-  // prop の color が外から変わった場合に同期
-  useEffect(() => {
-    const r = hexToRgb(color);
-    if (!r) return;
-    const h = rgbToHsv(r.r, r.g, r.b);
-    setHue(h.h);
-    setSat(h.s);
-    setVal(h.v);
-    setHexInput(color.toUpperCase());
-  }, [color]);
 
   const emit = useCallback((h: number, s: number, v: number) => {
     const rgb2 = hsvToRgb(h, s, v);

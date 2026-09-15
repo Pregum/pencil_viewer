@@ -47,14 +47,19 @@ export function PenToolCreator({ svgRef, svgScale }: Props) {
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
   const pointerDown = useRef(false);
 
-  // ツール抜ける時に state リセット
-  useEffect(() => {
+  // ツールを抜けた瞬間に作業中の state を捨てる。effect で setState すると
+  // 描きかけのパスが 1 フレーム残るので、直前の active を覚えて render 中に合わせる
+  const [prevActive, setPrevActive] = useState(active);
+  if (active !== prevActive) {
+    setPrevActive(active);
     if (!active) {
       setAnchors([]);
       setDragHandle(null);
       setHover(null);
-      pointerDown.current = false;
     }
+  }
+  useEffect(() => {
+    if (!active) pointerDown.current = false;
   }, [active]);
 
   // 確定して path ノードを作成
@@ -224,7 +229,7 @@ export function PenToolCreator({ svgRef, svgScale }: Props) {
 
   // ゴースト（hover 位置への次セグメント）
   let ghostD = '';
-  if (hover && inprog.length >= 1 && !pointerDown.current) {
+  if (hover && inprog.length >= 1 && !dragHandle) {
     const last = inprog[inprog.length - 1];
     const ghost: PathAnchor[] = [last, { position: hover }];
     ghostD = buildPathD(ghost, false);

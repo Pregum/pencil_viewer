@@ -73,10 +73,6 @@ export function FrameSearch({ frames, activeFrameId, cameraCx, cameraCy, onSelec
   }, [onClose]);
 
   useEffect(() => {
-    setSelectedIdx(0);
-  }, [query]);
-
-  useEffect(() => {
     const list = listRef.current;
     if (!list) return;
     const item = list.children[selectedIdx] as HTMLElement | undefined;
@@ -136,7 +132,11 @@ export function FrameSearch({ frames, activeFrameId, cameraCx, cameraCy, onSelec
           type="text"
           placeholder="Search frames..."
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            // 検索語が変わったら選択位置を先頭に戻す
+            setQuery(e.target.value);
+            setSelectedIdx(0);
+          }}
           onKeyDown={handleKeyDown}
         />
 

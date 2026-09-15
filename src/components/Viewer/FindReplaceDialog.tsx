@@ -59,11 +59,6 @@ export function FindReplaceDialog({ onClose, onFocusNode }: Props) {
   const count = matches.length;
   const current = count > 0 ? matches[idx % count] : null;
 
-  // 検索結果が変わったら idx を reset
-  useEffect(() => {
-    setIdx(0);
-  }, [query, caseSensitive]);
-
   const focusOn = (node: PenNode) => {
     selectNode(node.id);
     const w = typeof (node as { width?: unknown }).width === 'number' ? (node as { width: number }).width : 0;
@@ -120,7 +115,11 @@ export function FindReplaceDialog({ onClose, onFocusNode }: Props) {
           className="find-replace__input"
           placeholder="Find…"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            // 検索条件が変わったら idx を先頭に戻す
+            setQuery(e.target.value);
+            setIdx(0);
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
@@ -146,7 +145,10 @@ export function FindReplaceDialog({ onClose, onFocusNode }: Props) {
           <input
             type="checkbox"
             checked={caseSensitive}
-            onChange={(e) => setCaseSensitive(e.target.checked)}
+            onChange={(e) => {
+              setCaseSensitive(e.target.checked);
+              setIdx(0);
+            }}
           />
           Aa
         </label>

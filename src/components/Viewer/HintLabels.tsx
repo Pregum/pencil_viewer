@@ -102,10 +102,13 @@ export function HintLabels({ vimMode, cameraCx, cameraCy, viewBox }: Props) {
   const { state, selectNode } = useEditor();
   const [active, setActive] = useState(false);
   const [mode, setMode] = useState<'f' | 't'>('f');
-  const [targets, setTargets] = useState<HintTarget[]>([]);
 
-  // Collect targets when activated
-  const allTargets = useMemo(() => {
+  // vim mode を抜けたらヒント表示も閉じる。effect で setState すると
+  // 1 フレーム遅れるので render 中に state を合わせる
+  if (!vimMode && active) setActive(false);
+
+  // Collect targets when activated (非 active 時は空配列)
+  const targets = useMemo(() => {
     if (!active) return [];
     const framesOnly = mode === 'f';
     const raw = collectVisible(state.doc.children, viewBox, cameraCx, cameraCy, framesOnly, 0, 0);
@@ -118,21 +121,16 @@ export function HintLabels({ vimMode, cameraCx, cameraCy, viewBox }: Props) {
       seen.add(r.nodeId);
       return true;
     });
-    return unique.slice(0, HINT_KEYS.length).map((r, i) => ({
-      ...r,
-      key: HINT_KEYS[i],
-    }));
+    return unique.slice(0, HINT_KEYS.length).map(
+      (r, i): HintTarget => ({
+        ...r,
+        key: HINT_KEYS[i],
+      }),
+    );
   }, [active, mode, state.doc, viewBox, cameraCx, cameraCy]);
 
   useEffect(() => {
-    if (active) setTargets(allTargets);
-  }, [active, allTargets]);
-
-  useEffect(() => {
-    if (!vimMode) {
-      setActive(false);
-      return;
-    }
+    if (!vimMode) return;
     const onKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
@@ -152,7 +150,6 @@ export function HintLabels({ vimMode, cameraCx, cameraCy, viewBox }: Props) {
         e.stopImmediatePropagation();
         if (e.key === 'Escape') {
           setActive(false);
-          setTargets([]);
           return;
         }
         const target = targets.find((t) => t.key === e.key);
@@ -160,7 +157,6 @@ export function HintLabels({ vimMode, cameraCx, cameraCy, viewBox }: Props) {
           selectNode(target.nodeId);
         }
         setActive(false);
-        setTargets([]);
       }
     };
     window.addEventListener('keydown', onKeyDown, true);

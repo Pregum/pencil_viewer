@@ -116,6 +116,10 @@ export function CommentsLayer({ svgRef, svgScale }: Props) {
       </g>
 
       {/* Popup: open または draft */}
+      {/* ピン位置 (SVG 座標) を position: fixed の画面座標に変換するため、
+          render のたびに svg の CTM を読む。カメラ移動で親が再描画される
+          タイミングと同期させたいので、意図的に render 中に ref を参照している。 */}
+      {/* eslint-disable-next-line react-hooks/refs */}
       {(openId || draftPos) && (() => {
         const svg = svgRef.current;
         if (!svg) return null;

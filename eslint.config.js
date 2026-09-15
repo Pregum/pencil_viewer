@@ -46,14 +46,26 @@ export default tseslint.config(
       'react-hooks/rules-of-hooks': 'error',
 
       // 以下は eslint-plugin-react-hooks v6 で入った React Compiler 系の
-      // ルール。既存コードに 31 件あり、直すには実装の作り替えが要る。
-      // まず warn で可視化し、段階的に error へ上げる (#78)。
+      // ルール。導入時 (#69) は既存コードに 31 件あったため warn で可視化し、
+      // #78 で全件解消した。CI は --max-warnings=0 で回すので、warn でも
+      // 新規の違反は CI で落ちる。error に上げていないのは、ローカルで
+      // 試行錯誤している途中でも lint 全体が赤くならないようにするため。
       'react-hooks/exhaustive-deps': 'warn',
       'react-hooks/set-state-in-effect': 'warn',
       'react-hooks/refs': 'warn',
       'react-hooks/immutability': 'warn',
       'react-hooks/preserve-manual-memoization': 'warn',
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+    },
+  },
+  {
+    // Context モジュールは Provider コンポーネントと useXxx フックを同じファイルに
+    // 置く (React の標準的な Context パターン)。フックを別ファイルに分けても
+    // HMR の粒度以外に得るものがなく、import 元 30 箇所超の書き換えが要るだけなので、
+    // このファイル群に限って only-export-components を外す。
+    files: ['**/*Context.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
     },
   },
   {

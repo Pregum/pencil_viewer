@@ -223,7 +223,7 @@ export function SelectableNode({ node, children }: Props) {
 
       (e.target as SVGElement).setPointerCapture(e.pointerId);
     },
-    [isSelected, isMultiSelected, x, y, width, height, rotation, pushUndoCheckpoint, cloneNodesAtTop, state.doc.children, state.selectedNodeIds, node.id, node.type],
+    [isSelected, isMultiSelected, x, y, width, height, rotation, pushUndoCheckpoint, cloneNodesAtTop, state.doc.children, state.selectedNodeIds, node],
   );
 
   const handlePointerMove = useCallback(
@@ -480,7 +480,7 @@ export function SelectableNode({ node, children }: Props) {
         );
       }
     },
-    [node.id, updateNodeSilent, updateManySilent, screenToSvgDelta, state.doc.children],
+    [node.id, width, height, updateNodeSilent, updateManySilent, screenToSvgDelta, state.doc.children, state.gridSnap, state.gridSize],
   );
 
   const handlePointerUp = useCallback(() => {

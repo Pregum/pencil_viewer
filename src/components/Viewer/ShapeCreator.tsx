@@ -218,7 +218,7 @@ export function ShapeCreator({ svgRef }: Props) {
       // 作成したら select ツールに戻す
       setActiveTool('select');
     },
-    [preview, tool, addNode, setActiveTool, beginEditing],
+    [preview, tool, addNode, setActiveTool, beginEditing, state.gridSnap, state.gridSize],
   );
 
   useEffect(() => {

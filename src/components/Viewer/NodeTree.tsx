@@ -294,31 +294,45 @@ export function NodeTree({ collapsed, onTogglePanel }: { collapsed?: boolean; on
   const filterActive = query.trim().length > 0;
   const visibleIds = filterActive ? filter.visible : null;
 
-  // フィルタ中はヒットの祖先を自動展開
-  useEffect(() => {
-    if (!filterActive) return;
-    if (filter.autoExpand.size === 0) return;
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      for (const id of filter.autoExpand) next.add(id);
-      return next;
-    });
-  }, [filterActive, filter.autoExpand]);
-
-  // 選択変更時: 祖先を自動展開 + スクロール
-  useEffect(() => {
-    if (!state.selectedNodeId) return;
-
-    // 祖先を展開
-    const ancestors = collectAncestorIds(state.doc.children, state.selectedNodeId);
-    if (ancestors.size > 0) {
+  // 「フィルタ結果 / 選択」が変わった瞬間に祖先を展開する。
+  // effect で setExpandedIds すると閉じた状態が 1 フレーム描かれてから開くので、
+  // 直前の値を覚えておいて render 中に state を合わせる
+  // (React 公式の "adjusting state when a prop changes" パターン)。
+  const [prevAutoExpand, setPrevAutoExpand] = useState(filter.autoExpand);
+  if (filter.autoExpand !== prevAutoExpand) {
+    setPrevAutoExpand(filter.autoExpand);
+    if (filterActive && filter.autoExpand.size > 0) {
       setExpandedIds((prev) => {
         const next = new Set(prev);
-        for (const id of ancestors) next.add(id);
+        for (const id of filter.autoExpand) next.add(id);
         return next;
       });
     }
+  }
 
+  // doc.children も見るのは、reparent などで選択ノードの祖先が変わった場合にも
+  // 新しい祖先を開くため
+  const [prevSelection, setPrevSelection] = useState({
+    id: state.selectedNodeId,
+    children: state.doc.children,
+  });
+  if (state.selectedNodeId !== prevSelection.id || state.doc.children !== prevSelection.children) {
+    setPrevSelection({ id: state.selectedNodeId, children: state.doc.children });
+    if (state.selectedNodeId) {
+      const ancestors = collectAncestorIds(state.doc.children, state.selectedNodeId);
+      if (ancestors.size > 0) {
+        setExpandedIds((prev) => {
+          const next = new Set(prev);
+          for (const id of ancestors) next.add(id);
+          return next;
+        });
+      }
+    }
+  }
+
+  // 選択変更時: 選択ノードまでスクロール
+  useEffect(() => {
+    if (!state.selectedNodeId) return;
     // 少し待ってからスクロール（展開のレンダリング後）
     requestAnimationFrame(() => {
       const el = listRef.current?.querySelector(`[data-node-id="${state.selectedNodeId}"]`);

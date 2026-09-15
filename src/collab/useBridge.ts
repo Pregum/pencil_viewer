@@ -41,6 +41,12 @@ export function useBridge() {
   const onDocUpdateRef = useRef<((doc: PenDocument) => void) | null>(null);
   const currentDocRef = useRef<PenDocument | null>(null);
 
+  const disconnect = useCallback(() => {
+    wsRef.current?.close();
+    wsRef.current = null;
+    setState((prev) => ({ ...prev, connected: false }));
+  }, []);
+
   const connect = useCallback((url: string, doc: PenDocument, onDocUpdate: (doc: PenDocument) => void) => {
     disconnect();
 
@@ -82,13 +88,7 @@ export function useBridge() {
     ws.onerror = () => {
       ws.close();
     };
-  }, []);
-
-  const disconnect = useCallback(() => {
-    wsRef.current?.close();
-    wsRef.current = null;
-    setState((prev) => ({ ...prev, connected: false }));
-  }, []);
+  }, [disconnect]);
 
   const syncDoc = useCallback((doc: PenDocument) => {
     const ws = wsRef.current;
