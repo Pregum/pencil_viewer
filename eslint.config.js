@@ -18,7 +18,9 @@ import prettier from 'eslint-config-prettier';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', 'workers/**/dist/**', 'tools/**/dist/**', '~/**'],
+    // promo/ は紹介動画 (Remotion) 用の別プロジェクト。アプリのビルドにも
+    // テストにも入らず、react-refresh の前提も当てはまらないので対象外にする。
+    ignores: ['dist/**', 'node_modules/**', 'workers/**/dist/**', 'tools/**/dist/**', 'promo/**', '~/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

@@ -44,3 +44,7 @@ workers/*/wrangler.toml
 
 # Vitest coverage
 coverage
+
+# 紹介動画のレンダリング結果。素材(promo/public)とソース(promo/src)だけコミットする。
+promo/out
+

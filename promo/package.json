@@ -1,0 +1,23 @@
+{
+  "name": "pencil-viewer-promo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pencil Viewer の紹介動画 (Remotion) と はてなブログ用の紹介記事",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts Intro out/pencil-viewer-intro.mp4 --browser-executable \"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" --timeout=180000 --concurrency=4",
+    "render:gif": "remotion render src/index.ts IntroShort out/pencil-viewer-intro.gif --codec=gif --scale=0.5 --every-nth-frame=2 --browser-executable \"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" --timeout=180000 --concurrency=4",
+    "still": "remotion still src/index.ts Intro out/still.png --browser-executable \"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" --timeout=180000"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.524",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "remotion": "^4.0.524"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "typescript": "^7.0.2"
+  }
+}
