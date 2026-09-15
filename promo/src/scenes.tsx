@@ -17,16 +17,16 @@ const SplitScene: React.FC<{
     <AbsoluteFill style={{ flexDirection: 'row', alignItems: 'center' }}>
       <div
         style={{
-          width: 660,
+          width: 700,
           paddingLeft: PAD,
-          paddingRight: 48,
+          paddingRight: 44,
           display: 'flex',
           flexDirection: 'column',
           gap: 26,
         }}
       >
         <Kicker>{kicker}</Kicker>
-        <Headline delay={4} size={56}>
+        <Headline delay={4} size={50}>
           {headline}
         </Headline>
         <Sub delay={10} size={27}>
@@ -156,7 +156,7 @@ export const SceneConnect: React.FC = () => (
     kicker="はじめかた"
     headline={
       <>
-        トークンを 1 つ貼るだけ。
+        トークンを貼るだけ。
         <br />
         30 秒で繋がる。
       </>
@@ -199,7 +199,7 @@ export const SceneVariables: React.FC = () => (
       <>
         <Code>$token</Code> は
         <br />
-        書いたまま解決される。
+        書いたまま解決。
       </>
     }
     sub={<>色も角丸も余白も、ハードコードではなく変数参照のまま描画します。</>}
