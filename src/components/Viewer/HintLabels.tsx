@@ -33,17 +33,15 @@ interface ViewRect {
 function nodeCenter(node: PenNode): { cx: number; cy: number } | null {
   const x = node.x ?? 0;
   const y = node.y ?? 0;
-  const w = typeof (node as { width?: unknown }).width === 'number'
-    ? (node as { width: number }).width : 0;
-  const h = typeof (node as { height?: unknown }).height === 'number'
-    ? (node as { height: number }).height : 0;
+  const w = typeof (node as { width?: unknown }).width === 'number' ? (node as { width: number }).width : 0;
+  const h =
+    typeof (node as { height?: unknown }).height === 'number' ? (node as { height: number }).height : 0;
   if (w === 0 && h === 0) return null;
   return { cx: x + w / 2, cy: y + h / 2 };
 }
 
 function isInView(cx: number, cy: number, view: ViewRect): boolean {
-  return cx >= view.x && cx <= view.x + view.width &&
-         cy >= view.y && cy <= view.y + view.height;
+  return cx >= view.x && cx <= view.x + view.width && cy >= view.y && cy <= view.y + view.height;
 }
 
 /** 画面内のノードを再帰的に収集（絶対座標） */
@@ -100,12 +98,25 @@ interface Props {
 
 export function HintLabels({ vimMode, cameraCx, cameraCy, viewBox }: Props) {
   const { state, selectNode } = useEditor();
-  const [active, setActive] = useState(false);
+  /**
+   * ヒント表示を要求しているか。実際に出すかどうかは vim モードとの AND で決める。
+   * こうしておくと「vim を抜けたら閉じる」を effect の setState 無しで書ける (#78)。
+   */
+  const [activeRequested, setActiveRequested] = useState(false);
   const [mode, setMode] = useState<'f' | 't'>('f');
-  const [targets, setTargets] = useState<HintTarget[]>([]);
+  /** vim モードを抜けたらヒントも消える。effect で setState せずに済む (#78) */
+  const active = activeRequested && vimMode;
+
+  // vim を抜けたら「表示要求」自体も落とす。落とさないと、vim を入れ直した
+  // だけでキーを押していないのにヒントが復活する。
+  const [prevVimMode, setPrevVimMode] = useState(vimMode);
+  if (vimMode !== prevVimMode) {
+    setPrevVimMode(vimMode);
+    if (!vimMode) setActiveRequested(false);
+  }
 
   // Collect targets when activated
-  const allTargets = useMemo(() => {
+  const allTargets = useMemo<HintTarget[]>(() => {
     if (!active) return [];
     const framesOnly = mode === 'f';
     const raw = collectVisible(state.doc.children, viewBox, cameraCx, cameraCy, framesOnly, 0, 0);
@@ -124,15 +135,11 @@ export function HintLabels({ vimMode, cameraCx, cameraCy, viewBox }: Props) {
     }));
   }, [active, mode, state.doc, viewBox, cameraCx, cameraCy]);
 
-  useEffect(() => {
-    if (active) setTargets(allTargets);
-  }, [active, allTargets]);
+  /** 表示中のヒントは active と allTargets から導ける。state に持たない (#78) */
+  const targets = allTargets;
 
   useEffect(() => {
-    if (!vimMode) {
-      setActive(false);
-      return;
-    }
+    if (!vimMode) return;
     const onKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
@@ -143,7 +150,7 @@ export function HintLabels({ vimMode, cameraCx, cameraCy, viewBox }: Props) {
         e.preventDefault();
         e.stopImmediatePropagation();
         setMode(e.key as 'f' | 't');
-        setActive(true);
+        setActiveRequested(true);
         return;
       }
 
@@ -151,16 +158,14 @@ export function HintLabels({ vimMode, cameraCx, cameraCy, viewBox }: Props) {
         e.preventDefault();
         e.stopImmediatePropagation();
         if (e.key === 'Escape') {
-          setActive(false);
-          setTargets([]);
+          setActiveRequested(false);
           return;
         }
         const target = targets.find((t) => t.key === e.key);
         if (target) {
           selectNode(target.nodeId);
         }
-        setActive(false);
-        setTargets([]);
+        setActiveRequested(false);
       }
     };
     window.addEventListener('keydown', onKeyDown, true);

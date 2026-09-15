@@ -7,122 +7,26 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor } from '../../pen/state/EditorContext';
 import type { PenNode } from '../../pen/types';
 import { ColorPicker } from './ColorPicker';
-import { evalExpression } from '../../utils/evalExpression';
+import { EditableField, NumberField } from './propertyFields';
+import { formatColor } from './propertyFormat';
 
-function formatColor(fill: unknown): string | null {
-  if (typeof fill === 'string') return fill;
-  if (fill && typeof fill === 'object') {
-    const f = fill as Record<string, unknown>;
-    if (f.type === 'color' && typeof f.color === 'string') return f.color;
-    if (f.type === 'gradient') return '(gradient)';
-    if (f.type === 'image') return '(image)';
-  }
-  if (Array.isArray(fill) && fill.length > 0) return formatColor(fill[0]);
-  return null;
-}
-
-function EditableField({
-  label,
-  value,
-  onChange,
-  onFocus,
-  type = 'text',
+export function PropertyPanel({
+  collapsed,
+  onTogglePanel,
 }: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  onFocus?: () => void;
-  type?: 'text' | 'number' | 'color';
+  collapsed?: boolean;
+  onTogglePanel?: () => void;
 }) {
-  return (
-    <div className="prop-panel__field">
-      <label>{label}</label>
-      <input
-        className="prop-panel__input"
-        type={type}
-        value={value}
-        onFocus={onFocus}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </div>
-  );
-}
-
-/**
- * 数値入力欄。テキスト入力を許可し、blur / Enter 時に evalExpression で評価。
- *   - 単純な数値は即座に onChange に流す (スピナー併用のため)
- *   - "100+20" のような式は focus 中は text として保持、確定時に計算
- *   - 計算できない場合は元の value に復元
- */
-function NumberField({
-  label,
-  value,
-  onChange,
-  onFocus,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  onFocus?: () => void;
-}) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const displayValue = draft ?? String(Math.round(value * 100) / 100);
-
-  const commit = useCallback(() => {
-    if (draft == null) return;
-    const r = evalExpression(draft, { current: value });
-    if (r != null && isFinite(r)) onChange(r);
-    setDraft(null); // どちらにせよ draft を解除 → 元 or 新値で再描画
-  }, [draft, value, onChange]);
-
-  return (
-    <div className="prop-panel__field-inline">
-      <label>{label}</label>
-      <input
-        className="prop-panel__input prop-panel__input--num"
-        type="text"
-        inputMode="decimal"
-        spellCheck={false}
-        value={displayValue}
-        onFocus={(e) => {
-          onFocus?.();
-          e.currentTarget.select();
-        }}
-        onChange={(e) => {
-          const v = e.target.value;
-          setDraft(v);
-          // 単純数値なら即反映 (スライダー感覚の操作を妨げない)
-          const asNum = Number(v);
-          if (v.trim() !== '' && !isNaN(asNum) && isFinite(asNum)) {
-            onChange(asNum);
-          }
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            commit();
-            (e.currentTarget as HTMLInputElement).blur();
-          } else if (e.key === 'Escape') {
-            e.preventDefault();
-            setDraft(null);
-            (e.currentTarget as HTMLInputElement).blur();
-          } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-            // Figma 同様: 矢印で ±1 (Shift で ±10)
-            e.preventDefault();
-            const step = e.shiftKey ? 10 : 1;
-            const dir = e.key === 'ArrowUp' ? 1 : -1;
-            onChange(value + step * dir);
-            setDraft(null);
-          }
-        }}
-        onBlur={commit}
-      />
-    </div>
-  );
-}
-
-export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolean; onTogglePanel?: () => void }) {
-  const { selectedNode, selectNode, updateNode, updateNodeSilent, pushUndoCheckpoint, state, enterInsertMode, exitInsertMode } = useEditor();
+  const {
+    selectedNode,
+    selectNode,
+    updateNode,
+    updateNodeSilent,
+    pushUndoCheckpoint,
+    state,
+    enterInsertMode,
+    exitInsertMode,
+  } = useEditor();
 
   // カラーピッカー用: ドラッグ中は silent、確定時に undo に積む
   const patchSilent = useCallback(
@@ -212,7 +116,11 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
     return (
       <div className="prop-panel prop-panel--empty">
         {onTogglePanel && (
-          <button className="prop-panel__toggle-btn prop-panel__toggle-btn--top" onClick={onTogglePanel} title="Hide Properties">
+          <button
+            className="prop-panel__toggle-btn prop-panel__toggle-btn--top"
+            onClick={onTogglePanel}
+            title="Hide Properties"
+          >
             ✕
           </button>
         )}
@@ -237,11 +145,7 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
       <div className="prop-panel__header">
         <span className="prop-panel__type">{n.type}</span>
         <span className="prop-panel__name">{n.name ?? n.id}</span>
-        <button
-          className="prop-panel__close"
-          onClick={() => selectNode(null)}
-          title="Deselect (Esc)"
-        >
+        <button className="prop-panel__close" onClick={() => selectNode(null)} title="Deselect (Esc)">
           &times;
         </button>
         {onTogglePanel && (
@@ -255,10 +159,25 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
       <div className="prop-panel__section">
         <div className="prop-panel__title">Position & Size</div>
         <div className="prop-panel__pos-grid">
-          <NumberField label="X" value={n.x ?? 0} onFocus={onInputFocus} onChange={(v) => patchInput({ x: v } as Partial<PenNode>)} />
-          <NumberField label="Y" value={n.y ?? 0} onFocus={onInputFocus} onChange={(v) => patchInput({ y: v } as Partial<PenNode>)} />
+          <NumberField
+            label="X"
+            value={n.x ?? 0}
+            onFocus={onInputFocus}
+            onChange={(v) => patchInput({ x: v } as Partial<PenNode>)}
+          />
+          <NumberField
+            label="Y"
+            value={n.y ?? 0}
+            onFocus={onInputFocus}
+            onChange={(v) => patchInput({ y: v } as Partial<PenNode>)}
+          />
           {typeof width === 'number' && (
-            <NumberField label="W" value={width} onFocus={onInputFocus} onChange={(v) => patchInput({ width: v } as Partial<PenNode>)} />
+            <NumberField
+              label="W"
+              value={width}
+              onFocus={onInputFocus}
+              onChange={(v) => patchInput({ width: v } as Partial<PenNode>)}
+            />
           )}
           {typeof width === 'string' && (
             <div className="prop-panel__field-inline">
@@ -267,7 +186,12 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
             </div>
           )}
           {typeof height === 'number' && (
-            <NumberField label="H" value={height} onFocus={onInputFocus} onChange={(v) => patchInput({ height: v } as Partial<PenNode>)} />
+            <NumberField
+              label="H"
+              value={height}
+              onFocus={onInputFocus}
+              onChange={(v) => patchInput({ height: v } as Partial<PenNode>)}
+            />
           )}
           {typeof height === 'string' && (
             <div className="prop-panel__field-inline">
@@ -308,7 +232,9 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
                 className="prop-panel__color-swatch"
                 style={{ background: strokeColor.slice(0, 7) }}
                 title="Open color picker"
-                onClick={(e) => openPicker('stroke', (e.currentTarget as HTMLElement).getBoundingClientRect())}
+                onClick={(e) =>
+                  openPicker('stroke', (e.currentTarget as HTMLElement).getBoundingClientRect())
+                }
               />
             )}
             <span className="prop-panel__color-label">{strokeColor}</span>
@@ -328,7 +254,9 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
             value={opacity}
             className="prop-panel__slider"
             onMouseDown={startColorChange}
-            onInput={(e) => patchSilent({ opacity: parseFloat((e.target as HTMLInputElement).value) } as Partial<PenNode>)}
+            onInput={(e) =>
+              patchSilent({ opacity: parseFloat((e.target as HTMLInputElement).value) } as Partial<PenNode>)
+            }
             onChange={(e) => patchSilent({ opacity: parseFloat(e.target.value) } as Partial<PenNode>)}
           />
           <span className="prop-panel__opacity-val">{Math.round(opacity * 100)}%</span>
@@ -371,134 +299,156 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
       )}
 
       {/* Layout Grids (frame only) */}
-      {n.type === 'frame' && (() => {
-        const grids = ((n as { layoutGrids?: unknown }).layoutGrids as Array<Record<string, unknown>> | undefined) ?? [];
-        const updateGrids = (next: Array<Record<string, unknown>>) => {
-          patch({ layoutGrids: next } as unknown as Partial<PenNode>);
-        };
-        const addGrid = (pattern: 'columns' | 'rows' | 'grid') => {
-          const preset = pattern === 'grid'
-            ? { pattern, size: 8, color: '#F472B6', opacity: 0.15, visible: true }
-            : {
-              pattern,
-              count: pattern === 'columns' ? 12 : 6,
-              gutter: 16,
-              offset: 24,
-              alignment: 'stretch',
-              color: '#F472B6',
-              opacity: 0.15,
-              visible: true,
-            };
-          updateGrids([...grids, preset]);
-        };
-        return (
-          <div className="prop-panel__section">
-            <div className="prop-panel__title">Layout Grids ({grids.length})</div>
-            <div className="auto-layout__row">
-              <button type="button" className="auto-layout__btn auto-layout__btn--sm" onClick={() => addGrid('columns')}>+ Col</button>
-              <button type="button" className="auto-layout__btn auto-layout__btn--sm" onClick={() => addGrid('rows')}>+ Row</button>
-              <button type="button" className="auto-layout__btn auto-layout__btn--sm" onClick={() => addGrid('grid')}>+ Grid</button>
-            </div>
-            {grids.map((g, idx) => (
-              <div key={idx} className="layout-grid-item">
-                <div className="layout-grid-item__row">
-                  <span className="layout-grid-item__label">{String(g.pattern)}</span>
-                  <button
-                    type="button"
-                    className="layout-grid-item__toggle"
-                    title={g.visible === false ? 'Show' : 'Hide'}
-                    onClick={() => {
-                      const next = [...grids];
-                      next[idx] = { ...g, visible: g.visible === false };
-                      updateGrids(next);
-                    }}
-                  >
-                    {g.visible === false ? '◯' : '●'}
-                  </button>
-                  <button
-                    type="button"
-                    className="layout-grid-item__delete"
-                    title="Remove grid"
-                    onClick={() => {
-                      const next = grids.filter((_, i) => i !== idx);
-                      updateGrids(next);
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-                <div className="layout-grid-item__row">
-                  {g.pattern !== 'grid' && (
-                    <>
-                      <input
-                        type="number"
-                        className="layout-grid-item__input"
-                        placeholder="count"
-                        value={(g.count as number | undefined) ?? 12}
-                        onChange={(e) => {
-                          const v = parseInt(e.target.value, 10);
-                          if (!isNaN(v)) {
-                            const next = [...grids];
-                            next[idx] = { ...g, count: Math.max(1, v) };
-                            updateGrids(next);
-                          }
-                        }}
-                        title="Count"
-                      />
-                      <input
-                        type="number"
-                        className="layout-grid-item__input"
-                        placeholder="gutter"
-                        value={(g.gutter as number | undefined) ?? 16}
-                        onChange={(e) => {
-                          const v = parseFloat(e.target.value);
-                          if (!isNaN(v)) {
-                            const next = [...grids];
-                            next[idx] = { ...g, gutter: Math.max(0, v) };
-                            updateGrids(next);
-                          }
-                        }}
-                        title="Gutter"
-                      />
-                      <input
-                        type="number"
-                        className="layout-grid-item__input"
-                        placeholder="offset"
-                        value={(g.offset as number | undefined) ?? 24}
-                        onChange={(e) => {
-                          const v = parseFloat(e.target.value);
-                          if (!isNaN(v)) {
-                            const next = [...grids];
-                            next[idx] = { ...g, offset: Math.max(0, v) };
-                            updateGrids(next);
-                          }
-                        }}
-                        title="Offset"
-                      />
-                    </>
-                  )}
-                  {g.pattern === 'grid' && (
-                    <input
-                      type="number"
-                      className="layout-grid-item__input"
-                      value={(g.size as number | undefined) ?? 8}
-                      onChange={(e) => {
-                        const v = parseFloat(e.target.value);
-                        if (!isNaN(v)) {
-                          const next = [...grids];
-                          next[idx] = { ...g, size: Math.max(2, v) };
-                          updateGrids(next);
-                        }
-                      }}
-                      title="Cell size"
-                    />
-                  )}
-                </div>
+      {n.type === 'frame' &&
+        (() => {
+          const grids =
+            ((n as { layoutGrids?: unknown }).layoutGrids as Array<Record<string, unknown>> | undefined) ??
+            [];
+          const updateGrids = (next: Array<Record<string, unknown>>) => {
+            patch({ layoutGrids: next } as unknown as Partial<PenNode>);
+          };
+          const addGrid = (pattern: 'columns' | 'rows' | 'grid') => {
+            const preset =
+              pattern === 'grid'
+                ? { pattern, size: 8, color: '#F472B6', opacity: 0.15, visible: true }
+                : {
+                    pattern,
+                    count: pattern === 'columns' ? 12 : 6,
+                    gutter: 16,
+                    offset: 24,
+                    alignment: 'stretch',
+                    color: '#F472B6',
+                    opacity: 0.15,
+                    visible: true,
+                  };
+            updateGrids([...grids, preset]);
+          };
+          return (
+            <div className="prop-panel__section">
+              <div className="prop-panel__title">Layout Grids ({grids.length})</div>
+              <div className="auto-layout__row">
+                <button
+                  type="button"
+                  className="auto-layout__btn auto-layout__btn--sm"
+                  onClick={() => addGrid('columns')}
+                >
+                  + Col
+                </button>
+                <button
+                  type="button"
+                  className="auto-layout__btn auto-layout__btn--sm"
+                  onClick={() => addGrid('rows')}
+                >
+                  + Row
+                </button>
+                <button
+                  type="button"
+                  className="auto-layout__btn auto-layout__btn--sm"
+                  onClick={() => addGrid('grid')}
+                >
+                  + Grid
+                </button>
               </div>
-            ))}
-          </div>
-        );
-      })()}
+              {grids.map((g, idx) => (
+                <div key={idx} className="layout-grid-item">
+                  <div className="layout-grid-item__row">
+                    <span className="layout-grid-item__label">{String(g.pattern)}</span>
+                    <button
+                      type="button"
+                      className="layout-grid-item__toggle"
+                      title={g.visible === false ? 'Show' : 'Hide'}
+                      onClick={() => {
+                        const next = [...grids];
+                        next[idx] = { ...g, visible: g.visible === false };
+                        updateGrids(next);
+                      }}
+                    >
+                      {g.visible === false ? '◯' : '●'}
+                    </button>
+                    <button
+                      type="button"
+                      className="layout-grid-item__delete"
+                      title="Remove grid"
+                      onClick={() => {
+                        const next = grids.filter((_, i) => i !== idx);
+                        updateGrids(next);
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="layout-grid-item__row">
+                    {g.pattern !== 'grid' && (
+                      <>
+                        <input
+                          type="number"
+                          className="layout-grid-item__input"
+                          placeholder="count"
+                          value={(g.count as number | undefined) ?? 12}
+                          onChange={(e) => {
+                            const v = parseInt(e.target.value, 10);
+                            if (!isNaN(v)) {
+                              const next = [...grids];
+                              next[idx] = { ...g, count: Math.max(1, v) };
+                              updateGrids(next);
+                            }
+                          }}
+                          title="Count"
+                        />
+                        <input
+                          type="number"
+                          className="layout-grid-item__input"
+                          placeholder="gutter"
+                          value={(g.gutter as number | undefined) ?? 16}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value);
+                            if (!isNaN(v)) {
+                              const next = [...grids];
+                              next[idx] = { ...g, gutter: Math.max(0, v) };
+                              updateGrids(next);
+                            }
+                          }}
+                          title="Gutter"
+                        />
+                        <input
+                          type="number"
+                          className="layout-grid-item__input"
+                          placeholder="offset"
+                          value={(g.offset as number | undefined) ?? 24}
+                          onChange={(e) => {
+                            const v = parseFloat(e.target.value);
+                            if (!isNaN(v)) {
+                              const next = [...grids];
+                              next[idx] = { ...g, offset: Math.max(0, v) };
+                              updateGrids(next);
+                            }
+                          }}
+                          title="Offset"
+                        />
+                      </>
+                    )}
+                    {g.pattern === 'grid' && (
+                      <input
+                        type="number"
+                        className="layout-grid-item__input"
+                        value={(g.size as number | undefined) ?? 8}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          if (!isNaN(v)) {
+                            const next = [...grids];
+                            next[idx] = { ...g, size: Math.max(2, v) };
+                            updateGrids(next);
+                          }
+                        }}
+                        title="Cell size"
+                      />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
       {/* Constraints (子要素が absolute 配置される親内で有効) */}
       {(() => {
@@ -549,114 +499,123 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
       })()}
 
       {/* Layout (frame / group) */}
-      {(n.type === 'frame' || n.type === 'group') && (() => {
-        const layout = (n as { layout?: string }).layout ?? (n.type === 'frame' ? 'horizontal' : 'none');
-        const gap = (n as { gap?: number }).gap ?? 0;
-        const padding = (n as { padding?: unknown }).padding;
-        const paddingNum = typeof padding === 'number' ? padding : 0;
-        const justify = (n as { justifyContent?: string }).justifyContent ?? 'start';
-        const align = (n as { alignItems?: string }).alignItems ?? 'start';
-        const isFlex = layout === 'vertical' || layout === 'horizontal';
+      {(n.type === 'frame' || n.type === 'group') &&
+        (() => {
+          const layout = (n as { layout?: string }).layout ?? (n.type === 'frame' ? 'horizontal' : 'none');
+          const gap = (n as { gap?: number }).gap ?? 0;
+          const padding = (n as { padding?: unknown }).padding;
+          const paddingNum = typeof padding === 'number' ? padding : 0;
+          const justify = (n as { justifyContent?: string }).justifyContent ?? 'start';
+          const align = (n as { alignItems?: string }).alignItems ?? 'start';
+          const isFlex = layout === 'vertical' || layout === 'horizontal';
 
-        return (
-          <div className="prop-panel__section">
-            <div className="prop-panel__title">Auto Layout</div>
-            {/* layout 方向: 3 ボタン */}
-            <div className="auto-layout__row">
-              {[
-                { v: 'horizontal', label: 'H', title: 'Horizontal', icon: '⇢' },
-                { v: 'vertical', label: 'V', title: 'Vertical', icon: '⇣' },
-                { v: 'none', label: 'None', title: 'No layout (absolute)', icon: '◇' },
-              ].map((opt) => (
-                <button
-                  key={opt.v}
-                  type="button"
-                  className={`auto-layout__btn${layout === opt.v ? ' auto-layout__btn--active' : ''}`}
-                  title={opt.title}
-                  onClick={() => patch({ layout: opt.v } as Partial<PenNode>)}
-                >
-                  <span className="auto-layout__btn-icon">{opt.icon}</span>
-                  {opt.label}
-                </button>
-              ))}
+          return (
+            <div className="prop-panel__section">
+              <div className="prop-panel__title">Auto Layout</div>
+              {/* layout 方向: 3 ボタン */}
+              <div className="auto-layout__row">
+                {[
+                  { v: 'horizontal', label: 'H', title: 'Horizontal', icon: '⇢' },
+                  { v: 'vertical', label: 'V', title: 'Vertical', icon: '⇣' },
+                  { v: 'none', label: 'None', title: 'No layout (absolute)', icon: '◇' },
+                ].map((opt) => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    className={`auto-layout__btn${layout === opt.v ? ' auto-layout__btn--active' : ''}`}
+                    title={opt.title}
+                    onClick={() => patch({ layout: opt.v } as Partial<PenNode>)}
+                  >
+                    <span className="auto-layout__btn-icon">{opt.icon}</span>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {isFlex && (
+                <>
+                  {/* Gap + Padding */}
+                  <div className="auto-layout__row auto-layout__row--nums">
+                    <div className="auto-layout__num-field" title="Gap between children">
+                      <label>Gap</label>
+                      <input
+                        type="number"
+                        value={gap}
+                        onFocus={onInputFocus}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          if (!isNaN(v)) patchInput({ gap: Math.max(0, v) } as Partial<PenNode>);
+                        }}
+                      />
+                    </div>
+                    <div className="auto-layout__num-field" title="Padding (all sides)">
+                      <label>Pad</label>
+                      <input
+                        type="number"
+                        value={paddingNum}
+                        onFocus={onInputFocus}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value);
+                          if (!isNaN(v)) patchInput({ padding: Math.max(0, v) } as Partial<PenNode>);
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Justify (main axis) */}
+                  <div className="auto-layout__row-title">
+                    Main axis ({layout === 'horizontal' ? '↔' : '↕'})
+                  </div>
+                  <div className="auto-layout__row">
+                    {[
+                      { v: 'start', title: 'Start' },
+                      { v: 'center', title: 'Center' },
+                      { v: 'end', title: 'End' },
+                      { v: 'space_between', title: 'Space between' },
+                      { v: 'space_around', title: 'Space around' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.v}
+                        type="button"
+                        className={`auto-layout__btn auto-layout__btn--sm${justify === opt.v ? ' auto-layout__btn--active' : ''}`}
+                        title={opt.title}
+                        onClick={() => patch({ justifyContent: opt.v } as Partial<PenNode>)}
+                      >
+                        {opt.title === 'Space between'
+                          ? 'S-B'
+                          : opt.title === 'Space around'
+                            ? 'S-A'
+                            : opt.title.slice(0, 3)}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Align (cross axis) */}
+                  <div className="auto-layout__row-title">
+                    Cross axis ({layout === 'horizontal' ? '↕' : '↔'})
+                  </div>
+                  <div className="auto-layout__row">
+                    {[
+                      { v: 'start', title: 'Start' },
+                      { v: 'center', title: 'Center' },
+                      { v: 'end', title: 'End' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.v}
+                        type="button"
+                        className={`auto-layout__btn auto-layout__btn--sm${align === opt.v ? ' auto-layout__btn--active' : ''}`}
+                        title={opt.title}
+                        onClick={() => patch({ alignItems: opt.v } as Partial<PenNode>)}
+                      >
+                        {opt.title}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
-
-            {isFlex && (
-              <>
-                {/* Gap + Padding */}
-                <div className="auto-layout__row auto-layout__row--nums">
-                  <div className="auto-layout__num-field" title="Gap between children">
-                    <label>Gap</label>
-                    <input
-                      type="number"
-                      value={gap}
-                      onFocus={onInputFocus}
-                      onChange={(e) => {
-                        const v = parseFloat(e.target.value);
-                        if (!isNaN(v)) patchInput({ gap: Math.max(0, v) } as Partial<PenNode>);
-                      }}
-                    />
-                  </div>
-                  <div className="auto-layout__num-field" title="Padding (all sides)">
-                    <label>Pad</label>
-                    <input
-                      type="number"
-                      value={paddingNum}
-                      onFocus={onInputFocus}
-                      onChange={(e) => {
-                        const v = parseFloat(e.target.value);
-                        if (!isNaN(v)) patchInput({ padding: Math.max(0, v) } as Partial<PenNode>);
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Justify (main axis) */}
-                <div className="auto-layout__row-title">Main axis ({layout === 'horizontal' ? '↔' : '↕'})</div>
-                <div className="auto-layout__row">
-                  {[
-                    { v: 'start', title: 'Start' },
-                    { v: 'center', title: 'Center' },
-                    { v: 'end', title: 'End' },
-                    { v: 'space_between', title: 'Space between' },
-                    { v: 'space_around', title: 'Space around' },
-                  ].map((opt) => (
-                    <button
-                      key={opt.v}
-                      type="button"
-                      className={`auto-layout__btn auto-layout__btn--sm${justify === opt.v ? ' auto-layout__btn--active' : ''}`}
-                      title={opt.title}
-                      onClick={() => patch({ justifyContent: opt.v } as Partial<PenNode>)}
-                    >
-                      {opt.title === 'Space between' ? 'S-B' : opt.title === 'Space around' ? 'S-A' : opt.title.slice(0, 3)}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Align (cross axis) */}
-                <div className="auto-layout__row-title">Cross axis ({layout === 'horizontal' ? '↕' : '↔'})</div>
-                <div className="auto-layout__row">
-                  {[
-                    { v: 'start', title: 'Start' },
-                    { v: 'center', title: 'Center' },
-                    { v: 'end', title: 'End' },
-                  ].map((opt) => (
-                    <button
-                      key={opt.v}
-                      type="button"
-                      className={`auto-layout__btn auto-layout__btn--sm${align === opt.v ? ' auto-layout__btn--active' : ''}`}
-                      title={opt.title}
-                      onClick={() => patch({ alignItems: opt.v } as Partial<PenNode>)}
-                    >
-                      {opt.title}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        );
-      })()}
+          );
+        })()}
 
       {/* Component / Variant controls */}
       {(() => {
@@ -666,10 +625,12 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
         if (!reusable && !refType) return null;
 
         // ドキュメント内の全 reusable と variantOf をマップ
-        const allReusable: Array<PenNode & { variantOf?: string; variantProps?: Record<string, string> }> = [];
+        const allReusable: Array<PenNode & { variantOf?: string; variantProps?: Record<string, string> }> =
+          [];
         const walkReusable = (nodes: PenNode[]) => {
           for (const nn of nodes) {
-            if ((nn as { reusable?: boolean }).reusable) allReusable.push(nn as PenNode & { variantOf?: string });
+            if ((nn as { reusable?: boolean }).reusable)
+              allReusable.push(nn as PenNode & { variantOf?: string });
             const children = (nn as { children?: PenNode[] }).children;
             if (children) walkReusable(children);
           }
@@ -698,7 +659,9 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
                   type="text"
                   className="prop-panel__input"
                   placeholder="size=lg, state=default"
-                  value={Object.entries(props).map(([k, v]) => `${k}=${v}`).join(', ')}
+                  value={Object.entries(props)
+                    .map(([k, v]) => `${k}=${v}`)
+                    .join(', ')}
                   onChange={(e) => {
                     const raw = e.target.value;
                     const next: Record<string, string> = {};
@@ -706,7 +669,9 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
                       const [k, v] = seg.split('=').map((s) => s.trim());
                       if (k && v) next[k] = v;
                     }
-                    patch({ variantProps: Object.keys(next).length > 0 ? next : undefined } as Partial<PenNode>);
+                    patch({
+                      variantProps: Object.keys(next).length > 0 ? next : undefined,
+                    } as Partial<PenNode>);
                   }}
                 />
               </div>
@@ -738,9 +703,15 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
                   >
                     {variantsInGroup.map((v) => {
                       const label = v.variantProps
-                        ? Object.entries(v.variantProps).map(([k, val]) => `${k}=${val}`).join(', ')
+                        ? Object.entries(v.variantProps)
+                            .map(([k, val]) => `${k}=${val}`)
+                            .join(', ')
                         : (v.name ?? v.id);
-                      return <option key={v.id} value={v.id}>{label}</option>;
+                      return (
+                        <option key={v.id} value={v.id}>
+                          {label}
+                        </option>
+                      );
                     })}
                   </select>
                 </div>
@@ -752,33 +723,42 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
       })()}
 
       {/* Text extras (paragraphSpacing / textCase) */}
-      {n.type === 'text' && (() => {
-        const ps = (n as { paragraphSpacing?: number }).paragraphSpacing ?? 0;
-        const tc = (n as { textCase?: string }).textCase ?? 'none';
-        return (
-          <div className="prop-panel__section">
-            <div className="prop-panel__title">Text extras</div>
-            <div className="auto-layout__row auto-layout__row--nums">
-              <div className="auto-layout__num-field">
-                <label>Paragraph spacing</label>
-                <input type="number" value={ps} onChange={(e) => {
-                  const v = parseFloat(e.target.value);
-                  if (!isNaN(v)) patchInput({ paragraphSpacing: Math.max(0, v) } as Partial<PenNode>);
-                }} />
-              </div>
-              <div className="auto-layout__num-field">
-                <label>Case</label>
-                <select className="prop-panel__select" value={tc} onChange={(e) => patch({ textCase: e.target.value } as Partial<PenNode>)}>
-                  <option value="none">As typed</option>
-                  <option value="upper">UPPER</option>
-                  <option value="lower">lower</option>
-                  <option value="title">Title Case</option>
-                </select>
+      {n.type === 'text' &&
+        (() => {
+          const ps = (n as { paragraphSpacing?: number }).paragraphSpacing ?? 0;
+          const tc = (n as { textCase?: string }).textCase ?? 'none';
+          return (
+            <div className="prop-panel__section">
+              <div className="prop-panel__title">Text extras</div>
+              <div className="auto-layout__row auto-layout__row--nums">
+                <div className="auto-layout__num-field">
+                  <label>Paragraph spacing</label>
+                  <input
+                    type="number"
+                    value={ps}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      if (!isNaN(v)) patchInput({ paragraphSpacing: Math.max(0, v) } as Partial<PenNode>);
+                    }}
+                  />
+                </div>
+                <div className="auto-layout__num-field">
+                  <label>Case</label>
+                  <select
+                    className="prop-panel__select"
+                    value={tc}
+                    onChange={(e) => patch({ textCase: e.target.value } as Partial<PenNode>)}
+                  >
+                    <option value="none">As typed</option>
+                    <option value="upper">UPPER</option>
+                    <option value="lower">lower</option>
+                    <option value="title">Title Case</option>
+                  </select>
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
 
       {/* Stroke dash editor (stroke を持つノードで表示) */}
       {(() => {
@@ -829,54 +809,72 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
       })()}
 
       {/* Image crop (image 選択時のみ) */}
-      {n.type === 'image' && (() => {
-        const ix = (n as { imageOffsetX?: number }).imageOffsetX ?? 0;
-        const iy = (n as { imageOffsetY?: number }).imageOffsetY ?? 0;
-        const is = (n as { imageScale?: number }).imageScale ?? 1;
-        return (
-          <div className="prop-panel__section">
-            <div className="prop-panel__title">Image Crop</div>
-            <div className="auto-layout__row auto-layout__row--nums">
-              <div className="auto-layout__num-field">
-                <label>Offset X</label>
-                <input type="number" value={ix} onChange={(e) => {
-                  const v = parseFloat(e.target.value);
-                  if (!isNaN(v)) patchInput({ imageOffsetX: v } as Partial<PenNode>);
-                }} />
+      {n.type === 'image' &&
+        (() => {
+          const ix = (n as { imageOffsetX?: number }).imageOffsetX ?? 0;
+          const iy = (n as { imageOffsetY?: number }).imageOffsetY ?? 0;
+          const is = (n as { imageScale?: number }).imageScale ?? 1;
+          return (
+            <div className="prop-panel__section">
+              <div className="prop-panel__title">Image Crop</div>
+              <div className="auto-layout__row auto-layout__row--nums">
+                <div className="auto-layout__num-field">
+                  <label>Offset X</label>
+                  <input
+                    type="number"
+                    value={ix}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      if (!isNaN(v)) patchInput({ imageOffsetX: v } as Partial<PenNode>);
+                    }}
+                  />
+                </div>
+                <div className="auto-layout__num-field">
+                  <label>Offset Y</label>
+                  <input
+                    type="number"
+                    value={iy}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      if (!isNaN(v)) patchInput({ imageOffsetY: v } as Partial<PenNode>);
+                    }}
+                  />
+                </div>
+                <div className="auto-layout__num-field">
+                  <label>Scale</label>
+                  <input
+                    type="number"
+                    step={0.1}
+                    value={is}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      if (!isNaN(v)) patchInput({ imageScale: Math.max(0.1, v) } as Partial<PenNode>);
+                    }}
+                  />
+                </div>
               </div>
-              <div className="auto-layout__num-field">
-                <label>Offset Y</label>
-                <input type="number" value={iy} onChange={(e) => {
-                  const v = parseFloat(e.target.value);
-                  if (!isNaN(v)) patchInput({ imageOffsetY: v } as Partial<PenNode>);
-                }} />
-              </div>
-              <div className="auto-layout__num-field">
-                <label>Scale</label>
-                <input type="number" step={0.1} value={is} onChange={(e) => {
-                  const v = parseFloat(e.target.value);
-                  if (!isNaN(v)) patchInput({ imageScale: Math.max(0.1, v) } as Partial<PenNode>);
-                }} />
-              </div>
+              <button
+                type="button"
+                className="auto-layout__btn auto-layout__btn--sm"
+                style={{ marginTop: 6 }}
+                onClick={() => patch({ imageOffsetX: 0, imageOffsetY: 0, imageScale: 1 } as Partial<PenNode>)}
+              >
+                Reset crop
+              </button>
             </div>
-            <button
-              type="button"
-              className="auto-layout__btn auto-layout__btn--sm"
-              style={{ marginTop: 6 }}
-              onClick={() => patch({ imageOffsetX: 0, imageOffsetY: 0, imageScale: 1 } as Partial<PenNode>)}
-            >
-              Reset crop
-            </button>
-          </div>
-        );
-      })()}
+          );
+        })()}
 
       {/* Prototype: onTap (遷移先フレーム) + transition */}
       {(() => {
-        const topFrames = state.doc.children.filter((c) => c.type === 'frame') as Array<PenNode & { name?: string }>;
+        const topFrames = state.doc.children.filter((c) => c.type === 'frame') as Array<
+          PenNode & { name?: string }
+        >;
         if (topFrames.length === 0) return null;
         const currentTap = (n as { onTap?: string }).onTap;
-        const tr = (n as { onTapTransition?: { duration?: number; easing?: string; smartAnimate?: boolean } }).onTapTransition ?? {};
+        const tr =
+          (n as { onTapTransition?: { duration?: number; easing?: string; smartAnimate?: boolean } })
+            .onTapTransition ?? {};
         return (
           <div className="prop-panel__section">
             <div className="prop-panel__title">Prototype</div>
@@ -889,7 +887,9 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
               >
                 <option value="">(no link)</option>
                 {topFrames.map((f) => (
-                  <option key={f.id} value={f.id}>{f.name ?? f.id}</option>
+                  <option key={f.id} value={f.id}>
+                    {f.name ?? f.id}
+                  </option>
                 ))}
               </select>
             </div>
@@ -914,7 +914,9 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
                     <select
                       className="prop-panel__select"
                       value={tr.easing ?? 'ease-out'}
-                      onChange={(e) => patch({ onTapTransition: { ...tr, easing: e.target.value } } as Partial<PenNode>)}
+                      onChange={(e) =>
+                        patch({ onTapTransition: { ...tr, easing: e.target.value } } as Partial<PenNode>)
+                      }
                     >
                       <option value="linear">linear</option>
                       <option value="ease-in">ease-in</option>
@@ -927,7 +929,11 @@ export function PropertyPanel({ collapsed, onTogglePanel }: { collapsed?: boolea
                   <input
                     type="checkbox"
                     checked={tr.smartAnimate !== false}
-                    onChange={(e) => patch({ onTapTransition: { ...tr, smartAnimate: e.target.checked } } as Partial<PenNode>)}
+                    onChange={(e) =>
+                      patch({
+                        onTapTransition: { ...tr, smartAnimate: e.target.checked },
+                      } as Partial<PenNode>)
+                    }
                   />
                   <span style={{ fontSize: 11 }}>Smart animate (match by id)</span>
                 </label>

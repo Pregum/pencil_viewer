@@ -1,6 +1,6 @@
 # Pencil Viewer
 
-> **Open-source online viewer & editor for [Pencil.dev](https://www.pencil.dev/) `.pen` files.**
+> **A wireframe and spec workspace for [Pencil.dev](https://www.pencil.dev/) `.pen` files that lives in your own Git repository.**
 >
 > Runs entirely in the browser. No server required. Free to host.
 
@@ -8,25 +8,33 @@
 
 ---
 
-## ✨ Featured: AI Design Review
+## Git-backed `.pen` storage
 
-> **Your AI design reviewer, built into the canvas.** Spot missing UI states, get instant feedback on consistency and accessibility, and **fix issues with one click** — without leaving the viewer.
+> **Your designs stay in your repository.** Connect a GitHub personal access token, browse your repos and branches, open a `.pen`, edit it, and commit it back — all from the browser.
 
 | | |
 |---|---|
-| 🤖 **Powered by** | Cloudflare Workers AI (Llama 3.3 70B) |
-| 📋 **Modes** | Full Review · Five UI States · Accessibility · Quick |
-| ✨ **Killer feature** | One-click "Repair Candidates" — AI generates the missing Empty / Loading / Error / Partial frame in your existing design tokens |
-| 🔒 **Privacy** | Stateless: no DB, no logs, no training data |
-| 💰 **Cost** | $0 in the free tier (~50–125 reviews/day), no Workers Paid required |
+| **Where files live** | Your own GitHub repository. This project stores nothing. |
+| **How it talks to GitHub** | Directly from the browser to `api.github.com` over CORS. There is no backend. |
+| **Your token** | Kept in this browser's `localStorage` only. It is never sent anywhere but GitHub. |
+| **History** | Every save is a commit. Browse the log for a file, open an older version, restore it. |
+| **Conflicts** | If the branch moved while you were editing, you choose between force-pushing or reloading the latest. |
+| **Cost** | $0. Static files on GitHub Pages plus your own repo. There is no database to grow. |
 
-**Try it:** Open any `.pen` file → `Cmd + Shift + P` → "AI Design Review" → choose "Five UI States" → click `+ Empty State` on a screen with missing coverage. The AI generates a new frame in matching style and drops it next to the original.
+**How to use**
 
-→ See the in-app **Docs** page for the full guide, or [`workers/ai-review/README.md`](./workers/ai-review/README.md) for self-hosting.
+1. Create a fine-grained personal access token with **Contents: Read and write** on the repositories you want to use.
+2. Open the app, click **Connect GitHub**, and paste the token.
+3. Pick a repository and branch. Every `.pen` in that branch is listed.
+4. Open one and edit it. The toolbar button reads **Commit**; press it, then confirm.
+5. For a document that did not come from GitHub, the same button reads **Save to GitHub**. Pick a repository, branch and path, then **Create & Commit**.
+6. Click the file path in the header to see the commit log for that file and restore an earlier version.
 
 ## Features
 
-- 🤖 **AI Design Review** ✨ — Cloudflare Workers AI (Llama 3.3 70B) powered. Full / Five UI States / Accessibility / Quick modes. **One-click repair** of missing UI states with style-matching auto-generation. Stateless, free tier covers daily use.
+- **Git-backed `.pen` storage** --- open, edit and commit `.pen` files in your own GitHub repository. Browser-only, no backend, token kept in `localStorage`.
+- **Commit history & restore** --- read the log for a file and roll back to any earlier version.
+- **AI Design Review** (optional) --- Cloudflare Workers AI (Llama 3.3 70B). Full / Five UI States / Accessibility / Quick modes, with one-click generation of missing UI states. Off unless `VITE_AI_REVIEW_URL` is set.
 - **3 ways to load files** --- drag & drop, `?src=<url>` query, or bundled samples
 - **Full node support** --- rectangle, ellipse, line, polygon, path, text, frame (flex layout), group, icon_font (Material Symbols + Lucide)
 - **Paint & effects** --- solid color, linear/radial gradients, image fills, blur, drop shadow
@@ -118,9 +126,10 @@ Free tier covers 100k requests/day, which is more than enough for personal or sm
 | :white_check_mark: | Vision & Use Cases page |
 | :white_check_mark: | Undo / Redo (Figma-equivalent granularity) |
 | :white_check_mark: | AI Design Review (Cloudflare Workers AI) |
-| :construction: | Figma Import (Figma API → .pen conversion) |
+| :white_check_mark: | Git-backed `.pen` storage (open / commit / history / restore) |
 | :construction: | Notion API (direct page creation / update) |
 | :construction: | CI Integration (GitHub Actions design review) |
+| :x: | Figma Import (Figma API → .pen conversion) --- not planned |
 
 ### MCP / CLI Integration [BETA]
 
@@ -135,7 +144,7 @@ Once running, Claude Code (or any HTTP client) can `GET` / `POST` against `http:
 
 ### AI Design Review
 
-> **The killer feature.** Pencil Viewer has a built-in AI design reviewer that runs on Cloudflare Workers AI (Llama 3.3 70B). It can analyze your screens for missing UI states, accessibility issues, and design consistency — and **fix them in one click**.
+> Optional. Pencil Viewer can call a Cloudflare Workers AI (Llama 3.3 70B) reviewer that analyzes your screens for missing UI states, accessibility issues and design consistency, and can generate the missing frames for you. The panel only appears when `VITE_AI_REVIEW_URL` is set at build time.
 
 #### How to use
 
@@ -153,7 +162,7 @@ Once running, Claude Code (or any HTTP client) can `GET` / `POST` against `http:
 | **Accessibility** | Contrast, touch targets, text size, WCAG compliance | Inclusive design review |
 | **Quick Feedback** | 3–5 actionable bullet points | Rapid iteration during early sketches |
 
-#### ✨ Five UI States Auto-Repair (Killer feature)
+#### Five UI States auto-repair
 
 When the **Five UI States** review finds a screen missing an Empty / Loading / Error / Partial state, the panel surfaces **"🔧 Repair Candidates"** — a row of one-click buttons. Click `+ Empty State` on Home, and within seconds the AI generates a brand-new frame **in the same visual style as the original** (same colors, fonts, layout tokens) and drops it in your canvas right next to the source.
 
@@ -211,29 +220,37 @@ marking releases.
 
 # Pencil Viewer (日本語)
 
-> **[Pencil.dev](https://www.pencil.dev/) の `.pen` ファイルを表示・編集するオープンソースのオンラインビュワー。**
+> **[Pencil.dev](https://www.pencil.dev/) の `.pen` を、自分の Git リポジトリに置いたまま扱うワイヤーフレーム/仕様ワークスペース。**
 >
 > 完全にブラウザ上で動作。サーバー不要。ホスティング無料。
 
-## ✨ 注目機能: AI デザインレビュー
+## git-backed な `.pen` 保管庫
 
-> **AI デザインレビュアーが、ビューアの中に常駐。** 不足している UI ステートを検出、一貫性・アクセシビリティの問題を即座に指摘し、**ワンクリックで修復**まで完結します — ビューアから離れることなく。
+> **デザインはあなたのリポジトリに置いたまま。** GitHub の Personal Access Token を登録すると、リポジトリとブランチを選び、`.pen` を開いて編集し、そのままコミットまでブラウザだけで完結します。
 
 | | |
 |---|---|
-| 🤖 **使用モデル** | Cloudflare Workers AI (Llama 3.3 70B) |
-| 📋 **モード** | 総合レビュー · Five UI States · アクセシビリティ · クイック |
-| ✨ **キラー機能** | ワンクリック「修復候補」 — AI が既存のデザイントークンを使って Empty / Loading / Error / Partial フレームを自動生成 |
-| 🔒 **プライバシー** | ステートレス: DB なし、ログなし、学習データに使われない |
-| 💰 **コスト** | 無料枠で $0(1 日 50〜125 リクエスト相当)、Workers Paid 不要 |
+| **ファイルの置き場所** | あなた自身の GitHub リポジトリ。このプロジェクトは 1 バイトも保管しません。 |
+| **通信経路** | ブラウザから `api.github.com` へ CORS で直接。バックエンドはありません。 |
+| **トークンの扱い** | このブラウザの `localStorage` にのみ保持。GitHub 以外へは送りません。 |
+| **履歴** | 保存はコミット。ファイル単位のログを辿り、過去の版を開いて復元できます。 |
+| **競合したとき** | 編集中にブランチが進んでいた場合、force push するか最新を取り直すかを選べます。 |
+| **コスト** | $0。GitHub Pages の静的ファイルとあなたの repo だけで動くため、増えるデータベースがありません。 |
 
-**試し方:** 任意の `.pen` ファイルを開く → `Cmd + Shift + P` → 「AI Design Review」 → 「Five UI States」モード → 不足してる画面の `+ 空状態` ボタンをクリック。AI が同じスタイルで新しいフレームを生成し、元の右隣に配置します。
+**使い方**
 
-→ 詳しい使い方は アプリ内の **Docs** ページを開くか、[`workers/ai-review/README.md`](./workers/ai-review/README.md) を参照。
+1. 対象リポジトリに **Contents: Read and write** を付けた fine-grained personal access token を作成します。
+2. アプリを開き、**GitHub に接続** からトークンを貼り付けます。
+3. リポジトリとブランチを選ぶと、そのブランチ内の `.pen` が一覧されます。
+4. 開いて編集します。ツールバーのボタンは **Commit** と表示されるので、押して確定します。
+5. GitHub 由来でないドキュメントでは同じボタンが **Save to GitHub** になります。リポジトリ・ブランチ・パスを選んで **Create & Commit** で新規作成します。
+6. ヘッダーのファイルパスをクリックすると、そのファイルのコミット履歴を見て過去の版に復元できます。
 
 ## 特徴
 
-- 🤖 **AI デザインレビュー** ✨ --- Cloudflare Workers AI(Llama 3.3 70B)を使用。総合 / Five UI States / アクセシビリティ / クイック の 4 モード。**ワンクリックで欠けた UI ステートをスタイル一致で自動生成**。ステートレス、無料枠で日常利用十分。
+- **git-backed な `.pen` 保管庫** --- 自分の GitHub リポジトリの `.pen` を開き、編集し、コミットする。ブラウザ完結、バックエンド無し、トークンは `localStorage` のみ。
+- **コミット履歴と復元** --- ファイル単位のログを読み、任意の過去の版に戻せます。
+- **AI デザインレビュー**(任意) --- Cloudflare Workers AI(Llama 3.3 70B)。総合 / Five UI States / アクセシビリティ / クイックの 4 モードと、欠けた UI ステートのワンクリック生成。`VITE_AI_REVIEW_URL` 未設定なら無効です。
 - **3 つのファイル読み込み方法** --- ドラッグ & ドロップ / `?src=<url>` クエリ / バンドルサンプル
 - **全主要ノード対応** --- rectangle / ellipse / line / polygon / path / text / frame(flex レイアウト) / group / icon_font(Material Symbols + Lucide)
 - **塗り & 効果** --- ソリッド色 / 線形・放射グラデーション / 画像パターン / ぼかし / ドロップシャドウ
@@ -300,9 +317,10 @@ marking releases.
 | :white_check_mark: | ビジョン & ユースケースページ |
 | :white_check_mark: | Undo / Redo (Figma 同等の粒度) |
 | :white_check_mark: | AI デザインレビュー (Cloudflare Workers AI) |
-| :construction: | Figma インポート (Figma API → .pen 変換) |
+| :white_check_mark: | git-backed な `.pen` 保管庫 (開く / コミット / 履歴 / 復元) |
 | :construction: | Notion API (ページ直接作成/更新) |
 | :construction: | CI 連携 (GitHub Actions デザインレビュー) |
+| :x: | Figma インポート (Figma API → .pen 変換) --- 予定なし |
 
 ### MCP / CLI 連携 [BETA]
 
@@ -317,7 +335,7 @@ cd tools/collab-bridge && npm start
 
 ### AI デザインレビュー [BETA]
 
-Pencil Viewer は Cloudflare Workers AI（Llama 3.1）と連携し、キャンバスから直接 AI によるデザイン分析を行えます。**この機能は完全に任意です** --- 無効でもビューアの全機能は使えます。
+Pencil Viewer は Cloudflare Workers AI（Llama 3.3 70B）と連携し、キャンバスから直接 AI によるデザイン分析を行えます。**この機能は完全に任意です** --- 無効でもビューアの全機能は使えます。
 
 **セットアップ:**
 
@@ -361,29 +379,37 @@ gh release create vX.Y.Z --generate-notes
 
 # Pencil Viewer (中文)
 
-> **[Pencil.dev](https://www.pencil.dev/) `.pen` 文件的开源在线查看器和编辑工具。**
+> **把 [Pencil.dev](https://www.pencil.dev/) 的 `.pen` 文件放在你自己的 Git 仓库里使用的线框图 / 规格工作区。**
 >
 > 完全在浏览器中运行。无需服务器。免费托管。
 
-## ✨ 重点功能：AI 设计审查
+## 基于 Git 的 `.pen` 存储
 
-> **集成在画布中的 AI 设计审查员。** 一键发现缺失的 UI 状态、获得即时的一致性和无障碍性反馈,并在不离开查看器的情况下**一键修复**。
+> **设计稿始终留在你自己的仓库里。** 填入 GitHub 个人访问令牌后，就能选择仓库与分支、打开 `.pen`、编辑并直接提交，全程只在浏览器里完成。
 
 | | |
 |---|---|
-| 🤖 **使用模型** | Cloudflare Workers AI (Llama 3.3 70B) |
-| 📋 **模式** | 全面审查 · Five UI States · 无障碍性 · 快速反馈 |
-| ✨ **杀手级功能** | 一键"修复候选" — AI 使用现有设计令牌自动生成 Empty / Loading / Error / Partial 画面 |
-| 🔒 **隐私** | 无状态:无数据库、无日志、不用于训练数据 |
-| 💰 **成本** | 免费额度内 $0(每天约 50-125 次审查)、无需 Workers Paid |
+| **文件存放位置** | 你自己的 GitHub 仓库。本项目不保存任何数据。 |
+| **通信方式** | 浏览器通过 CORS 直连 `api.github.com`，没有后端。 |
+| **令牌的处理** | 只保存在本浏览器的 `localStorage`，除 GitHub 外不会发往任何地方。 |
+| **历史记录** | 每次保存都是一次提交。可按文件查看日志、打开旧版本并恢复。 |
+| **发生冲突时** | 若编辑期间分支已更新，可选择强制推送或重新拉取最新版本。 |
+| **成本** | $0。只有 GitHub Pages 上的静态文件和你自己的仓库，没有会不断变大的数据库。 |
 
-**试用方法：** 打开任何 `.pen` 文件 → `Cmd + Shift + P` → "AI Design Review" → 选择 "Five UI States" → 点击缺失画面上的 `+ 空状态` 按钮。AI 会以匹配的样式生成新画面并放置在原始画面右侧。
+**使用步骤**
 
-→ 详情请查看应用内 **Docs** 页面,或参阅 [`workers/ai-review/README.md`](./workers/ai-review/README.md)。
+1. 为目标仓库创建具有 **Contents: Read and write** 权限的 fine-grained personal access token。
+2. 打开应用，点击 **连接 GitHub** 并粘贴令牌。
+3. 选择仓库和分支，该分支下的所有 `.pen` 都会列出。
+4. 打开后进行编辑。工具栏按钮显示为 **Commit**，点击后确认即可。
+5. 对于并非来自 GitHub 的文档，同一个按钮会显示为 **Save to GitHub**。选择仓库、分支和路径后，点击 **Create & Commit** 新建。
+6. 点击页眉中的文件路径，即可查看该文件的提交历史并恢复到较早的版本。
 
 ## 功能
 
-- 🤖 **AI 设计审查** ✨ --- Cloudflare Workers AI（Llama 3.3 70B）驱动的设计分析。全面审查 / Five UI States / 无障碍性 / 快速反馈 四种模式。**一键修复缺失的 UI 状态,自动匹配视觉样式**。无状态,免费额度足以日常使用。
+- **基于 Git 的 `.pen` 存储** --- 在你自己的 GitHub 仓库中打开、编辑并提交 `.pen`。纯浏览器实现，无后端，令牌只存在 `localStorage`。
+- **提交历史与恢复** --- 按文件读取日志，可回滚到任意较早的版本。
+- **AI 设计审查**（可选） --- Cloudflare Workers AI（Llama 3.3 70B）。全面审查 / Five UI States / 无障碍性 / 快速反馈四种模式，并能一键生成缺失的 UI 状态。未设置 `VITE_AI_REVIEW_URL` 时不启用。
 - **3 种文件加载方式** --- 拖放 / `?src=<url>` 查询参数 / 内置示例
 - **全节点支持** --- rectangle / ellipse / line / polygon / path / text / frame（flex 布局）/ group / icon_font（Material Symbols + Lucide）
 - **填充与特效** --- 纯色 / 线性渐变 / 径向渐变 / 图像填充 / 模糊 / 阴影
@@ -450,9 +476,10 @@ gh release create vX.Y.Z --generate-notes
 | :white_check_mark: | 愿景与用例页面 |
 | :white_check_mark: | 撤销 / 重做（Figma 等效粒度） |
 | :white_check_mark: | AI 设计审查（Cloudflare Workers AI） |
-| :construction: | Figma 导入（Figma API → .pen 转换） |
+| :white_check_mark: | 基于 Git 的 `.pen` 存储（打开 / 提交 / 历史 / 恢复） |
 | :construction: | Notion API（直接创建/更新页面） |
 | :construction: | CI 集成（GitHub Actions 设计审查） |
+| :x: | Figma 导入（Figma API → .pen 转换） --- 暂无计划 |
 
 ### MCP / CLI 集成 [BETA]
 
@@ -467,7 +494,7 @@ cd tools/collab-bridge && npm start
 
 ### AI 设计审查 [BETA]
 
-Pencil Viewer 集成了 Cloudflare Workers AI（Llama 3.1），可直接从画布进行 AI 驱动的设计分析。**此功能完全可选** --- 不启用也不影响查看器的任何功能。
+Pencil Viewer 集成了 Cloudflare Workers AI（Llama 3.3 70B），可直接从画布进行 AI 驱动的设计分析。**此功能完全可选** --- 不启用也不影响查看器的任何功能。
 
 **设置：**
 

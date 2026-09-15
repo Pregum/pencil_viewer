@@ -21,11 +21,7 @@ interface Props {
   svgRef: React.RefObject<SVGSVGElement | null>;
 }
 
-function screenToSvg(
-  clientX: number,
-  clientY: number,
-  svg: SVGSVGElement,
-): { x: number; y: number } {
+function screenToSvg(clientX: number, clientY: number, svg: SVGSVGElement): { x: number; y: number } {
   const ctm = svg.getScreenCTM();
   if (!ctm) return { x: 0, y: 0 };
   return {
@@ -148,8 +144,7 @@ export function ShapeCreator({ svgRef }: Props) {
       const target = e.target as Element;
       const tagName = target.tagName.toLowerCase();
       const isBackground =
-        tagName === 'svg' ||
-        (tagName === 'rect' && target.getAttribute('fill') === 'transparent');
+        tagName === 'svg' || (tagName === 'rect' && target.getAttribute('fill') === 'transparent');
       if (!isBackground) return;
 
       const pt = screenToSvg(e.clientX, e.clientY, svg);
@@ -218,7 +213,8 @@ export function ShapeCreator({ svgRef }: Props) {
       // 作成したら select ツールに戻す
       setActiveTool('select');
     },
-    [preview, tool, addNode, setActiveTool, beginEditing],
+    // グリッドスナップ設定を落とすと、途中で切り替えても効かない (#78)
+    [preview, tool, addNode, setActiveTool, beginEditing, state.gridSnap, state.gridSize],
   );
 
   useEffect(() => {

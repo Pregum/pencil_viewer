@@ -116,6 +116,11 @@ export function CommentsLayer({ svgRef, svgScale }: Props) {
       </g>
 
       {/* Popup: open または draft */}
+      {/* コメントの吹き出しは SVG 座標 → 画面座標の変換行列 (CTM) を使って
+          HTML 側に置く。CTM はパン / ズームのたびに変わるので、レンダーのたびに
+          読む必要がある。state に写して effect で追随させるとパン中に 1 フレーム
+          遅れて吹き出しがずれるため、ここでは意図的にレンダー中に ref を読む。 */}
+      {/* eslint-disable-next-line react-hooks/refs */}
       {(openId || draftPos) && (() => {
         const svg = svgRef.current;
         if (!svg) return null;

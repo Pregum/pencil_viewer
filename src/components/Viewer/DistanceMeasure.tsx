@@ -50,10 +50,14 @@ interface Gaps {
 }
 
 function computeGaps(a: Rect, b: Rect): Gaps {
-  const aLeft = a.x, aRight = a.x + a.width;
-  const aTop = a.y, aBottom = a.y + a.height;
-  const bLeft = b.x, bRight = b.x + b.width;
-  const bTop = b.y, bBottom = b.y + b.height;
+  const aLeft = a.x,
+    aRight = a.x + a.width;
+  const aTop = a.y,
+    aBottom = a.y + a.height;
+  const bLeft = b.x,
+    bRight = b.x + b.width;
+  const bTop = b.y,
+    bBottom = b.y + b.height;
 
   let horizontal: number;
   let xDir: Gaps['xDir'];
@@ -125,12 +129,14 @@ export function DistanceMeasure({ svgRef, svgScale }: Props) {
     };
   }, []);
 
+  // Alt を離す / 選択が外れると計測は終わる。hoverId をそこから導いておけば
+  // effect の本体で setState(null) しなくて済む (#78)。
+  const measuring = altDown && !!state.selectedNodeId;
+  const activeHoverId = measuring ? hoverId : null;
+
   // ホバー位置を追跡
   useEffect(() => {
-    if (!altDown || !state.selectedNodeId) {
-      setHoverId(null);
-      return;
-    }
+    if (!measuring) return;
     const svg = svgRef.current;
     if (!svg) return;
 
@@ -151,21 +157,19 @@ export function DistanceMeasure({ svgRef, svgScale }: Props) {
 
     window.addEventListener('pointermove', handleMove);
     return () => window.removeEventListener('pointermove', handleMove);
-  }, [altDown, state.selectedNodeId, state.doc.children, svgRef]);
+  }, [measuring, state.selectedNodeId, state.doc.children, svgRef]);
 
   const selected = useMemo(() => {
-    const n = state.selectedNodeId
-      ? state.doc.children.find((c) => c.id === state.selectedNodeId)
-      : null;
+    const n = state.selectedNodeId ? state.doc.children.find((c) => c.id === state.selectedNodeId) : null;
     return n ? nodeToRect(n) : null;
   }, [state.selectedNodeId, state.doc.children]);
 
   const hovered = useMemo(() => {
-    const n = hoverId ? state.doc.children.find((c) => c.id === hoverId) : null;
+    const n = activeHoverId ? state.doc.children.find((c) => c.id === activeHoverId) : null;
     return n ? nodeToRect(n) : null;
-  }, [hoverId, state.doc.children]);
+  }, [activeHoverId, state.doc.children]);
 
-  if (!altDown || !selected || !hovered || selected.id === hovered.id) return null;
+  if (!measuring || !selected || !hovered || selected.id === hovered.id) return null;
 
   const gaps = computeGaps(selected, hovered);
   const stroke = '#DC2626';

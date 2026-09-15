@@ -6,7 +6,7 @@
  * 編集ノードの左上 (クライアント座標) に絶対配置される。
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useEditor } from '../../pen/state/EditorContext';
 import type { PenNode, TextNode } from '../../pen/types';
 import { ColorPicker } from './ColorPicker';
@@ -30,11 +30,15 @@ function findNode(nodes: PenNode[], id: string): PenNode | null {
 export function FloatingTextToolbar({ svgRef }: Props) {
   const { state, updateNodeSilent } = useEditor();
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
-  const [colorOpen, setColorOpen] = useState(false);
-  const swatchRef = useRef<HTMLButtonElement>(null);
+  /** カラーピッカーを開いた位置。クリック時に測る（レンダー中に ref を読まない, #78） */
+  const [colorAnchor, setColorAnchor] = useState<DOMRect | null>(null);
+  const colorOpen = colorAnchor !== null;
 
   const editingId = state.editingNodeId;
-  const node = useMemo(() => (editingId ? findNode(state.doc.children, editingId) : null), [editingId, state.doc]);
+  const node = useMemo(
+    () => (editingId ? findNode(state.doc.children, editingId) : null),
+    [editingId, state.doc],
+  );
   const textNode = node?.type === 'text' ? (node as TextNode) : null;
 
   // 編集ノードの左上スクリーン座標を SVG CTM から計算してツールバー位置を更新
@@ -48,8 +52,8 @@ export function FloatingTextToolbar({ svgRef }: Props) {
       if (!svg) return;
       const ctm = svg.getScreenCTM();
       if (!ctm) return;
-      const x = (textNode.x ?? 0);
-      const y = (textNode.y ?? 0);
+      const x = textNode.x ?? 0;
+      const y = textNode.y ?? 0;
       const clientX = ctm.a * x + ctm.e;
       const clientY = ctm.d * y + ctm.f;
       // ツールバーはノード上端から 42px 上に配置
@@ -122,7 +126,9 @@ export function FloatingTextToolbar({ svgRef }: Props) {
         title="Align left"
         onClick={() => patch({ textAlign: 'left' })}
       >
-        <svg width="14" height="14" viewBox="0 0 16 16"><path d="M2 3h12M2 6h8M2 9h12M2 12h8" stroke="currentColor" strokeWidth="1.4" /></svg>
+        <svg width="14" height="14" viewBox="0 0 16 16">
+          <path d="M2 3h12M2 6h8M2 9h12M2 12h8" stroke="currentColor" strokeWidth="1.4" />
+        </svg>
       </button>
       <button
         type="button"
@@ -130,7 +136,9 @@ export function FloatingTextToolbar({ svgRef }: Props) {
         title="Align center"
         onClick={() => patch({ textAlign: 'center' })}
       >
-        <svg width="14" height="14" viewBox="0 0 16 16"><path d="M2 3h12M4 6h8M2 9h12M4 12h8" stroke="currentColor" strokeWidth="1.4" /></svg>
+        <svg width="14" height="14" viewBox="0 0 16 16">
+          <path d="M2 3h12M4 6h8M2 9h12M4 12h8" stroke="currentColor" strokeWidth="1.4" />
+        </svg>
       </button>
       <button
         type="button"
@@ -138,23 +146,24 @@ export function FloatingTextToolbar({ svgRef }: Props) {
         title="Align right"
         onClick={() => patch({ textAlign: 'right' })}
       >
-        <svg width="14" height="14" viewBox="0 0 16 16"><path d="M2 3h12M6 6h8M2 9h12M6 12h8" stroke="currentColor" strokeWidth="1.4" /></svg>
+        <svg width="14" height="14" viewBox="0 0 16 16">
+          <path d="M2 3h12M6 6h8M2 9h12M6 12h8" stroke="currentColor" strokeWidth="1.4" />
+        </svg>
       </button>
       <span className="float-text-toolbar__sep" />
       <button
-        ref={swatchRef}
         type="button"
         className="float-text-toolbar__color"
         style={{ background: fill }}
         title={`Color: ${fill}`}
-        onClick={() => setColorOpen((v) => !v)}
+        onClick={(e) => setColorAnchor((prev) => (prev ? null : e.currentTarget.getBoundingClientRect()))}
       />
       {colorOpen && (
         <ColorPicker
           color={fill.startsWith('#') ? fill.slice(0, 7) : '#111827'}
-          anchorRect={swatchRef.current?.getBoundingClientRect() ?? null}
+          anchorRect={colorAnchor}
           onChange={(hex) => patch({ fill: hex })}
-          onClose={() => setColorOpen(false)}
+          onClose={() => setColorAnchor(null)}
         />
       )}
     </div>

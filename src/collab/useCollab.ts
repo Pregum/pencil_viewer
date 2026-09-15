@@ -55,10 +55,7 @@ const SIGNALING_SERVERS: string[] = ((import.meta.env.VITE_COLLAB_SIGNALING as s
   .map((s) => s.trim())
   .filter(Boolean);
 
-const PEER_COLORS = [
-  '#ef4444', '#f97316', '#eab308', '#22c55e',
-  '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899',
-];
+const PEER_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'];
 
 function generateRoomId(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -95,7 +92,10 @@ export function useCollab() {
   const onDocUpdateRef = useRef<RemoteDocHandler | null>(null);
   /** awareness に書き込む user フィールドを最新に保つための参照 */
   const userRef = useRef({ name: state.userName, color: state.selfColor });
-  userRef.current = { name: state.userName, color: state.selfColor };
+  // レンダー中に ref を書くと concurrent レンダーで壊れうる (react-hooks/refs, #78)
+  useEffect(() => {
+    userRef.current = { name: state.userName, color: state.selfColor };
+  }, [state.userName, state.selfColor]);
 
   /** CollabSync から呼ぶ: リモート doc 受信ハンドラを登録 */
   const setRemoteHandler = useCallback((cb: RemoteDocHandler | null) => {
@@ -113,110 +113,119 @@ export function useCollab() {
   }, []);
 
   /** 動的 import 済みの yjs / y-webrtc を使って実際にルームを構築する */
-  const setupRoom = useCallback((
-    Y: typeof YType,
-    WebrtcProvider: typeof import('y-webrtc').WebrtcProvider,
-    roomId: string,
-    initialDoc: PenDocument | null,
-  ) => {
-    const ydoc = new Y.Doc();
-    const ymap = ydoc.getMap('pen-document');
+  const setupRoom = useCallback(
+    (
+      Y: typeof YType,
+      WebrtcProvider: typeof import('y-webrtc').WebrtcProvider,
+      roomId: string,
+      initialDoc: PenDocument | null,
+    ) => {
+      const ydoc = new Y.Doc();
+      const ymap = ydoc.getMap('pen-document');
 
-    // 初期ドキュメントを seed (作成者のみ。参加者は null を渡すので素通り)
-    if (initialDoc) {
-      ydoc.transact(() => {
-        ymap.set('version', initialDoc.version);
-        ymap.set('children', JSON.stringify(initialDoc.children));
-      }, LOCAL_ORIGIN);
-    }
-
-    // Y.Map の変更を監視 — 自分の書き込み (LOCAL_ORIGIN) は無視してエコーを防ぐ
-    ymap.observe((_event, transaction) => {
-      if (transaction.origin === LOCAL_ORIGIN) return;
-      const version = (ymap.get('version') as string) ?? '1.0';
-      const childrenStr = ymap.get('children') as string | undefined;
-      if (!childrenStr) return;
-      try {
-        onDocUpdateRef.current?.({ version, children: JSON.parse(childrenStr) });
-      } catch {
-        // ignore parse errors
+      // 初期ドキュメントを seed (作成者のみ。参加者は null を渡すので素通り)
+      if (initialDoc) {
+        ydoc.transact(() => {
+          ymap.set('version', initialDoc.version);
+          ymap.set('children', JSON.stringify(initialDoc.children));
+        }, LOCAL_ORIGIN);
       }
-    });
 
-    // WebRTC Provider
-    const provider = new WebrtcProvider(`pencil-viewer-${roomId}`, ydoc, {
-      signaling: SIGNALING_SERVERS,
-    });
-
-    // Awareness (自分の presence)
-    provider.awareness.setLocalStateField('user', userRef.current);
-
-    // peers の監視 (名前/色/カーソル/選択をまとめて反映)
-    const updatePeers = () => {
-      const peers: CollabPeer[] = [];
-      provider.awareness.getStates().forEach((s, clientId) => {
-        if (clientId === ydoc.clientID) return;
-        const st = s as {
-          user?: { name: string; color: string };
-          cursor?: { x: number; y: number };
-          selection?: string[];
-        };
-        if (st.user) {
-          peers.push({
-            id: String(clientId),
-            name: st.user.name,
-            color: st.user.color,
-            cursor: st.cursor,
-            selection: st.selection,
-          });
+      // Y.Map の変更を監視 — 自分の書き込み (LOCAL_ORIGIN) は無視してエコーを防ぐ
+      ymap.observe((_event, transaction) => {
+        if (transaction.origin === LOCAL_ORIGIN) return;
+        const version = (ymap.get('version') as string) ?? '1.0';
+        const childrenStr = ymap.get('children') as string | undefined;
+        if (!childrenStr) return;
+        try {
+          onDocUpdateRef.current?.({ version, children: JSON.parse(childrenStr) });
+        } catch {
+          // ignore parse errors
         }
       });
-      setState((prev) => ({ ...prev, peers }));
-    };
-    provider.awareness.on('change', updatePeers);
 
-    ydocRef.current = ydoc;
-    providerRef.current = provider;
+      // WebRTC Provider
+      const provider = new WebrtcProvider(`pencil-viewer-${roomId}`, ydoc, {
+        signaling: SIGNALING_SERVERS,
+      });
 
-    setState((prev) => ({ ...prev, connected: true, roomId }));
-  }, []);
+      // Awareness (自分の presence)
+      provider.awareness.setLocalStateField('user', userRef.current);
+
+      // peers の監視 (名前/色/カーソル/選択をまとめて反映)
+      const updatePeers = () => {
+        const peers: CollabPeer[] = [];
+        provider.awareness.getStates().forEach((s, clientId) => {
+          if (clientId === ydoc.clientID) return;
+          const st = s as {
+            user?: { name: string; color: string };
+            cursor?: { x: number; y: number };
+            selection?: string[];
+          };
+          if (st.user) {
+            peers.push({
+              id: String(clientId),
+              name: st.user.name,
+              color: st.user.color,
+              cursor: st.cursor,
+              selection: st.selection,
+            });
+          }
+        });
+        setState((prev) => ({ ...prev, peers }));
+      };
+      provider.awareness.on('change', updatePeers);
+
+      ydocRef.current = ydoc;
+      providerRef.current = provider;
+
+      setState((prev) => ({ ...prev, connected: true, roomId }));
+    },
+    [],
+  );
 
   /**
    * ルームに接続する。
    * @param roomId      接続先ルーム ID
    * @param initialDoc  ルーム作成者なら seed する doc / 参加者は null
    */
-  const joinRoom = useCallback((roomId: string, initialDoc: PenDocument | null) => {
-    disconnect(); // ここで世代が 1 進む
-    const generation = joinGenerationRef.current;
+  const joinRoom = useCallback(
+    (roomId: string, initialDoc: PenDocument | null) => {
+      disconnect(); // ここで世代が 1 進む
+      const generation = joinGenerationRef.current;
 
-    // yjs / y-webrtc は初期バンドルから外してある (#68)。
-    // 実際にルームへ入るときに初めて取りに行く。
-    void (async () => {
-      try {
-        const [Y, webrtc] = await Promise.all([import('yjs'), import('y-webrtc')]);
+      // yjs / y-webrtc は初期バンドルから外してある (#68)。
+      // 実際にルームへ入るときに初めて取りに行く。
+      void (async () => {
+        try {
+          const [Y, webrtc] = await Promise.all([import('yjs'), import('y-webrtc')]);
 
-        // 読み込み中に disconnect / 別ルームへの join が起きていたら破棄
-        if (joinGenerationRef.current !== generation) return;
+          // 読み込み中に disconnect / 別ルームへの join が起きていたら破棄
+          if (joinGenerationRef.current !== generation) return;
 
-        setupRoom(Y, webrtc.WebrtcProvider, roomId, initialDoc);
-      } catch (err) {
-        // import 失敗や Provider の初期化失敗を握り潰さない。
-        // 接続できなかったことが分かるよう未接続状態に戻す。
-        console.error('[collab] failed to join room', err);
-        if (joinGenerationRef.current === generation) {
-          setState((prev) => ({ ...prev, connected: false, roomId: null }));
+          setupRoom(Y, webrtc.WebrtcProvider, roomId, initialDoc);
+        } catch (err) {
+          // import 失敗や Provider の初期化失敗を握り潰さない。
+          // 接続できなかったことが分かるよう未接続状態に戻す。
+          console.error('[collab] failed to join room', err);
+          if (joinGenerationRef.current === generation) {
+            setState((prev) => ({ ...prev, connected: false, roomId: null }));
+          }
         }
-      }
-    })();
-  }, [disconnect, setupRoom]);
+      })();
+    },
+    [disconnect, setupRoom],
+  );
 
   /** ルームを新規作成して接続。作成者の doc を seed する */
-  const createRoom = useCallback((doc: PenDocument): string => {
-    const roomId = generateRoomId();
-    joinRoom(roomId, doc);
-    return roomId;
-  }, [joinRoom]);
+  const createRoom = useCallback(
+    (doc: PenDocument): string => {
+      const roomId = generateRoomId();
+      joinRoom(roomId, doc);
+      return roomId;
+    },
+    [joinRoom],
+  );
 
   /** ローカルのドキュメント変更を Y.Doc に反映 (LOCAL_ORIGIN 付き) */
   const syncDoc = useCallback((doc: PenDocument) => {

@@ -36,9 +36,11 @@ function categorize(name: string): { label: string; color: string } {
   if (n.startsWith('section:') || n.startsWith('section')) return { label: 'SEC', color: '#d97706' };
   if (n.startsWith('label:') || n.startsWith('label')) return { label: 'LBL', color: '#9333ea' };
   if (n.includes('login') || n.includes('sign')) return { label: 'AUTH', color: '#dc2626' };
-  if (n.includes('管理') || n.includes('admin') || n.includes('management')) return { label: 'ADM', color: '#059669' };
+  if (n.includes('管理') || n.includes('admin') || n.includes('management'))
+    return { label: 'ADM', color: '#059669' };
   if (n.includes('nav') || n.includes('ナビ')) return { label: 'NAV', color: '#0891b2' };
-  if (n.includes('guide') || n.includes('ガイド') || n.includes('memo')) return { label: 'DOC', color: '#6b7280' };
+  if (n.includes('guide') || n.includes('ガイド') || n.includes('memo'))
+    return { label: 'DOC', color: '#6b7280' };
   return { label: 'FRM', color: '#4f46e5' };
 }
 
@@ -59,7 +61,10 @@ export function FrameSearch({ frames, activeFrameId, cameraCx, cameraCy, onSelec
   useEffect(() => {
     inputRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); onClose(); }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
       // Block Ctrl+P/N and Cmd+P from propagating to PenViewer while search is open
       const mod = e.ctrlKey || e.metaKey;
       if (mod && (e.key === 'p' || e.key === 'n')) {
@@ -72,9 +77,14 @@ export function FrameSearch({ frames, activeFrameId, cameraCx, cameraCy, onSelec
     return () => window.removeEventListener('keydown', onKey, true);
   }, [onClose]);
 
-  useEffect(() => {
+  // query が変わったら選択を先頭へ。effect ではなくレンダー中に調整する
+  // （React 公式の "Adjusting state when a prop changes"）。effect でやると
+  // 1 往復余計に描画される (#78)。
+  const [prevQuery, setPrevQuery] = useState(query);
+  if (query !== prevQuery) {
+    setPrevQuery(query);
     setSelectedIdx(0);
-  }, [query]);
+  }
 
   useEffect(() => {
     const list = listRef.current;
@@ -114,7 +124,10 @@ export function FrameSearch({ frames, activeFrameId, cameraCx, cameraCy, onSelec
   // Minimap bounds
   const minimap = useMemo(() => {
     if (frames.length === 0) return null;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
     for (const f of frames) {
       minX = Math.min(minX, f.x);
       minY = Math.min(minY, f.y);
@@ -173,9 +186,7 @@ export function FrameSearch({ frames, activeFrameId, cameraCx, cameraCy, onSelec
         )}
 
         <div className="frame-search__list" ref={listRef}>
-          {filtered.length === 0 && (
-            <div className="frame-search__empty">No frames found</div>
-          )}
+          {filtered.length === 0 && <div className="frame-search__empty">No frames found</div>}
           {filtered.map((f, i) => {
             const dist = frameCenterDist(f, cameraCx, cameraCy);
             const cat = categorize(f.name);

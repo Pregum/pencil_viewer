@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PenDocument, PenNode } from '../../pen/types';
-import { computeViewBox, type ViewBox } from '../../pen/renderer/viewBox';
+import { computeViewBox } from '../../pen/renderer/viewBox';
 import { CanvasContent } from './CanvasContent';
+import { usePanZoom, type Camera } from './usePanZoom';
 import { ShortcutsDialog } from './ShortcutsDialog';
 import { FrameSearch } from './FrameSearch';
 import { EditorProvider, useEditor as useEditorInternal } from '../../pen/state/EditorContext';
@@ -53,11 +54,6 @@ import { Rulers } from './Rulers';
 import { PagesPanel } from './PagesPanel';
 import { ComponentsPanel } from './ComponentsPanel';
 
-const MIN_SCALE = 0.05;
-const MAX_SCALE = 64;
-const ZOOM_SENSITIVITY = 0.005;
-const FRAME_PADDING_RATIO = 0.1; // 10% padding around frame when zooming to it
-
 /** Collect all frame/group nodes with absolute bounds */
 export interface FrameEntry {
   id: string;
@@ -94,13 +90,6 @@ function collectFrames(nodes: PenNode[]): FrameEntry[] {
  * The SVG viewBox is set to this camera, so the browser re-renders
  * the vector art at full resolution at any zoom level.
  */
-interface Camera {
-  cx: number; // center x in SVG coords
-  cy: number; // center y in SVG coords
-  /** How many SVG units fit in the viewport width */
-  svgWidth: number;
-}
-
 interface HistoryEntry {
   camera: Camera;
   activeFrameId: string | null;
@@ -116,10 +105,32 @@ function VimBadge() {
 }
 
 export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocument }) {
-  const baseVb = computeViewBox(doc);
+  // doc が変わったときだけ計算し直す。毎レンダーで新しいオブジェクトを作ると
+  // これを deps に持つ useCallback/useEffect が毎回作り直しになる。
+  const baseVb = useMemo(() => computeViewBox(doc), [doc]);
   const frames = useMemo(() => collectFrames(doc.children), [doc]);
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  // カメラ（パン / ズーム / フィット）は usePanZoom に切り出してある (#71)
+  const {
+    containerRef,
+    camera,
+    setCamera,
+    clientSize,
+    viewBox: currentVb,
+    scale,
+    zoomPercent,
+    clampSvgWidth,
+    zoomToRect,
+    fitToDocument,
+    zoomByFactor,
+    zoomTo100,
+    isPanning,
+    isSpaceHeld,
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
+  } = usePanZoom(doc, baseVb);
+
   const svgRef = useRef<SVGSVGElement>(null);
 
   // P2P Collab
@@ -138,26 +149,6 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
 
   /** 招待リンク (?room=) 経由で開いたか */
   const joinedViaUrl = useRef(new URLSearchParams(window.location.search).has('room'));
-
-  // Camera in SVG coordinate space
-  const [camera, setCamera] = useState<Camera>(() => ({
-    cx: baseVb.x + baseVb.width / 2,
-    cy: baseVb.y + baseVb.height / 2,
-    svgWidth: baseVb.width,
-  }));
-
-  const isPanning = useRef(false);
-  const isSpaceHeld = useRef(false);
-  const panStart = useRef({ x: 0, y: 0 });
-  const cameraStart = useRef<Camera>(camera);
-
-  // Touch: 複数指の追跡とピンチズーム状態
-  const activePointers = useRef<Map<number, { x: number; y: number }>>(new Map());
-  const pinchState = useRef<{
-    startDist: number;
-    startCenter: { x: number; y: number };
-    cameraStart: Camera;
-  } | null>(null);
 
   // Active frame highlight
   const [activeFrameId, setActiveFrameId] = useState<string | null>(null);
@@ -187,6 +178,11 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   const [focusMode, setFocusMode] = useState(false);
   const [presentMode, setPresentMode] = useState(false);
   const [presentIdx, setPresentIdx] = useState(0);
+  /** presentMode 中のクリックリスナーから最新のスライド番号を読むための控え */
+  const presentIdxRef = useRef(presentIdx);
+  useEffect(() => {
+    presentIdxRef.current = presentIdx;
+  }, [presentIdx]);
   // Smart Animate トランジション状態
   const [transition, setTransition] = useState<null | {
     fromIdx: number;
@@ -197,24 +193,6 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
     progress: number;
     startTime: number;
   }>(null);
-  const [clientSize, setClientSize] = useState({ width: 0, height: 0 });
-
-  // Compute the actual viewBox from camera
-  const getViewBox = useCallback((): ViewBox => {
-    const el = containerRef.current;
-    const aspect = el ? el.clientWidth / el.clientHeight : 16 / 9;
-    const svgHeight = camera.svgWidth / aspect;
-    return {
-      x: camera.cx - camera.svgWidth / 2,
-      y: camera.cy - svgHeight / 2,
-      width: camera.svgWidth,
-      height: svgHeight,
-    };
-  }, [camera]);
-
-  const currentVb = getViewBox();
-  const scale = baseVb.width / camera.svgWidth;
-  const zoomPercent = Math.round(scale * 100);
 
   // Push current state to history
   const pushHistory = useCallback(
@@ -226,10 +204,13 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
     [camera, historyIndex],
   );
 
-  const applyHistoryEntry = useCallback((entry: HistoryEntry) => {
-    setCamera(entry.camera);
-    setActiveFrameId(entry.activeFrameId);
-  }, []);
+  const applyHistoryEntry = useCallback(
+    (entry: HistoryEntry) => {
+      setCamera(entry.camera);
+      setActiveFrameId(entry.activeFrameId);
+    },
+    [setCamera],
+  );
 
   const navigateBack = useCallback(() => {
     if (historyIndex <= 0) return;
@@ -248,27 +229,6 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
     applyHistoryEntry(history[newIdx]);
   }, [historyIndex, history, applyHistoryEntry]);
 
-  // Zoom camera to an arbitrary rect in SVG coords
-  const zoomToRect = useCallback(
-    (rect: { x: number; y: number; width: number; height: number }) => {
-      const padX = rect.width * FRAME_PADDING_RATIO;
-      const padY = rect.height * FRAME_PADDING_RATIO;
-      const el = containerRef.current;
-      const aspect = el ? el.clientWidth / el.clientHeight : 16 / 9;
-      const fitWidth = rect.width + padX * 2;
-      const fitHeight = rect.height + padY * 2;
-      const fitByWidth = fitWidth;
-      const fitByHeight = fitHeight * aspect;
-      const svgWidth = Math.max(fitByWidth, fitByHeight);
-      setCamera({
-        cx: rect.x + rect.width / 2,
-        cy: rect.y + rect.height / 2,
-        svgWidth: clampSvgWidth(svgWidth),
-      });
-    },
-    [],
-  );
-
   // Zoom to a specific frame
   const zoomToFrame = useCallback(
     (frame: FrameEntry) => {
@@ -279,43 +239,10 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
     [pushHistory, zoomToRect],
   );
 
-  function clampSvgWidth(w: number) {
-    const minW = baseVb.width / MAX_SCALE;
-    const maxW = baseVb.width / MIN_SCALE;
-    return Math.min(maxW, Math.max(minW, w));
-  }
-
-  // キャンバスのクライアントサイズ追跡（ルーラー用）
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const update = () => setClientSize({ width: el.clientWidth, height: el.clientHeight });
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
   // Collab: 招待リンク (?room=) で開いた場合は自動で入室
   useEffect(() => {
     const room = new URLSearchParams(window.location.search).get('room');
     if (room) joinRoom(room, null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Collab: 参加者が初回 doc を受信したら、その doc 全体にカメラを合わせる
-  useEffect(() => {
-    const onFit = (e: Event) => {
-      const vb = (e as CustomEvent<ViewBox>).detail;
-      if (!vb || vb.width <= 0) return;
-      setCamera({
-        cx: vb.x + vb.width / 2,
-        cy: vb.y + vb.height / 2,
-        svgWidth: clampSvgWidth(vb.width),
-      });
-    };
-    window.addEventListener('pencil-collab-fit', onFit);
-    return () => window.removeEventListener('pencil-collab-fit', onFit);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -341,7 +268,7 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
       el.removeEventListener('pointermove', onMove);
       el.removeEventListener('pointerleave', onLeave);
     };
-  }, [collab.connected, setLocalCursor]);
+  }, [collab.connected, setLocalCursor, containerRef]);
 
   // Present モード: active frame に自動ズーム（transition 中はスキップ）
   useEffect(() => {
@@ -407,8 +334,10 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
           const n = nodes[i];
           const nx = n.x ?? 0;
           const ny = n.y ?? 0;
-          const nw = typeof (n as { width?: unknown }).width === 'number' ? (n as { width: number }).width : 0;
-          const nh = typeof (n as { height?: unknown }).height === 'number' ? (n as { height: number }).height : 0;
+          const nw =
+            typeof (n as { width?: unknown }).width === 'number' ? (n as { width: number }).width : 0;
+          const nh =
+            typeof (n as { height?: unknown }).height === 'number' ? (n as { height: number }).height : 0;
           if (nw > 0 && nh > 0 && x >= nx && x <= nx + nw && y >= ny && y <= ny + nh) {
             // children から先にヒットしたら優先
             const children = (n as { children?: PenNode[] }).children;
@@ -421,9 +350,20 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
                   const m = ns[j];
                   const mx = m.x ?? 0;
                   const my = m.y ?? 0;
-                  const mw = typeof (m as { width?: unknown }).width === 'number' ? (m as { width: number }).width : 0;
-                  const mh = typeof (m as { height?: unknown }).height === 'number' ? (m as { height: number }).height : 0;
-                  if (mw > 0 && mh > 0 && localX >= mx && localX <= mx + mw && localY >= my && localY <= my + mh) {
+                  const mw =
+                    typeof (m as { width?: unknown }).width === 'number' ? (m as { width: number }).width : 0;
+                  const mh =
+                    typeof (m as { height?: unknown }).height === 'number'
+                      ? (m as { height: number }).height
+                      : 0;
+                  if (
+                    mw > 0 &&
+                    mh > 0 &&
+                    localX >= mx &&
+                    localX <= mx + mw &&
+                    localY >= my &&
+                    localY <= my + mh
+                  ) {
                     const gc = (m as { children?: PenNode[] }).children;
                     if (gc) {
                       // さらに深く探す
@@ -451,9 +391,26 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             e.preventDefault();
             e.stopPropagation();
             // 当該ノードの onTapTransition を取り出して transition を開始
-            const findTrans = (nodes: PenNode[]): { duration?: number; easing?: 'linear' | 'ease-out' | 'ease-in' | 'ease-in-out'; smartAnimate?: boolean } | undefined => {
+            const findTrans = (
+              nodes: PenNode[],
+            ):
+              | {
+                  duration?: number;
+                  easing?: 'linear' | 'ease-out' | 'ease-in' | 'ease-in-out';
+                  smartAnimate?: boolean;
+                }
+              | undefined => {
               for (const n of nodes) {
-                if (n.id === hitId) return (n as { onTapTransition?: { duration?: number; easing?: 'linear' | 'ease-out' | 'ease-in' | 'ease-in-out'; smartAnimate?: boolean } }).onTapTransition;
+                if (n.id === hitId)
+                  return (
+                    n as {
+                      onTapTransition?: {
+                        duration?: number;
+                        easing?: 'linear' | 'ease-out' | 'ease-in' | 'ease-in-out';
+                        smartAnimate?: boolean;
+                      };
+                    }
+                  ).onTapTransition;
                 const children = (n as { children?: PenNode[] }).children;
                 if (children) {
                   const v = findTrans(children);
@@ -466,7 +423,9 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             const duration = trans?.duration ?? 0;
             if (duration > 0) {
               setTransition({
-                fromIdx: presentIdx,
+                // リスナーは presentMode 中に貼りっぱなしなので、クリック時点の
+                // 最新スライド番号を ref から読む（deps に入れると貼り直しになる）
+                fromIdx: presentIdxRef.current,
                 toIdx: idx,
                 duration,
                 easing: trans?.easing ?? 'ease-out',
@@ -532,247 +491,11 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
   }, [presentMode, frames.length]);
 
   // Space key for hand tool
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !e.repeat) isSpaceHeld.current = true;
-    };
-    const onKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') isSpaceHeld.current = false;
-    };
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
-    return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
-    };
-  }, []);
-
-  // Prevent page scroll — attach native listener with passive:false
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const rect = el.getBoundingClientRect();
-
-      if (e.ctrlKey || e.metaKey) {
-        // Zoom: adjust svgWidth (inverse of scale)
-        const delta = -e.deltaY * ZOOM_SENSITIVITY;
-        const factor = 1 / (1 + delta); // smaller svgWidth = zoomed in
-
-        // Cursor position as fraction of viewport
-        const fx = (e.clientX - rect.left) / rect.width;
-        const fy = (e.clientY - rect.top) / rect.height;
-
-        setCamera((prev) => {
-          const aspect = rect.width / rect.height;
-          const oldH = prev.svgWidth / aspect;
-          const newW = clampSvgWidth(prev.svgWidth * factor);
-          const newH = newW / aspect;
-
-          // Keep the point under cursor fixed
-          const oldLeft = prev.cx - prev.svgWidth / 2;
-          const oldTop = prev.cy - oldH / 2;
-          const cursorSvgX = oldLeft + fx * prev.svgWidth;
-          const cursorSvgY = oldTop + fy * oldH;
-          const newLeft = cursorSvgX - fx * newW;
-          const newTop = cursorSvgY - fy * newH;
-
-          return {
-            cx: newLeft + newW / 2,
-            cy: newTop + newH / 2,
-            svgWidth: newW,
-          };
-        });
-      } else {
-        // Pan: convert pixel delta to SVG units
-        const pixelsPerSvgUnit = rect.width / camera.svgWidth;
-        setCamera((prev) => ({
-          ...prev,
-          cx: prev.cx + e.deltaX / pixelsPerSvgUnit,
-          cy: prev.cy + e.deltaY / pixelsPerSvgUnit,
-        }));
-      }
-    };
-
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, [camera.svgWidth]);
-
-  // Pan: space+drag, middle-button drag, alt+drag, or touch drag (1 本指)
-  // Pinch zoom: タッチ 2 本指
-  const handlePointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      // タッチの場合: activePointers に追加し、本数に応じてパン or ピンチを決定
-      if (e.pointerType === 'touch') {
-        activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-        if (activePointers.current.size === 1) {
-          // 1 本指: パン開始
-          isPanning.current = true;
-          pinchState.current = null;
-          panStart.current = { x: e.clientX, y: e.clientY };
-          cameraStart.current = { ...camera };
-          (e.target as HTMLElement).setPointerCapture(e.pointerId);
-          e.preventDefault();
-        } else if (activePointers.current.size === 2) {
-          // 2 本指: パンを解除してピンチズーム開始
-          isPanning.current = false;
-          const pts = Array.from(activePointers.current.values());
-          const dx = pts[0].x - pts[1].x;
-          const dy = pts[0].y - pts[1].y;
-          const dist = Math.hypot(dx, dy);
-          const centerX = (pts[0].x + pts[1].x) / 2;
-          const centerY = (pts[0].y + pts[1].y) / 2;
-          pinchState.current = {
-            startDist: dist || 1,
-            startCenter: { x: centerX, y: centerY },
-            cameraStart: { ...camera },
-          };
-          (e.target as HTMLElement).setPointerCapture(e.pointerId);
-          e.preventDefault();
-        }
-        return;
-      }
-
-      // マウス: 従来どおり Space / 中ボタン / Alt でパン
-      const wantPan =
-        e.button === 1 ||
-        (e.button === 0 && e.altKey) ||
-        (e.button === 0 && isSpaceHeld.current);
-      if (!wantPan) return;
-
-      isPanning.current = true;
-      panStart.current = { x: e.clientX, y: e.clientY };
-      cameraStart.current = { ...camera };
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-      e.preventDefault();
-    },
-    [camera],
-  );
-
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      // タッチでピンチ中: 距離変化からズーム、中心移動からパン
-      if (e.pointerType === 'touch' && pinchState.current) {
-        if (!activePointers.current.has(e.pointerId)) return;
-        activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-        const pts = Array.from(activePointers.current.values());
-        if (pts.length < 2) return;
-
-        const el = containerRef.current;
-        if (!el) return;
-        const rect = el.getBoundingClientRect();
-
-        const dx = pts[0].x - pts[1].x;
-        const dy = pts[0].y - pts[1].y;
-        const dist = Math.hypot(dx, dy);
-        const centerX = (pts[0].x + pts[1].x) / 2;
-        const centerY = (pts[0].y + pts[1].y) / 2;
-
-        const { startDist, startCenter, cameraStart: cs } = pinchState.current;
-        const zoomFactor = startDist / Math.max(dist, 1); // 指が離れる → svgWidth 縮小 → ズームイン
-        const newSvgWidth = clampSvgWidth(cs.svgWidth * zoomFactor);
-
-        const aspect = rect.width / rect.height;
-        const oldH = cs.svgWidth / aspect;
-        const newH = newSvgWidth / aspect;
-
-        // ピンチ開始時の中心点(画面座標比率)を SVG 座標に変換
-        const fx = (startCenter.x - rect.left) / rect.width;
-        const fy = (startCenter.y - rect.top) / rect.height;
-        const oldLeft = cs.cx - cs.svgWidth / 2;
-        const oldTop = cs.cy - oldH / 2;
-        const pinchSvgX = oldLeft + fx * cs.svgWidth;
-        const pinchSvgY = oldTop + fy * oldH;
-
-        // 中心点の移動分だけパン(画面座標差 → SVG 座標差)
-        const pixelsPerSvgUnit = rect.width / newSvgWidth;
-        const panDx = (centerX - startCenter.x) / pixelsPerSvgUnit;
-        const panDy = (centerY - startCenter.y) / pixelsPerSvgUnit;
-
-        // ピンチ中心点を画面上で固定しつつ新しい svgWidth を適用
-        const newLeft = pinchSvgX - fx * newSvgWidth - panDx;
-        const newTop = pinchSvgY - fy * newH - panDy;
-
-        setCamera({
-          cx: newLeft + newSvgWidth / 2,
-          cy: newTop + newH / 2,
-          svgWidth: newSvgWidth,
-        });
-        return;
-      }
-
-      // 通常パン(マウス Space/Alt/中ボタン or タッチ 1 本指)
-      if (!isPanning.current) return;
-      if (e.pointerType === 'touch') {
-        if (!activePointers.current.has(e.pointerId)) return;
-        activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      }
-      const el = containerRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const pixelsPerSvgUnit = rect.width / cameraStart.current.svgWidth;
-      const dx = (e.clientX - panStart.current.x) / pixelsPerSvgUnit;
-      const dy = (e.clientY - panStart.current.y) / pixelsPerSvgUnit;
-      setCamera({
-        ...cameraStart.current,
-        cx: cameraStart.current.cx - dx,
-        cy: cameraStart.current.cy - dy,
-      });
-    },
-    [],
-  );
-
-  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.pointerType === 'touch') {
-      activePointers.current.delete(e.pointerId);
-      // 2 本指 → 1 本指に戻った場合: ピンチ終了、残った指で新たにパン開始
-      if (activePointers.current.size === 1 && pinchState.current) {
-        pinchState.current = null;
-        const [remaining] = Array.from(activePointers.current.values());
-        isPanning.current = true;
-        panStart.current = { x: remaining.x, y: remaining.y };
-        cameraStart.current = { ...camera };
-        return;
-      }
-      // すべての指が離れた
-      if (activePointers.current.size === 0) {
-        isPanning.current = false;
-        pinchState.current = null;
-      }
-      return;
-    }
-    isPanning.current = false;
-  }, [camera]);
-
-  // Zoom to center helper
-  const zoomByFactor = useCallback((factor: number) => {
-    setCamera((prev) => ({
-      ...prev,
-      svgWidth: clampSvgWidth(prev.svgWidth / factor),
-    }));
-  }, []);
-
+  /** 「全体を表示」: カメラを doc 全体に合わせ、フレームの選択も外す */
   const resetView = useCallback(() => {
-    setCamera({
-      cx: baseVb.x + baseVb.width / 2,
-      cy: baseVb.y + baseVb.height / 2,
-      svgWidth: baseVb.width,
-    });
+    fitToDocument();
     setActiveFrameId(null);
-  }, [baseVb]);
-
-  const zoomTo100 = useCallback(() => {
-    setCamera((prev) => ({
-      ...prev,
-      svgWidth: baseVb.width,
-    }));
-  }, [baseVb]);
+  }, [fitToDocument]);
 
   // Vim-like frame navigation: [count]h/j/k/l
   // Text objects (vim mode only): vif, vaf, vir, vic
@@ -796,16 +519,26 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
       let step: number;
 
       switch (direction) {
-        case 'l': sorted = sortedByX; step = count; break;
-        case 'h': sorted = sortedByX; step = -count; break;
-        case 'j': sorted = sortedByY; step = count; break;
-        case 'k': sorted = sortedByY; step = -count; break;
+        case 'l':
+          sorted = sortedByX;
+          step = count;
+          break;
+        case 'h':
+          sorted = sortedByX;
+          step = -count;
+          break;
+        case 'j':
+          sorted = sortedByY;
+          step = count;
+          break;
+        case 'k':
+          sorted = sortedByY;
+          step = -count;
+          break;
       }
 
-      const currentIdx = currentId
-        ? sorted.findIndex((f) => f.id === currentId)
-        : -1;
-      const startIdx = currentIdx >= 0 ? currentIdx : (step > 0 ? -1 : sorted.length);
+      const currentIdx = currentId ? sorted.findIndex((f) => f.id === currentId) : -1;
+      const startIdx = currentIdx >= 0 ? currentIdx : step > 0 ? -1 : sorted.length;
       const targetIdx = Math.max(0, Math.min(sorted.length - 1, startIdx + step));
       const target = sorted[targetIdx];
       if (!target) return;
@@ -814,7 +547,10 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
       const contextRange = 3;
       const lo = Math.max(0, targetIdx - contextRange);
       const hi = Math.min(sorted.length - 1, targetIdx + contextRange);
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
       for (let i = lo; i <= hi; i++) {
         const f = sorted[i];
         minX = Math.min(minX, f.x);
@@ -918,29 +654,39 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
         if (/^[0-9]$/.test(e.key)) {
           vimCount.current += e.key;
           clearTimeout(vimTimeout.current);
-          vimTimeout.current = setTimeout(() => { vimCount.current = ''; vimGPending.current = false; }, 1500);
+          vimTimeout.current = setTimeout(() => {
+            vimCount.current = '';
+            vimGPending.current = false;
+          }, 1500);
           return;
         }
         // g prefix: next h/j/k/l will do frame jump
         if (e.key === 'g' && !vimGPending.current) {
           vimGPending.current = true;
           clearTimeout(vimTimeout.current);
-          vimTimeout.current = setTimeout(() => { vimGPending.current = false; vimCount.current = ''; }, 1500);
+          vimTimeout.current = setTimeout(() => {
+            vimGPending.current = false;
+            vimCount.current = '';
+          }, 1500);
           return;
         }
         // Shift + H/J/K/L: camera half-page scroll
         if (e.key === 'H' || e.key === 'J' || e.key === 'K' || e.key === 'L') {
           e.preventDefault();
           const dir = e.key.toLowerCase();
-          const halfW = camera.svgWidth / 2;
           const el = containerRef.current;
           const aspect = el ? el.clientWidth / el.clientHeight : 16 / 9;
-          const halfH = (camera.svgWidth / aspect) / 2;
-          setCamera((prev) => ({
-            ...prev,
-            cx: prev.cx + (dir === 'l' ? halfW : dir === 'h' ? -halfW : 0),
-            cy: prev.cy + (dir === 'j' ? halfH : dir === 'k' ? -halfH : 0),
-          }));
+          // ズーム倍率は prev から読む。camera を閉じ込めると、ズーム後も
+          // 登録時の倍率でスクロールしてしまう（リスナーは貼りっぱなしのため）
+          setCamera((prev) => {
+            const halfW = prev.svgWidth / 2;
+            const halfH = prev.svgWidth / aspect / 2;
+            return {
+              ...prev,
+              cx: prev.cx + (dir === 'l' ? halfW : dir === 'h' ? -halfW : 0),
+              cy: prev.cy + (dir === 'j' ? halfH : dir === 'k' ? -halfH : 0),
+            };
+          });
           return;
         }
         if (e.key === 'h' || e.key === 'j' || e.key === 'k' || e.key === 'l') {
@@ -957,12 +703,14 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
             nudgeSelected(e.key, count);
           } else {
             // No selection: pan camera
-            const step = camera.svgWidth * 0.05 * count; // 5% of view per press
-            setCamera((prev) => ({
-              ...prev,
-              cx: prev.cx + (e.key === 'l' ? step : e.key === 'h' ? -step : 0),
-              cy: prev.cy + (e.key === 'j' ? step : e.key === 'k' ? -step : 0),
-            }));
+            setCamera((prev) => {
+              const step = prev.svgWidth * 0.05 * count; // 5% of view per press
+              return {
+                ...prev,
+                cx: prev.cx + (e.key === 'l' ? step : e.key === 'h' ? -step : 0),
+                cy: prev.cy + (e.key === 'j' ? step : e.key === 'k' ? -step : 0),
+              };
+            });
           }
           return;
         }
@@ -1000,315 +748,399 @@ export function PenViewer({ doc, rawDoc }: { doc: PenDocument; rawDoc?: PenDocum
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [zoomByFactor, resetView, zoomTo100, navigateBack, navigateForward, navigateVim]);
+    // vimMode を落とすと、モード切替がこのリスナーに伝わらない（実害のある stale）。
+    // nudgeSelected は useCallback([]) で安定なので依存に入れても再登録は増えない。
+  }, [
+    setCamera,
+    containerRef,
+    zoomByFactor,
+    resetView,
+    zoomTo100,
+    navigateBack,
+    navigateForward,
+    navigateVim,
+    nudgeSelected,
+    vimMode,
+  ]);
 
   const cursor = isSpaceHeld.current || isPanning.current ? 'grab' : 'default';
 
   return (
     <EditorProvider doc={doc} rawDoc={rawDoc}>
-    <GitHubDirtyTracker />
-    <CollabSync
-      connected={collab.connected}
-      joining={joinedViaUrl.current}
-      syncDoc={syncCollabDoc}
-      setRemoteHandler={setRemoteHandler}
-      setLocalSelection={setLocalSelection}
-    />
-    <div className={`viewer${presentMode ? ' viewer--present' : ''}${focusMode ? ' viewer--focus' : ''}`}>
-      <div className="viewer__toolbar">
-        <Toolbar />
-        <span className="viewer__separator" />
-        <button
-          type="button"
-          className="viewer__zoom-btn"
-          title="Zoom out (Cmd+-)"
-          onClick={() => zoomByFactor(1 / 1.25)}
-        >
-          -
-        </button>
-        <ZoomInput
-          zoomPercent={zoomPercent}
-          onZoomChange={(percent) => {
-            const newScale = percent / 100;
-            setCamera((prev) => ({
-              ...prev,
-              svgWidth: clampSvgWidth(baseVb.width / newScale),
-            }));
-          }}
-        />
-        <button
-          type="button"
-          className="viewer__zoom-btn"
-          title="Zoom in (Cmd++)"
-          onClick={() => zoomByFactor(1.25)}
-        >
-          +
-        </button>
-        <span className="viewer__separator" />
-        <button
-          type="button"
-          className="viewer__zoom-btn"
-          title="Fit to view (Cmd+0)"
-          onClick={resetView}
-        >
-          Fit
-        </button>
-
-        {frames.length > 0 && (
-          <>
-            <span className="viewer__separator" />
-            <div className="viewer__frame-nav">
-              <button
-                type="button"
-                className="viewer__zoom-btn"
-                title="Back (Cmd+[)"
-                disabled={historyIndex <= 0}
-                onClick={navigateBack}
-              >
-                &#9664;
-              </button>
-              <button
-                type="button"
-                className="viewer__zoom-btn"
-                title="Forward (Cmd+])"
-                disabled={historyIndex >= history.length - 1}
-                onClick={navigateForward}
-              >
-                &#9654;
-              </button>
-              <select
-                className="viewer__frame-select"
-                value={activeFrameId ?? ''}
-                onChange={(e) => {
-                  const frame = frames.find((f) => f.id === e.target.value);
-                  if (frame) zoomToFrame(frame);
-                }}
-              >
-                <option value="" disabled>
-                  Frames
-                </option>
-                {frames.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </>
-        )}
-
-        <span style={{ flex: 1 }} />
-        <AlignToolbar />
-        <span className="viewer__separator" />
-        <GridSnapToggle />
-        <span className="viewer__separator" />
-        {isAIGenerateEnabled() && (
-          <>
-            <button
-              type="button"
-              className="viewer__zoom-btn viewer__ai-btn"
-              title="AI Design Generator (Cmd+K)"
-              onClick={() => setShowAIGenerate(true)}
-            >
-              🪄 AI
-            </button>
-            <span className="viewer__separator" />
-          </>
-        )}
-        <CollabBar
-          collab={collab}
-          bridge={bridge}
-          onStartCollab={() => createRoom(rawDoc ?? doc)}
-          onDisconnect={disconnect}
-          onToggleBridge={() => {
-            if (bridge.connected) {
-              disconnectBridge();
-            } else {
-              connectBridge('ws://localhost:4567', rawDoc ?? doc, () => {});
-            }
-          }}
-          roomUrl={getRoomUrl()}
-        />
-        <span className="viewer__separator" />
-        <CommitButton />
-        <span className="viewer__separator" />
-        <ExportButton />
-        <span className="viewer__separator" />
-        <button
-          type="button"
-          className="viewer__zoom-btn"
-          title="Shortcuts (Cmd+/)"
-          onClick={() => setShowShortcuts(true)}
-        >
-          ?
-        </button>
-      </div>
-      <div className={`viewer__body${showPages ? ' viewer__body--has-pages' : ' viewer__body--has-pages-collapsed'}`}>
-        <div className={`viewer__canvas-wrap${showRulers ? ' viewer__canvas-wrap--rulers' : ''}`}>
-          {showRulers && (
-            <Rulers
-              viewBox={currentVb}
-              clientSize={clientSize}
-              show={showRulers}
-            />
-          )}
-        <div
-          ref={containerRef}
-          className="viewer__canvas"
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          style={{ cursor }}
-        >
-          <svg
-            ref={svgRef}
-            className="viewer__svg"
-            viewBox={`${currentVb.x} ${currentVb.y} ${currentVb.width} ${currentVb.height}`}
-            preserveAspectRatio="xMidYMid meet"
-          >
-            <CanvasContent />
-            {collab.connected && <RemoteCursors peers={collab.peers} scale={scale} />}
-            {activeFrameId && frames.map((f) =>
-              f.id === activeFrameId ? (
-                <rect
-                  key={`highlight-${f.id}`}
-                  x={f.x}
-                  y={f.y}
-                  width={f.width}
-                  height={f.height}
-                  fill="none"
-                  stroke="#7c3aed"
-                  strokeWidth={2 / scale}
-                  strokeDasharray={`${6 / scale} ${4 / scale}`}
-                  rx={4 / scale}
-                  pointerEvents="none"
-                />
-              ) : null,
-            )}
-            <HintLabels vimMode={vimMode} svgScale={scale} cameraCx={camera.cx} cameraCy={camera.cy} viewBox={currentVb} />
-            <MarqueeSelect viewBox={currentVb} svgRef={svgRef} />
-            <ShapeCreator svgRef={svgRef} />
-            <PenToolCreator svgRef={svgRef} svgScale={scale} />
-            <PathEditor svgRef={svgRef} svgScale={scale} />
-            <CommentsLayer svgRef={svgRef} svgScale={scale} />
-            <SnapGuides svgScale={scale} />
-            <DistanceMeasure svgRef={svgRef} svgScale={scale} />
-            <EditAnimation />
-            {transition && frames[transition.fromIdx] && frames[transition.toIdx] && (() => {
-              // Smart Animate オーバーレイ: 元フレームを探して補間描画
-              const fromFrameId = frames[transition.fromIdx].id;
-              const toFrameId = frames[transition.toIdx].id;
-              const findFrame = (nodes: PenNode[], id: string): PenNode | null => {
-                for (const n of nodes) {
-                  if (n.id === id) return n;
-                }
-                return null;
-              };
-              const f = findFrame(doc.children, fromFrameId);
-              const t = findFrame(doc.children, toFrameId);
-              if (f?.type !== 'frame' || t?.type !== 'frame') return null;
-              return (
-                <g style={{ mixBlendMode: 'normal' }}>
-                  {/* 裏の元フレーム / 遷移先フレームを隠すため、黒背景の rect をフレーム位置に置く */}
-                  <SmartAnimateOverlay
-                    fromFrame={f}
-                    toFrame={t}
-                    progress={transition.progress}
-                    easing={transition.easing}
-                    smartAnimate={transition.smartAnimate}
-                  />
-                </g>
-              );
-            })()}
-          </svg>
-        </div>
-        </div>
-        <PagesPanel
-          collapsed={!showPages}
-          onTogglePanel={() => setShowPages((v) => !v)}
-          onZoomToPage={(p) => zoomToFrame(p)}
-        />
-        <ComponentsPanel
-          collapsed={!showComponents}
-          onTogglePanel={() => setShowComponents((v) => !v)}
-          onZoomToNode={(r) => zoomToRect(r)}
-        />
-        <NodeTree collapsed={!showLayers} onTogglePanel={() => setShowLayers((v) => !v)} />
-        <PropertyPanel collapsed={!showProperties} onTogglePanel={() => setShowProperties((v) => !v)} />
-      </div>
-
-      {showShortcuts && <ShortcutsDialog onClose={() => setShowShortcuts(false)} />}
-      {showFrameSearch && (
-        <FrameSearch
-          frames={frames}
-          activeFrameId={activeFrameId}
-          cameraCx={camera.cx}
-          cameraCy={camera.cy}
-          onSelect={zoomToFrame}
-          onClose={() => setShowFrameSearch(false)}
-        />
-      )}
-      {showAutoId && <AutoIdDialog onClose={() => setShowAutoId(false)} />}
-      {showUIStates && <UIStatesPanel onClose={() => setShowUIStates(false)} locale="ja" />}
-      {showAIReview && <AIReviewPanel onClose={() => setShowAIReview(false)} locale="ja" />}
-      {showAIGenerate && (
-        <AIGeneratorPanel
-          onClose={() => setShowAIGenerate(false)}
-          onZoomToNode={(r) => zoomToRect(r)}
-        />
-      )}
-      {showFindReplace && (
-        <FindReplaceDialog
-          onClose={() => setShowFindReplace(false)}
-          onFocusNode={(r) => zoomToRect(r)}
-        />
-      )}
-      {showVariables && <VariablesPanel onClose={() => setShowVariables(false)} />}
-      {showDevInspect && <DevInspectPanel onClose={() => setShowDevInspect(false)} />}
-      {showStyles && <StylesPanel onClose={() => setShowStyles(false)} />}
-      {showSelectionColors && <SelectionColorsPanel onClose={() => setShowSelectionColors(false)} />}
-      {showCommandPalette && (
-        <CommandPaletteWrapper
-          baseCommands={[
-            { id: 'vim-toggle', label: `Vim Mode: ${vimMode ? 'ON → OFF' : 'OFF → ON'}`, action: () => setVimMode((v) => !v) },
-            { id: 'frame-search', label: 'Search Frames', shortcut: 'Cmd+P', action: () => setShowFrameSearch(true) },
-            { id: 'auto-id', label: 'Auto ID / Rename Frames', shortcut: 'Cmd+I', action: () => setShowAutoId(true) },
-            { id: 'ui-states', label: 'Five UI States Audit', action: () => setShowUIStates(true) },
-            { id: 'variables', label: '🎨 Variables (Design Tokens)', action: () => setShowVariables(true) },
-            { id: 'dev-inspect', label: '🧑‍💻 Dev Mode / Inspect', shortcut: 'Cmd+Shift+D', action: () => setShowDevInspect(true) },
-            { id: 'styles', label: '💠 Styles (Color / Text / Effect)', action: () => setShowStyles(true) },
-            { id: 'selection-colors', label: '🎨 Selection / Document Colors', action: () => setShowSelectionColors(true) },
-            { id: 'bool-union', label: 'Boolean: Union', action: () => window.dispatchEvent(new CustomEvent('pencil-bool-op', { detail: 'union' })) },
-            { id: 'bool-subtract', label: 'Boolean: Subtract', action: () => window.dispatchEvent(new CustomEvent('pencil-bool-op', { detail: 'subtract' })) },
-            { id: 'bool-intersect', label: 'Boolean: Intersect', action: () => window.dispatchEvent(new CustomEvent('pencil-bool-op', { detail: 'intersect' })) },
-            { id: 'bool-exclude', label: 'Boolean: Exclude (XOR)', action: () => window.dispatchEvent(new CustomEvent('pencil-bool-op', { detail: 'exclude' })) },
-            { id: 'flatten', label: 'Flatten selection (union → single path)', action: () => window.dispatchEvent(new Event('pencil-flatten')) },
-            { id: 'outline-stroke', label: 'Outline stroke (stroke → filled path)', action: () => window.dispatchEvent(new Event('pencil-outline-stroke')) },
-            ...(isAIReviewEnabled() ? [{ id: 'ai-review', label: '🤖 AI Design Review', action: () => setShowAIReview(true) }] : []),
-            ...(isAIGenerateEnabled() ? [{ id: 'ai-generate', label: '🪄 AI Design Generator', shortcut: 'Cmd+K', action: () => setShowAIGenerate(true) }] : []),
-            { id: 'fit-view', label: 'Fit to View', shortcut: 'Cmd+0', action: resetView },
-            { id: 'zoom-100', label: 'Zoom to 100%', shortcut: 'Cmd+1', action: zoomTo100 },
-            { id: 'shortcuts', label: 'Show Keyboard Shortcuts', shortcut: 'Cmd+/', action: () => setShowShortcuts(true) },
-            { id: 'export', label: 'Export .pen', shortcut: 'Cmd+S', action: () => {} },
-            { id: 'save-as', label: 'Save As...', shortcut: 'Cmd+Shift+S', action: () => {} },
-          ] satisfies Command[]}
-          onClose={() => setShowCommandPalette(false)}
-        />
-      )}
-      <NudgeHandler />
-      <ZoomToSelected onZoomTo={zoomToRect} />
-      <VimTextObjects vimMode={vimMode} />
-      {vimMode && <VimBadge />}
-      <ContextMenu />
-      <ToolShortcuts />
-      <FloatingTextToolbar svgRef={svgRef} />
-      <ImageDropHandler
-        svgRef={svgRef}
-        containerRef={containerRef}
-        viewCenter={{ x: camera.cx, y: camera.cy }}
+      <GitHubDirtyTracker />
+      <CollabSync
+        connected={collab.connected}
+        joining={joinedViaUrl.current}
+        syncDoc={syncCollabDoc}
+        setRemoteHandler={setRemoteHandler}
+        setLocalSelection={setLocalSelection}
       />
-    </div>
+      <div className={`viewer${presentMode ? ' viewer--present' : ''}${focusMode ? ' viewer--focus' : ''}`}>
+        <div className="viewer__toolbar">
+          <Toolbar />
+          <span className="viewer__separator" />
+          <button
+            type="button"
+            className="viewer__zoom-btn"
+            title="Zoom out (Cmd+-)"
+            onClick={() => zoomByFactor(1 / 1.25)}
+          >
+            -
+          </button>
+          <ZoomInput
+            zoomPercent={zoomPercent}
+            onZoomChange={(percent) => {
+              const newScale = percent / 100;
+              setCamera((prev) => ({
+                ...prev,
+                svgWidth: clampSvgWidth(baseVb.width / newScale),
+              }));
+            }}
+          />
+          <button
+            type="button"
+            className="viewer__zoom-btn"
+            title="Zoom in (Cmd++)"
+            onClick={() => zoomByFactor(1.25)}
+          >
+            +
+          </button>
+          <span className="viewer__separator" />
+          <button type="button" className="viewer__zoom-btn" title="Fit to view (Cmd+0)" onClick={resetView}>
+            Fit
+          </button>
+
+          {frames.length > 0 && (
+            <>
+              <span className="viewer__separator" />
+              <div className="viewer__frame-nav">
+                <button
+                  type="button"
+                  className="viewer__zoom-btn"
+                  title="Back (Cmd+[)"
+                  disabled={historyIndex <= 0}
+                  onClick={navigateBack}
+                >
+                  &#9664;
+                </button>
+                <button
+                  type="button"
+                  className="viewer__zoom-btn"
+                  title="Forward (Cmd+])"
+                  disabled={historyIndex >= history.length - 1}
+                  onClick={navigateForward}
+                >
+                  &#9654;
+                </button>
+                <select
+                  className="viewer__frame-select"
+                  value={activeFrameId ?? ''}
+                  onChange={(e) => {
+                    const frame = frames.find((f) => f.id === e.target.value);
+                    if (frame) zoomToFrame(frame);
+                  }}
+                >
+                  <option value="" disabled>
+                    Frames
+                  </option>
+                  {frames.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
+          <span style={{ flex: 1 }} />
+          <AlignToolbar />
+          <span className="viewer__separator" />
+          <GridSnapToggle />
+          <span className="viewer__separator" />
+          {isAIGenerateEnabled() && (
+            <>
+              <button
+                type="button"
+                className="viewer__zoom-btn viewer__ai-btn"
+                title="AI Design Generator (Cmd+K)"
+                onClick={() => setShowAIGenerate(true)}
+              >
+                🪄 AI
+              </button>
+              <span className="viewer__separator" />
+            </>
+          )}
+          <CollabBar
+            collab={collab}
+            bridge={bridge}
+            onStartCollab={() => createRoom(rawDoc ?? doc)}
+            onDisconnect={disconnect}
+            onToggleBridge={() => {
+              if (bridge.connected) {
+                disconnectBridge();
+              } else {
+                connectBridge('ws://localhost:4567', rawDoc ?? doc, () => {});
+              }
+            }}
+            roomUrl={getRoomUrl()}
+          />
+          <span className="viewer__separator" />
+          <CommitButton />
+          <span className="viewer__separator" />
+          <ExportButton />
+          <span className="viewer__separator" />
+          <button
+            type="button"
+            className="viewer__zoom-btn"
+            title="Shortcuts (Cmd+/)"
+            onClick={() => setShowShortcuts(true)}
+          >
+            ?
+          </button>
+        </div>
+        <div
+          className={`viewer__body${showPages ? ' viewer__body--has-pages' : ' viewer__body--has-pages-collapsed'}`}
+        >
+          <div className={`viewer__canvas-wrap${showRulers ? ' viewer__canvas-wrap--rulers' : ''}`}>
+            {showRulers && <Rulers viewBox={currentVb} clientSize={clientSize} show={showRulers} />}
+            <div
+              ref={containerRef}
+              className="viewer__canvas"
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              style={{ cursor }}
+            >
+              <svg
+                ref={svgRef}
+                className="viewer__svg"
+                viewBox={`${currentVb.x} ${currentVb.y} ${currentVb.width} ${currentVb.height}`}
+                preserveAspectRatio="xMidYMid meet"
+              >
+                <CanvasContent />
+                {collab.connected && <RemoteCursors peers={collab.peers} scale={scale} />}
+                {activeFrameId &&
+                  frames.map((f) =>
+                    f.id === activeFrameId ? (
+                      <rect
+                        key={`highlight-${f.id}`}
+                        x={f.x}
+                        y={f.y}
+                        width={f.width}
+                        height={f.height}
+                        fill="none"
+                        stroke="#7c3aed"
+                        strokeWidth={2 / scale}
+                        strokeDasharray={`${6 / scale} ${4 / scale}`}
+                        rx={4 / scale}
+                        pointerEvents="none"
+                      />
+                    ) : null,
+                  )}
+                <HintLabels
+                  vimMode={vimMode}
+                  svgScale={scale}
+                  cameraCx={camera.cx}
+                  cameraCy={camera.cy}
+                  viewBox={currentVb}
+                />
+                <MarqueeSelect viewBox={currentVb} svgRef={svgRef} />
+                <ShapeCreator svgRef={svgRef} />
+                <PenToolCreator svgRef={svgRef} svgScale={scale} />
+                <PathEditor svgRef={svgRef} svgScale={scale} />
+                <CommentsLayer svgRef={svgRef} svgScale={scale} />
+                <SnapGuides svgScale={scale} />
+                <DistanceMeasure svgRef={svgRef} svgScale={scale} />
+                <EditAnimation />
+                {transition &&
+                  frames[transition.fromIdx] &&
+                  frames[transition.toIdx] &&
+                  (() => {
+                    // Smart Animate オーバーレイ: 元フレームを探して補間描画
+                    const fromFrameId = frames[transition.fromIdx].id;
+                    const toFrameId = frames[transition.toIdx].id;
+                    const findFrame = (nodes: PenNode[], id: string): PenNode | null => {
+                      for (const n of nodes) {
+                        if (n.id === id) return n;
+                      }
+                      return null;
+                    };
+                    const f = findFrame(doc.children, fromFrameId);
+                    const t = findFrame(doc.children, toFrameId);
+                    if (f?.type !== 'frame' || t?.type !== 'frame') return null;
+                    return (
+                      <g style={{ mixBlendMode: 'normal' }}>
+                        {/* 裏の元フレーム / 遷移先フレームを隠すため、黒背景の rect をフレーム位置に置く */}
+                        <SmartAnimateOverlay
+                          fromFrame={f}
+                          toFrame={t}
+                          progress={transition.progress}
+                          easing={transition.easing}
+                          smartAnimate={transition.smartAnimate}
+                        />
+                      </g>
+                    );
+                  })()}
+              </svg>
+            </div>
+          </div>
+          <PagesPanel
+            collapsed={!showPages}
+            onTogglePanel={() => setShowPages((v) => !v)}
+            onZoomToPage={(p) => zoomToFrame(p)}
+          />
+          <ComponentsPanel
+            collapsed={!showComponents}
+            onTogglePanel={() => setShowComponents((v) => !v)}
+            onZoomToNode={(r) => zoomToRect(r)}
+          />
+          <NodeTree collapsed={!showLayers} onTogglePanel={() => setShowLayers((v) => !v)} />
+          <PropertyPanel collapsed={!showProperties} onTogglePanel={() => setShowProperties((v) => !v)} />
+        </div>
+
+        {showShortcuts && <ShortcutsDialog onClose={() => setShowShortcuts(false)} />}
+        {showFrameSearch && (
+          <FrameSearch
+            frames={frames}
+            activeFrameId={activeFrameId}
+            cameraCx={camera.cx}
+            cameraCy={camera.cy}
+            onSelect={zoomToFrame}
+            onClose={() => setShowFrameSearch(false)}
+          />
+        )}
+        {showAutoId && <AutoIdDialog onClose={() => setShowAutoId(false)} />}
+        {showUIStates && <UIStatesPanel onClose={() => setShowUIStates(false)} locale="ja" />}
+        {showAIReview && <AIReviewPanel onClose={() => setShowAIReview(false)} locale="ja" />}
+        {showAIGenerate && (
+          <AIGeneratorPanel onClose={() => setShowAIGenerate(false)} onZoomToNode={(r) => zoomToRect(r)} />
+        )}
+        {showFindReplace && (
+          <FindReplaceDialog onClose={() => setShowFindReplace(false)} onFocusNode={(r) => zoomToRect(r)} />
+        )}
+        {showVariables && <VariablesPanel onClose={() => setShowVariables(false)} />}
+        {showDevInspect && <DevInspectPanel onClose={() => setShowDevInspect(false)} />}
+        {showStyles && <StylesPanel onClose={() => setShowStyles(false)} />}
+        {showSelectionColors && <SelectionColorsPanel onClose={() => setShowSelectionColors(false)} />}
+        {showCommandPalette && (
+          <CommandPaletteWrapper
+            baseCommands={
+              [
+                {
+                  id: 'vim-toggle',
+                  label: `Vim Mode: ${vimMode ? 'ON → OFF' : 'OFF → ON'}`,
+                  action: () => setVimMode((v) => !v),
+                },
+                {
+                  id: 'frame-search',
+                  label: 'Search Frames',
+                  shortcut: 'Cmd+P',
+                  action: () => setShowFrameSearch(true),
+                },
+                {
+                  id: 'auto-id',
+                  label: 'Auto ID / Rename Frames',
+                  shortcut: 'Cmd+I',
+                  action: () => setShowAutoId(true),
+                },
+                { id: 'ui-states', label: 'Five UI States Audit', action: () => setShowUIStates(true) },
+                {
+                  id: 'variables',
+                  label: '🎨 Variables (Design Tokens)',
+                  action: () => setShowVariables(true),
+                },
+                {
+                  id: 'dev-inspect',
+                  label: '🧑‍💻 Dev Mode / Inspect',
+                  shortcut: 'Cmd+Shift+D',
+                  action: () => setShowDevInspect(true),
+                },
+                {
+                  id: 'styles',
+                  label: '💠 Styles (Color / Text / Effect)',
+                  action: () => setShowStyles(true),
+                },
+                {
+                  id: 'selection-colors',
+                  label: '🎨 Selection / Document Colors',
+                  action: () => setShowSelectionColors(true),
+                },
+                {
+                  id: 'bool-union',
+                  label: 'Boolean: Union',
+                  action: () => window.dispatchEvent(new CustomEvent('pencil-bool-op', { detail: 'union' })),
+                },
+                {
+                  id: 'bool-subtract',
+                  label: 'Boolean: Subtract',
+                  action: () =>
+                    window.dispatchEvent(new CustomEvent('pencil-bool-op', { detail: 'subtract' })),
+                },
+                {
+                  id: 'bool-intersect',
+                  label: 'Boolean: Intersect',
+                  action: () =>
+                    window.dispatchEvent(new CustomEvent('pencil-bool-op', { detail: 'intersect' })),
+                },
+                {
+                  id: 'bool-exclude',
+                  label: 'Boolean: Exclude (XOR)',
+                  action: () =>
+                    window.dispatchEvent(new CustomEvent('pencil-bool-op', { detail: 'exclude' })),
+                },
+                {
+                  id: 'flatten',
+                  label: 'Flatten selection (union → single path)',
+                  action: () => window.dispatchEvent(new Event('pencil-flatten')),
+                },
+                {
+                  id: 'outline-stroke',
+                  label: 'Outline stroke (stroke → filled path)',
+                  action: () => window.dispatchEvent(new Event('pencil-outline-stroke')),
+                },
+                ...(isAIReviewEnabled()
+                  ? [{ id: 'ai-review', label: '🤖 AI Design Review', action: () => setShowAIReview(true) }]
+                  : []),
+                ...(isAIGenerateEnabled()
+                  ? [
+                      {
+                        id: 'ai-generate',
+                        label: '🪄 AI Design Generator',
+                        shortcut: 'Cmd+K',
+                        action: () => setShowAIGenerate(true),
+                      },
+                    ]
+                  : []),
+                { id: 'fit-view', label: 'Fit to View', shortcut: 'Cmd+0', action: resetView },
+                { id: 'zoom-100', label: 'Zoom to 100%', shortcut: 'Cmd+1', action: zoomTo100 },
+                {
+                  id: 'shortcuts',
+                  label: 'Show Keyboard Shortcuts',
+                  shortcut: 'Cmd+/',
+                  action: () => setShowShortcuts(true),
+                },
+                { id: 'export', label: 'Export .pen', shortcut: 'Cmd+S', action: () => {} },
+                { id: 'save-as', label: 'Save As...', shortcut: 'Cmd+Shift+S', action: () => {} },
+              ] satisfies Command[]
+            }
+            onClose={() => setShowCommandPalette(false)}
+          />
+        )}
+        <NudgeHandler />
+        <ZoomToSelected onZoomTo={zoomToRect} />
+        <VimTextObjects vimMode={vimMode} />
+        {vimMode && <VimBadge />}
+        <ContextMenu />
+        <ToolShortcuts />
+        <FloatingTextToolbar svgRef={svgRef} />
+        <ImageDropHandler
+          svgRef={svgRef}
+          containerRef={containerRef}
+          viewCenter={{ x: camera.cx, y: camera.cy }}
+        />
+      </div>
     </EditorProvider>
   );
 }

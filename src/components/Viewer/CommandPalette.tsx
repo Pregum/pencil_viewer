@@ -42,7 +42,10 @@ export function CommandPalette({ commands, onClose }: Props) {
   useEffect(() => {
     inputRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); onClose(); }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
       // Block Cmd+P from opening frame search while command palette is open
       const mod = e.ctrlKey || e.metaKey;
       if (mod && (e.key === 'p' || e.key === 'n')) {
@@ -55,9 +58,14 @@ export function CommandPalette({ commands, onClose }: Props) {
     return () => window.removeEventListener('keydown', onKey, true);
   }, [onClose]);
 
-  useEffect(() => {
+  // query が変わったら選択を先頭へ。effect ではなくレンダー中に調整する
+  // （React 公式の "Adjusting state when a prop changes"）。effect でやると
+  // 1 往復余計に描画される (#78)。
+  const [prevQuery, setPrevQuery] = useState(query);
+  if (query !== prevQuery) {
+    setPrevQuery(query);
     setSelectedIdx(0);
-  }, [query]);
+  }
 
   useEffect(() => {
     const list = listRef.current;
@@ -105,9 +113,7 @@ export function CommandPalette({ commands, onClose }: Props) {
           onKeyDown={handleKeyDown}
         />
         <div className="frame-search__list" ref={listRef}>
-          {filtered.length === 0 && (
-            <div className="frame-search__empty">No commands found</div>
-          )}
+          {filtered.length === 0 && <div className="frame-search__empty">No commands found</div>}
           {filtered.map((cmd, i) => {
             const isRecent = !query && recent.includes(cmd.id);
             return (
@@ -121,9 +127,7 @@ export function CommandPalette({ commands, onClose }: Props) {
                   {isRecent && <span className="frame-search__badge">recent</span>}
                   {cmd.label}
                 </span>
-                {cmd.shortcut && (
-                  <span className="frame-search__meta">{cmd.shortcut}</span>
-                )}
+                {cmd.shortcut && <span className="frame-search__meta">{cmd.shortcut}</span>}
               </div>
             );
           })}
