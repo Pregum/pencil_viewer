@@ -34,7 +34,9 @@ interface VariableDef {
 
 export type VariableMap = Record<string, VariableDef>;
 
-const VAR_REF_RE = /^\$([a-zA-Z_][a-zA-Z0-9_-]*)$/;
+// 先頭の `-` は Pencil のデザインキットが生成する `$--background` 形式のため許可する。
+// 未定義の名前は置換されないので、`$-100` のような文字列はそのまま残る。
+const VAR_REF_RE = /^\$([a-zA-Z_-][a-zA-Z0-9_-]*)$/;
 
 /**
  * ドキュメントのテーマ軸定義を抽出する。
@@ -139,7 +141,7 @@ function pickThemedValue(
 }
 
 /**
- * 置換対象外の metadata フィールド。これらはノード識別子やフォント名などで、
+ * 置換対象外の metadata フィールド。これらはノード識別子などで、
  * 仮に `$name` の形をしていても変数参照ではなく literal として扱う。
  */
 const NON_SUBSTITUTABLE_KEYS = new Set([
@@ -147,10 +149,25 @@ const NON_SUBSTITUTABLE_KEYS = new Set([
   'name',
   'type',
   'originalType',
-  'fontFamily',
   'iconFontName',
-  'iconFontFamily',
 ]);
+
+/**
+ * フォント名のフィールド。`$--font-primary` のように string 型の変数は参照するが、
+ * 色など他の型の変数と名前が一致しただけのものは literal として残す。
+ */
+const FONT_KEYS = new Set(['fontFamily', 'iconFontFamily']);
+
+function lookupVariable(value: string, vars: VariableMap): VariableDef | undefined {
+  const m = VAR_REF_RE.exec(value);
+  return m ? vars[m[1]] : undefined;
+}
+
+function substituteFont(value: unknown, vars: VariableMap): unknown {
+  if (typeof value !== 'string') return value;
+  const def = lookupVariable(value, vars);
+  return def?.type === 'string' ? def.value : value;
+}
 
 /**
  * 深い置換。配列とオブジェクトを再帰的に walk し、文字列がマッチすれば展開する。
@@ -158,12 +175,8 @@ const NON_SUBSTITUTABLE_KEYS = new Set([
  */
 function walk(value: unknown, vars: VariableMap): unknown {
   if (typeof value === 'string') {
-    const m = VAR_REF_RE.exec(value);
-    if (m) {
-      const def = vars[m[1]];
-      if (def !== undefined) return def.value;
-    }
-    return value;
+    const def = lookupVariable(value, vars);
+    return def !== undefined ? def.value : value;
   }
   if (Array.isArray(value)) {
     return value.map((v) => walk(v, vars));
@@ -172,7 +185,9 @@ function walk(value: unknown, vars: VariableMap): unknown {
     const src = value as Record<string, unknown>;
     const out: Record<string, unknown> = {};
     for (const k in src) {
-      out[k] = NON_SUBSTITUTABLE_KEYS.has(k) ? src[k] : walk(src[k], vars);
+      if (NON_SUBSTITUTABLE_KEYS.has(k)) out[k] = src[k];
+      else if (FONT_KEYS.has(k)) out[k] = substituteFont(src[k], vars);
+      else out[k] = walk(src[k], vars);
     }
     return out;
   }
