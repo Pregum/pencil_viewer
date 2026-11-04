@@ -71,14 +71,27 @@ export function loadDocumentFonts(doc: PenDocument): void {
     }
   }
 
-  if (toLoad.length === 0) return;
+  // 1 つの失敗が他のフォントを巻き込まないよう、ファミリーごとに読み込む
+  toLoad.forEach((font) => requestFont(font));
+}
 
-  // Google Fonts API で動的ロード
-  const families = toLoad.map((f) => `family=${encodeURIComponent(f)}:wght@100..900`).join('&');
-  const url = `https://fonts.googleapis.com/css2?${families}&display=swap`;
+/**
+ * Google Fonts は、指定したウェイトがフォントに無いと CSS 全体を 400 で返す
+ * (例: Roboto Mono は 700 までなので `100..900` が失敗する)。
+ * 広い指定から順に試し、最後はウェイト指定なしで読み込む。
+ */
+const WEIGHT_SPECS = [':wght@100..900', ':wght@400;700', ''];
 
+function requestFont(font: string, attempt = 0) {
+  const family = `${encodeURIComponent(font)}${WEIGHT_SPECS[attempt]}`;
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = url;
+  link.href = `https://fonts.googleapis.com/css2?family=${family}&display=swap`;
+  if (attempt < WEIGHT_SPECS.length - 1) {
+    link.onerror = () => {
+      link.remove();
+      requestFont(font, attempt + 1);
+    };
+  }
   document.head.appendChild(link);
 }
