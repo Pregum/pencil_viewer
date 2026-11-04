@@ -166,6 +166,65 @@ describe('substituteVariables', () => {
     expect(r.fill).toBe('#FF00FF'); // actually substituted
   });
 
+  it('resolves --prefixed design-kit variables, including themed ones (#95)', () => {
+    const result = substituteVariables(
+      doc(
+        {
+          '--background': {
+            type: 'color',
+            value: [
+              { value: '#FFFFFF', theme: { mode: 'light' } },
+              { value: '#000000', theme: { mode: 'dark' } },
+            ],
+          },
+          '--radius-m': { type: 'number', value: 8 },
+        },
+        [
+          {
+            type: 'frame',
+            id: 'f',
+            fill: '$--background',
+            cornerRadius: '$--radius-m',
+            stroke: { thickness: 1, fill: '$--missing' },
+          },
+        ],
+      ),
+    );
+    const f = result.children[0] as {
+      fill: unknown;
+      cornerRadius: unknown;
+      stroke: { fill: unknown };
+    };
+    expect(f.fill).toBe('#FFFFFF');
+    expect(f.cornerRadius).toBe(8);
+    expect(f.stroke.fill).toBe('$--missing'); // undefined refs stay as-is
+  });
+
+  it('resolves fontFamily only through string variables (#95)', () => {
+    const result = substituteVariables(
+      doc(
+        {
+          '--font-primary': { type: 'string', value: 'Geist' },
+          '--primary': { type: 'color', value: '#111' },
+        },
+        [
+          { type: 'text', id: 'a', fontFamily: '$--font-primary' },
+          { type: 'text', id: 'b', fontFamily: '$--primary' },
+          { type: 'text', id: 'c', fontFamily: 'Inter, sans-serif' },
+          { type: 'icon_font', id: 'd', iconFontFamily: '$--font-primary' },
+        ],
+      ),
+    );
+    const [a, b, c, d] = result.children as unknown as {
+      fontFamily?: unknown;
+      iconFontFamily?: unknown;
+    }[];
+    expect(a.fontFamily).toBe('Geist');
+    expect(b.fontFamily).toBe('$--primary'); // non-string variable: literal
+    expect(c.fontFamily).toBe('Inter, sans-serif');
+    expect(d.iconFontFamily).toBe('Geist');
+  });
+
   it('picks value matching the selected theme', () => {
     const input: PenDocument = {
       version: '2.10',
