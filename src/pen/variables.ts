@@ -141,7 +141,9 @@ class VariableResolver {
     }
     if (perTheme.has(name)) return perTheme.get(name) ?? undefined;
     const def = this.compute(name, theme, depth);
-    perTheme.set(name, def ?? null);
+    // 別名をたどる途中の結果は深さの上限で打ち切られていることがあるので、
+    // 直接引いた結果だけを覚える
+    if (depth === 0) perTheme.set(name, def ?? null);
     return def;
   }
 

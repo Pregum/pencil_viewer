@@ -82,10 +82,15 @@ export function mergeLibraries(libs: ImportedLibraries[]): ImportedLibraries {
 /** ライブラリの ID・参照・変数・テーマ軸に `alias:` を付ける */
 export function namespaceLibrary(lib: PenDocument, alias: string): ImportedLibraries {
   const ns = (name: string) => (name.includes(':') ? name : `${alias}:${name}`);
+  const libVariables =
+    lib.variables && typeof lib.variables === 'object' ? (lib.variables as Obj) : {};
 
   const nsValue = (value: unknown): unknown => {
     if (typeof value === 'string') {
-      return LOCAL_VAR_REF_RE.test(value) ? `$${ns(value.slice(1))}` : value;
+      // ライブラリに実在する変数だけを書き換える(`$USD` のような文言はそのまま)
+      return LOCAL_VAR_REF_RE.test(value) && value.slice(1) in libVariables
+        ? `$${ns(value.slice(1))}`
+        : value;
     }
     if (Array.isArray(value)) return value.map(nsValue);
     if (value && typeof value === 'object') {
@@ -113,10 +118,8 @@ export function namespaceLibrary(lib: PenDocument, alias: string): ImportedLibra
   };
 
   const variables: Record<string, unknown> = {};
-  if (lib.variables && typeof lib.variables === 'object') {
-    for (const [name, def] of Object.entries(lib.variables as Obj)) {
-      variables[ns(name)] = nsValue(def);
-    }
+  for (const [name, def] of Object.entries(libVariables)) {
+    variables[ns(name)] = nsValue(def);
   }
   const themes: ThemeAxes = {};
   if (lib.themes && typeof lib.themes === 'object') {

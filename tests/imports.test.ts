@@ -162,3 +162,23 @@ describe('built-in libraries', () => {
     expect(lib.themes['j:Mode']).toEqual(['Light', 'Dark']);
   });
 });
+
+describe('namespaceLibrary — literal text', () => {
+  it('only rewrites references to variables the library defines', () => {
+    const lib = namespaceLibrary(
+      parse({
+        version: '2.8',
+        variables: { '--primary': { type: 'color', value: '#000' } },
+        children: [
+          { type: 'text', id: 'price', content: '$USD', fill: '$--primary' },
+          { type: 'text', id: 'delta', content: '$-100' },
+        ],
+      }),
+      'ui',
+    );
+    const [price, delta] = lib.components as unknown as N[];
+    expect(price.content).toBe('$USD');
+    expect(price.fill).toBe('$ui:--primary');
+    expect(delta.content).toBe('$-100');
+  });
+});
