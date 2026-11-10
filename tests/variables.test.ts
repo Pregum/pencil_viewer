@@ -299,3 +299,107 @@ describe('extractThemeAxes', () => {
     expect(r).toEqual({ mode: ['light', 'dark'] });
   });
 });
+
+describe('substituteVariables — themes and imported variables (#95)', () => {
+  type N = Record<string, unknown> & { children?: N[] };
+  const vars = {
+    bg: {
+      type: 'color',
+      value: [
+        { value: '#FFF' },
+        { value: '#000', theme: { mode: 'dark' } },
+        { value: '#111', theme: { mode: 'dark', base: 'zinc' } },
+      ],
+    },
+  };
+
+  it('uses the last value whose theme is satisfied, defaulting to the first value of each axis', () => {
+    const doc = {
+      version: '2.21',
+      themes: { mode: ['light', 'dark'], base: ['neutral', 'zinc'] },
+      variables: vars,
+      children: [
+        { type: 'frame', id: 'a', fill: '$bg' },
+        { type: 'frame', id: 'b', fill: '$bg', theme: { mode: 'dark' } },
+        { type: 'frame', id: 'c', fill: '$bg', theme: { mode: 'dark', base: 'zinc' } },
+      ],
+    } as unknown as PenDocument;
+    const [a, b, c] = substituteVariables(doc).children as unknown as N[];
+    expect(a.fill).toBe('#FFF');
+    expect(b.fill).toBe('#000');
+    expect(c.fill).toBe('#111');
+  });
+
+  it('applies a node theme to everything beneath it', () => {
+    const doc = {
+      version: '2.21',
+      themes: { mode: ['light', 'dark'] },
+      variables: vars,
+      children: [
+        {
+          type: 'frame',
+          id: 'screen',
+          theme: { mode: 'dark' },
+          children: [
+            { type: 'frame', id: 'card', fill: '$bg' },
+            { type: 'frame', id: 'light-card', theme: { mode: 'light' }, fill: '$bg' },
+          ],
+        },
+      ],
+    } as unknown as PenDocument;
+    const screen = substituteVariables(doc).children[0] as unknown as N;
+    expect(screen.children![0].fill).toBe('#000');
+    expect(screen.children![1].fill).toBe('#FFF');
+  });
+
+  it('resolves `$alias:name` from imported variables and their themes', () => {
+    const doc = {
+      version: '2.21',
+      variables: {
+        accent: {
+          type: 'color',
+          value: [
+            { value: '#2563EB', theme: { 'ui:Mode': 'Light' } },
+            { value: '#3B82F6', theme: { 'ui:Mode': 'Dark' } },
+          ],
+        },
+      },
+      children: [
+        { type: 'frame', id: 'a', fill: '$ui:--background', stroke: { fill: '$accent' } },
+        { type: 'frame', id: 'b', fill: '$ui:--background', stroke: { fill: '$accent' }, theme: { 'ui:Mode': 'Dark' } },
+      ],
+    } as unknown as PenDocument;
+    const external = {
+      themes: { 'ui:Mode': ['Light', 'Dark'] },
+      variables: {
+        'ui:--background': {
+          type: 'color',
+          value: [{ value: '#FAFAFA' }, { value: '#0A0A0A', theme: { 'ui:Mode': 'Dark' } }],
+        },
+      },
+    };
+    const [a, b] = substituteVariables(doc, undefined, external).children as unknown as N[];
+    expect(a.fill).toBe('#FAFAFA');
+    expect((a.stroke as N).fill).toBe('#2563EB');
+    expect(b.fill).toBe('#0A0A0A');
+    expect((b.stroke as N).fill).toBe('#3B82F6');
+  });
+
+  it('follows a variable whose value is another variable', () => {
+    const doc = {
+      version: '2.21',
+      variables: {
+        brand: { type: 'color', value: '#F00' },
+        primary: { type: 'color', value: '$brand' },
+        loop: { type: 'color', value: '$loop' },
+      },
+      children: [
+        { type: 'frame', id: 'a', fill: '$primary' },
+        { type: 'frame', id: 'b', fill: '$loop' },
+      ],
+    } as unknown as PenDocument;
+    const [a, b] = substituteVariables(doc).children as unknown as N[];
+    expect(a.fill).toBe('#F00');
+    expect(b.fill).toBe('$loop');
+  });
+});

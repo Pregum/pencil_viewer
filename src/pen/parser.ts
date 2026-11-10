@@ -8,6 +8,7 @@
  */
 
 import { zPenDocument } from './schema';
+import { normalizeNodeProps } from './format';
 import type {
   PenDocument,
   PenNode,
@@ -37,6 +38,8 @@ const KNOWN_TYPES = new Set([
   'frame',
   'group',
   'icon_font',
+  // Pencil 2.1x 以降のアイコン。normalizeNodeProps で icon_font に変換する
+  'icon',
   'image',
   'ref',
   'connection',
@@ -116,15 +119,49 @@ function normalizeNode(raw: unknown): PenNode {
     return makeUnsupported(raw, type);
   }
 
+  // ref のルートに書かれたプロパティは参照先の上書きなので override として扱う
+  const props = normalizeNodeProps(obj, type === 'ref' ? 'override' : 'node');
+
   // frame / group は子ノードを再帰的に normalize
   if (type === 'frame' || type === 'group') {
-    const children = Array.isArray(obj.children)
-      ? (obj.children as unknown[]).map(normalizeNode).filter((n): n is PenNode => n != null)
-      : undefined;
-    return { ...(obj as unknown as FrameNode | GroupNode), children } as PenNode;
+    return { ...(props as unknown as FrameNode | GroupNode), children: normalizeChildren(obj.children) } as PenNode;
   }
 
-  return obj as unknown as PenNode;
+  if (type === 'ref') {
+    const out: Record<string, unknown> = { ...props };
+    if (Array.isArray(obj.children)) out.children = normalizeChildren(obj.children);
+    if (obj.descendants && typeof obj.descendants === 'object') {
+      out.descendants = normalizeDescendants(obj.descendants as Record<string, unknown>);
+    }
+    return out as unknown as PenNode;
+  }
+
+  return props as unknown as PenNode;
+}
+
+function normalizeChildren(children: unknown): PenNode[] | undefined {
+  if (!Array.isArray(children)) return undefined;
+  return children.map(normalizeNode).filter((n): n is PenNode => n != null);
+}
+
+/**
+ * ref の `descendants` を内部形式に揃える。`type` を持つエントリはノードの置き換え、
+ * 持たないものはプロパティの上書き(`children` を含めば中身の差し替え)。
+ */
+function normalizeDescendants(descendants: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [path, entry] of Object.entries(descendants)) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+    const e = entry as Record<string, unknown>;
+    if (typeof e.type === 'string') {
+      const node = normalizeNode(e);
+      if (node) out[path] = node;
+      continue;
+    }
+    const props = normalizeNodeProps(e, 'override');
+    out[path] = Array.isArray(e.children) ? { ...props, children: normalizeChildren(e.children) } : props;
+  }
+  return out;
 }
 
 function makeUnsupported(raw: unknown, originalType: string): UnsupportedNode {

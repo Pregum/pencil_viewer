@@ -2,10 +2,11 @@
  * Pencil の flexbox 風レイアウトを SVG 座標に解決する。
  *
  * 戦略(bottom-up → top-down の 2 パス):
- *  1. `intrinsicSize(node)`: ノードの "自然なサイズ" を子から再帰的に算出。
+ *  1. `intrinsicSize(node, widthHint?)`: ノードの "自然なサイズ" を子から再帰的に算出。
  *     `fit_content` を解決するために使う。`fill_container` は 0 として扱う
  *     (親が size を持たないと決まらないので、fit_content 親の中の
- *     fill_container 子は degenerate ケース)。
+ *     fill_container 子は degenerate ケース)。幅が先に決まっていれば
+ *     `widthHint` で渡し、その幅で折り返したテキストの高さを使う。
  *  2. `layoutNode(node, ctx)`: 親から渡された context(解決後 width/height/layout)
  *     を元に、自分の width/height を決め、`layout === 'horizontal' | 'vertical'`
  *     なら子の x/y/w/h を flex ルールに従って上書きする。
@@ -22,6 +23,7 @@ import type {
   SizeValue,
   TextNode,
 } from '../types';
+import { getTextMetricsVersion, measureTextWidth } from './textMeasure';
 
 type Padding = { top: number; right: number; bottom: number; left: number };
 
@@ -42,17 +44,17 @@ export function layoutNode(node: PenNode, ctx: LayoutContext): PenNode {
 }
 
 function layoutContainer(node: FrameNode | GroupNode, ctx: LayoutContext): PenNode {
-  const own = intrinsicSize(node);
   const width = resolveSizeValue(
     (node as { width?: SizeValue }).width,
     ctx.availableWidth,
-    own.w,
+    intrinsicSize(node).w,
     ctx.parentLayout === 'horizontal' ? 'main' : 'cross',
   );
+  // 高さは幅が決まってから測る(折り返すテキストの行数が幅で変わるため)
   const height = resolveSizeValue(
     (node as { height?: SizeValue }).height,
     ctx.availableHeight,
-    own.h,
+    intrinsicSize(node, width).h,
     ctx.parentLayout === 'vertical' ? 'main' : 'cross',
   );
 
@@ -75,15 +77,8 @@ function layoutContainer(node: FrameNode | GroupNode, ctx: LayoutContext): PenNo
 
   // layoutPosition: "absolute" の子は flex flow から外して、自分の x/y
   // のまま親の座標系に絶対配置する(Pencil 拡張プロパティ)。
-  const flowChildren: PenNode[] = [];
-  const absoluteChildren: PenNode[] = [];
-  for (const c of rawChildren) {
-    if ((c as { layoutPosition?: string }).layoutPosition === 'absolute') {
-      absoluteChildren.push(c);
-    } else {
-      flowChildren.push(c);
-    }
-  }
+  // 非表示 (enabled: false) の子も場所を取らない。
+  const flowChildren = rawChildren.filter(isInFlow);
 
   // flex layout(flow 内の子のみ)
   const flowLaidOut = flexChildren({
@@ -97,29 +92,39 @@ function layoutContainer(node: FrameNode | GroupNode, ctx: LayoutContext): PenNo
     containerHeight: height,
   });
 
-  // absolute な子を layout: none と同じパスで処理
-  const absoluteLaidOut = absoluteChildren.map((c) =>
-    layoutNode(c, {
-      availableWidth: width,
-      availableHeight: height,
-      parentLayout: 'none',
-    }),
+  // flow 外の子は layout: none と同じパスで処理し、元の並び順(= 重なり順)を保つ
+  let flowIndex = 0;
+  const children = rawChildren.map((c) =>
+    isInFlow(c)
+      ? flowLaidOut[flowIndex++]
+      : layoutNode(c, {
+          availableWidth: width,
+          availableHeight: height,
+          parentLayout: 'none',
+        }),
   );
 
   return {
     ...(node as object),
     width,
     height,
-    children: [...flowLaidOut, ...absoluteLaidOut],
+    children,
   } as PenNode;
+}
+
+/** flex の並びに参加する子か(絶対配置と非表示の子は参加しない) */
+function isInFlow(c: PenNode): boolean {
+  return (
+    (c as { layoutPosition?: string }).layoutPosition !== 'absolute' &&
+    (c as { enabled?: boolean }).enabled !== false
+  );
 }
 
 function resolveLeafSize(node: PenNode, ctx: LayoutContext): PenNode {
   const rawW = (node as { width?: SizeValue }).width;
   const rawH = (node as { height?: SizeValue }).height;
-  const intrinsic = intrinsicSize(node);
-  const width = resolveSizeValue(rawW, ctx.availableWidth, intrinsic.w, 'cross');
-  const height = resolveSizeValue(rawH, ctx.availableHeight, intrinsic.h, 'cross');
+  const width = resolveSizeValue(rawW, ctx.availableWidth, intrinsicSize(node).w, 'cross');
+  const height = resolveSizeValue(rawH, ctx.availableHeight, intrinsicSize(node, width).h, 'cross');
   return { ...(node as object), width, height } as PenNode;
 }
 
@@ -145,48 +150,51 @@ function flexChildren(input: FlexChildrenInput): PenNode[] {
     (isHoriz ? containerHeight : containerWidth) -
     (isHoriz ? padding.top + padding.bottom : padding.left + padding.right);
 
-  // Pass A: 各子の main/cross サイズを決定
-  const sized = rawChildren.map((c) => {
-    const intrinsic = intrinsicSize(c);
-    const rawMain = isHoriz
-      ? (c as { width?: SizeValue }).width
-      : (c as { height?: SizeValue }).height;
-    const rawCross = isHoriz
-      ? (c as { height?: SizeValue }).height
-      : (c as { width?: SizeValue }).width;
-    return {
-      node: c,
-      intrinsicMain: isHoriz ? intrinsic.w : intrinsic.h,
-      intrinsicCross: isHoriz ? intrinsic.h : intrinsic.w,
-      rawMain,
-      rawCross,
-    };
-  });
-
-  // fill_container が取る領域を計算
-  const fillIndices: number[] = [];
-  let fixedMainTotal = 0;
-  for (let i = 0; i < sized.length; i++) {
-    const s = sized[i];
-    if (isFill(s.rawMain)) {
-      fillIndices.push(i);
-    } else {
-      const main = resolveSizeValue(s.rawMain, mainAvailable, s.intrinsicMain, 'main');
-      fixedMainTotal += main;
-    }
-  }
+  // Pass A: 各子の main/cross サイズを決定。
+  // 幅を先に決め、高さはその幅で測る(折り返すテキストの行数が幅で変わるため)。
+  const sized = rawChildren.map((c) => ({
+    node: c,
+    rawW: (c as { width?: SizeValue }).width,
+    rawH: (c as { height?: SizeValue }).height,
+  }));
   const totalGap = sized.length > 1 ? gap * (sized.length - 1) : 0;
-  const remainingMain = Math.max(0, mainAvailable - fixedMainTotal - totalGap);
-  const fillSize = fillIndices.length > 0 ? remainingMain / fillIndices.length : 0;
 
-  const mainSizes = sized.map((s) => {
-    if (isFill(s.rawMain)) return fillSize;
-    return resolveSizeValue(s.rawMain, mainAvailable, s.intrinsicMain, 'main');
-  });
-  const crossSizes = sized.map((s) => {
-    if (isFill(s.rawCross)) return crossAvailable;
-    return resolveSizeValue(s.rawCross, crossAvailable, s.intrinsicCross, 'cross');
-  });
+  /** main 軸のサイズ。fill_container は残りを等分する */
+  const distributeMain = (raw: (SizeValue | undefined)[], intrinsic: number[]): number[] => {
+    let fixedTotal = 0;
+    let fillCount = 0;
+    raw.forEach((r, i) => {
+      if (isFill(r)) fillCount++;
+      else fixedTotal += resolveSizeValue(r, mainAvailable, intrinsic[i], 'main');
+    });
+    const fillSize =
+      fillCount > 0 ? Math.max(0, mainAvailable - fixedTotal - totalGap) / fillCount : 0;
+    return raw.map((r, i) =>
+      isFill(r) ? fillSize : resolveSizeValue(r, mainAvailable, intrinsic[i], 'main'),
+    );
+  };
+  const resolveCross = (r: SizeValue | undefined, intrinsic: number): number =>
+    isFill(r) && Number.isFinite(crossAvailable)
+      ? Math.max(0, crossAvailable)
+      : resolveSizeValue(r, crossAvailable, intrinsic, 'cross');
+
+  let widths: number[];
+  let heights: number[];
+  if (isHoriz) {
+    widths = distributeMain(
+      sized.map((s) => s.rawW),
+      sized.map((s) => intrinsicSize(s.node).w),
+    );
+    heights = sized.map((s, i) => resolveCross(s.rawH, intrinsicSize(s.node, widths[i]).h));
+  } else {
+    widths = sized.map((s) => resolveCross(s.rawW, intrinsicSize(s.node).w));
+    heights = distributeMain(
+      sized.map((s) => s.rawH),
+      sized.map((s, i) => intrinsicSize(s.node, widths[i]).h),
+    );
+  }
+  const mainSizes = isHoriz ? widths : heights;
+  const crossSizes = isHoriz ? heights : widths;
 
   // Pass B: main 軸上の開始位置を justify で決める
   const totalMain = mainSizes.reduce((a, b) => a + b, 0) + totalGap;
@@ -270,7 +278,30 @@ function flexChildren(input: FlexChildrenInput): PenNode[] {
  * ノードの "自然なサイズ"(fit_content 解決用)。
  * fill_container は 0 として扱う(親が決める)。
  */
-function intrinsicSize(node: PenNode): { w: number; h: number } {
+function intrinsicSize(node: PenNode, widthHint?: number): Size {
+  // 同じノードを何度も測るので結果を覚えておく(Web フォントの読み込みで計測が
+  // 変わったときは版が進むので古い結果は使われない)
+  const key = `${getTextMetricsVersion()}|${widthHint ?? ''}`;
+  let perNode = intrinsicMemo.get(node);
+  const hit = perNode?.get(key);
+  if (hit) return hit;
+  const size = computeIntrinsicSize(node, widthHint);
+  if (!perNode) {
+    perNode = new Map();
+    intrinsicMemo.set(node, perNode);
+  }
+  perNode.set(key, size);
+  return size;
+}
+
+type Size = { w: number; h: number };
+const intrinsicMemo = new WeakMap<object, Map<string, Size>>();
+
+/**
+ * @param widthHint 親が決めたこのノードの幅。分かっていれば、その幅で折り返した
+ *   テキストの高さを使う。
+ */
+function computeIntrinsicSize(node: PenNode, widthHint?: number): Size {
   const rawW = (node as { width?: SizeValue }).width;
   const rawH = (node as { height?: SizeValue }).height;
 
@@ -285,14 +316,12 @@ function intrinsicSize(node: PenNode): { w: number; h: number } {
     // Pencil 公式仕様: Frames default to horizontal, groups default to none.
     const { layout, gap, padding } = resolveFlexProps(node);
 
-    // layoutPosition: "absolute" の子は flow に参加しないので、intrinsic 計算
+    // layoutPosition: "absolute" と非表示の子は flow に参加しないので、intrinsic 計算
     // からも除外する。layout: none の場合は従来通り authored x/y で bbox を取る。
     const flowChildren =
       layout === 'none'
-        ? allChildren
-        : allChildren.filter(
-            (c) => (c as { layoutPosition?: string }).layoutPosition !== 'absolute',
-          );
+        ? allChildren.filter((c) => (c as { enabled?: boolean }).enabled !== false)
+        : allChildren.filter(isInFlow);
 
     if (layout === 'none') {
       let maxW = 0;
@@ -307,19 +336,24 @@ function intrinsicSize(node: PenNode): { w: number; h: number } {
       return { w: fixedW ?? maxW, h: fixedH ?? maxH };
     }
 
+    // 自分の幅が分かっていれば、子の幅(fill_container の取り分)も決まる
+    const ownW = fixedW ?? widthHint;
+    const childWidths = intrinsicChildWidths(flowChildren, layout, gap, padding, ownW);
+
     // flex: main 方向は合計 + gap + padding、cross 方向は max + padding
     let mainTotal = 0;
     let crossMax = 0;
-    for (const c of flowChildren) {
-      const s = intrinsicSize(c);
+    flowChildren.forEach((c, i) => {
+      const s = intrinsicSize(c, childWidths[i]);
+      const w = childWidths[i] ?? s.w;
       if (layout === 'horizontal') {
-        mainTotal += s.w;
+        mainTotal += w;
         crossMax = Math.max(crossMax, s.h);
       } else {
         mainTotal += s.h;
-        crossMax = Math.max(crossMax, s.w);
+        crossMax = Math.max(crossMax, w);
       }
-    }
+    });
     const mainGap = flowChildren.length > 1 ? gap * (flowChildren.length - 1) : 0;
 
     if (layout === 'horizontal') {
@@ -334,11 +368,8 @@ function intrinsicSize(node: PenNode): { w: number; h: number } {
     };
   }
 
-  // text leaf: 内容と font サイズから幅と高さを推定する。
-  // フォントメトリクスは brotli/canvas 等が無いので、proportional フォントの
-  // 平均文字幅 ≒ fontSize * 0.55 + 行高 ≒ fontSize * 1.2 で近似する。
   if (node.type === 'text') {
-    return measureText(node, rawW, rawH);
+    return measureText(node, rawW, rawH, widthHint);
   }
 
   // icon_font leaf: width/height が未指定なら 24x24 に既定(material 系の標準)
@@ -353,72 +384,153 @@ function intrinsicSize(node: PenNode): { w: number; h: number } {
   };
 }
 
-/** ラテン文字の平均文字幅比率 */
+/**
+ * 幅 `ownW` のコンテナに並べたとき、各子が受け取る幅(layout と同じ規則)。
+ * `ownW` が分からなければ、固定幅の子以外は undefined(= 自然な幅)。
+ */
+function intrinsicChildWidths(
+  children: PenNode[],
+  layout: 'horizontal' | 'vertical',
+  gap: number,
+  padding: Padding,
+  ownW: number | undefined,
+): (number | undefined)[] {
+  const contentW = ownW != null ? Math.max(0, ownW - padding.left - padding.right) : undefined;
+  const rawWidths = children.map((c) => (c as { width?: SizeValue }).width);
+  if (layout === 'vertical') {
+    return rawWidths.map((r, i) => {
+      if (typeof r === 'number') return r;
+      if (isFill(r)) return contentW;
+      return intrinsicSize(children[i]).w;
+    });
+  }
+  // horizontal: fill_container は残りを等分する
+  let fixedTotal = 0;
+  let fillCount = 0;
+  const natural = rawWidths.map((r, i) => {
+    if (isFill(r)) {
+      fillCount++;
+      return undefined;
+    }
+    const w = typeof r === 'number' ? r : intrinsicSize(children[i]).w;
+    fixedTotal += w;
+    return w;
+  });
+  if (fillCount === 0 || contentW == null) return natural;
+  const totalGap = children.length > 1 ? gap * (children.length - 1) : 0;
+  const fillW = Math.max(0, contentW - fixedTotal - totalGap) / fillCount;
+  return natural.map((w) => w ?? fillW);
+}
+
+/** 計測できない環境での推定: ラテン文字の平均文字幅比率 */
 const LATIN_CHAR_WIDTH_RATIO = 0.55;
 /** CJK (日本語/中国語/韓国語) 文字は全角なので fontSize とほぼ同じ幅 */
 const CJK_CHAR_WIDTH_RATIO = 1.0;
 const TEXT_LINE_HEIGHT_RATIO = 1.2;
 
-/** 文字列中の CJK 文字の割合に基づいて平均文字幅比率を推定 */
-function estimateCharWidthRatio(text: string): number {
-  if (text.length === 0) return LATIN_CHAR_WIDTH_RATIO;
-  // CJK Unified Ideographs, Hiragana, Katakana, Fullwidth forms
-  let cjkCount = 0;
-  for (let i = 0; i < Math.min(text.length, 200); i++) {
-    const code = text.charCodeAt(i);
-    if (
-      (code >= 0x3000 && code <= 0x9fff) || // CJK, Hiragana, Katakana
-      (code >= 0xf900 && code <= 0xfaff) || // CJK Compatibility
-      (code >= 0xff00 && code <= 0xffef)    // Fullwidth
-    ) {
-      cjkCount++;
-    }
+const CJK_RE = /[⺀-鿿豈-﫿＀-￯]/;
+/**
+ * 折り返しの単位。CJK は 1 文字ずつ、それ以外は「語 + 後ろの空白」。
+ * (CSS の `white-space: pre-wrap; word-break: break-word` に近づける)
+ */
+const WRAP_TOKEN_RE = /[⺀-鿿豈-﫿＀-￯]|[^\s⺀-鿿豈-﫿＀-￯]+\s*|\s+/g;
+
+function estimateTextWidth(text: string, fontSize: number): number {
+  let w = 0;
+  for (const ch of text) {
+    w += fontSize * (CJK_RE.test(ch) ? CJK_CHAR_WIDTH_RATIO : LATIN_CHAR_WIDTH_RATIO);
   }
-  const ratio = cjkCount / Math.min(text.length, 200);
-  return LATIN_CHAR_WIDTH_RATIO * (1 - ratio) + CJK_CHAR_WIDTH_RATIO * ratio;
+  return w;
+}
+
+function applyTextCase(text: string, textCase: TextNode['textCase']): string {
+  switch (textCase) {
+    case 'upper':
+      return text.toUpperCase();
+    case 'lower':
+      return text.toLowerCase();
+    case 'title':
+      return text.replace(/\b([a-z])/g, (_, ch: string) => ch.toUpperCase());
+    default:
+      return text;
+  }
+}
+
+/** `maxWidth` で折り返したときの行数 */
+function countWrappedLines(line: string, maxWidth: number, measure: (s: string) => number): number {
+  if (line === '') return 1;
+  const tokens = line.match(WRAP_TOKEN_RE) ?? [line];
+  // 計測の丸め誤差で折り返しすぎないよう少しだけ余裕を持たせる
+  const limit = maxWidth + 0.5;
+  let lines = 1;
+  let cur = 0;
+  for (const tok of tokens) {
+    const visible = tok.trimEnd();
+    const visibleW = visible === tok ? measure(tok) : measure(visible);
+    if (cur > 0 && cur + visibleW > limit) {
+      lines++;
+      cur = 0;
+    }
+    if (cur === 0 && visibleW > limit) {
+      // 1 語が行より長い: 文字単位で折る
+      let acc = 0;
+      for (const ch of visible) {
+        const cw = measure(ch);
+        if (acc > 0 && acc + cw > limit) {
+          lines++;
+          acc = 0;
+        }
+        acc += cw;
+      }
+      cur = acc + measure(tok.slice(visible.length));
+      continue;
+    }
+    cur += visible === tok ? visibleW : measure(tok);
+  }
+  return lines;
 }
 
 function measureText(
   node: TextNode,
   rawW: SizeValue | undefined,
   rawH: SizeValue | undefined,
-): { w: number; h: number } {
+  widthHint?: number,
+): Size {
   const fontSize = node.fontSize ?? 14;
   const lineHeightPx = (node.lineHeight ?? TEXT_LINE_HEIGHT_RATIO) * fontSize;
-  const lines = normalizeTextLines(node.content);
-  const fullText = node.content ?? '';
-  const charWidthRatio = estimateCharWidthRatio(fullText);
+  const lines = normalizeTextLines(node.content).map((l) => applyTextCase(l, node.textCase));
+  const letterSpacing = typeof node.letterSpacing === 'number' ? node.letterSpacing : 0;
+  const font = {
+    family: node.fontFamily ?? 'Inter, system-ui, sans-serif',
+    size: fontSize,
+    weight: node.fontWeight,
+    style: node.fontStyle,
+  };
+  // ブラウザでは実際のフォントで測り、測れない環境では文字数から推定する
+  const measure = (s: string): number => {
+    const measured = measureTextWidth(s, font);
+    const base = measured ?? estimateTextWidth(s, fontSize);
+    return base + letterSpacing * [...s].length;
+  };
 
-  // 幅: textGrowth が固定幅の場合は確定値、それ以外は文字数 * 平均文字幅
-  let w: number;
-  if (typeof rawW === 'number') {
-    w = rawW;
-  } else {
-    const charWidth = fontSize * charWidthRatio;
-    const longest = lines.reduce((max, l) => Math.max(max, l.length), 0);
-    w = longest * charWidth;
-  }
+  // 幅: 確定値があればそれ、無ければ最長行の幅
+  const w = typeof rawW === 'number' ? rawW : lines.reduce((max, l) => Math.max(max, measure(l)), 0);
 
   // 高さ: 確定値があれば優先
   if (typeof rawH === 'number') {
     return { w: Math.max(1, w), h: rawH };
   }
 
-  // textGrowth: "fixed-width" の場合、テキスト折り返しを考慮して行数を再計算
+  // textGrowth が固定幅なら、その幅(fill_container なら親から渡された幅)で折り返す
   const isFixedWidth =
     node.textGrowth === 'fixed-width' || node.textGrowth === 'fixed-width-height';
-  if (isFixedWidth && typeof rawW === 'number' && rawW > 0) {
-    const charWidth = fontSize * charWidthRatio;
-    const charsPerLine = Math.max(1, Math.floor(rawW / charWidth));
-    let totalLines = 0;
-    for (const line of lines) {
-      totalLines += Math.max(1, Math.ceil(line.length / charsPerLine));
-    }
+  const wrapWidth = typeof rawW === 'number' ? rawW : widthHint;
+  if (isFixedWidth && wrapWidth != null && wrapWidth > 0) {
+    const totalLines = lines.reduce((n, l) => n + countWrappedLines(l, wrapWidth, measure), 0);
     return { w: Math.max(1, w), h: Math.max(1, totalLines * lineHeightPx) };
   }
 
-  const measuredH = lines.length * lineHeightPx;
-  return { w: Math.max(1, w), h: Math.max(1, measuredH) };
+  return { w: Math.max(1, w), h: Math.max(1, lines.length * lineHeightPx) };
 }
 
 /**
