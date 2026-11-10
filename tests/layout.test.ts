@@ -671,3 +671,78 @@ describe('layoutDocument', () => {
     });
   });
 });
+
+describe('layoutDocument — hidden, absolute and wrapping children (#95)', () => {
+  it('leaves hidden children out of the flow', () => {
+    const doc = makeDoc([
+      frame({
+        id: 'row',
+        layout: 'horizontal',
+        width: undefined,
+        height: undefined,
+        gap: 10,
+        children: [
+          rect('a', 20, 20),
+          { ...rect('hidden', 50, 50), enabled: false } as PenNode,
+          rect('b', 20, 20),
+        ],
+      }),
+    ]);
+    const row = layoutDocument(doc).children[0] as FrameNode;
+    const [a, hidden, b] = row.children!;
+    expect(a.x).toBe(0);
+    expect(b.x).toBe(30);
+    expect(hidden.id).toBe('hidden');
+    expect(row.width).toBe(50);
+    expect(row.height).toBe(20);
+  });
+
+  it('keeps absolute children in their place in the stacking order', () => {
+    const doc = makeDoc([
+      frame({
+        id: 'panel',
+        layout: 'vertical',
+        children: [
+          { ...rect('backdrop', 400, 200), layoutPosition: 'absolute', x: 0, y: 0 } as PenNode,
+          rect('content', 100, 50),
+          { ...rect('toast', 80, 20), layoutPosition: 'absolute', x: 300, y: 170 } as PenNode,
+        ],
+      }),
+    ]);
+    const panel = layoutDocument(doc).children[0] as FrameNode;
+    expect(panel.children!.map((c) => c.id)).toEqual(['backdrop', 'content', 'toast']);
+    expect(panel.children![2].x).toBe(300);
+  });
+
+  it('wraps fixed-width text at the width its parent gives it', () => {
+    const text = {
+      type: 'text',
+      id: 't',
+      content: 'word '.repeat(40).trim(),
+      fontSize: 10,
+      lineHeight: 1.5,
+      width: 'fill_container',
+      textGrowth: 'fixed-width',
+    } as unknown as PenNode;
+    const doc = makeDoc([
+      frame({
+        id: 'card',
+        layout: 'vertical',
+        width: 120,
+        height: undefined,
+        padding: 10,
+        children: [text, rect('below', 10, 10)],
+      }),
+    ]);
+    const card = layoutDocument(doc).children[0] as FrameNode;
+    const [t, below] = card.children!;
+    expect(t.width).toBe(100);
+    // 100px に収まらないので複数行になり、高さ = 行数 × 15px
+    const h = t.height as number;
+    expect(h).toBeGreaterThan(15);
+    expect(h % 15).toBe(0);
+    // 下の要素とカードの高さも折り返し後の高さに合わせて伸びる
+    expect(below.y).toBe(10 + h);
+    expect(card.height).toBe(10 + h + 10 + 10);
+  });
+});

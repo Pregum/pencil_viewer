@@ -4,7 +4,8 @@
  * 背景クリックでノード選択解除。
  */
 
-import { useMemo } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
+import { getTextMetricsVersion, subscribeTextMetrics } from '../../pen/layout/textMeasure';
 import { useEditor } from '../../pen/state/EditorContext';
 import { buildPaintRegistry } from '../../pen/paint/registry';
 import { Defs } from '../../pen/paint/Defs';
@@ -21,9 +22,17 @@ export function CanvasContent() {
   // gap / padding / layout など flex プロパティを変えても即時反映される。
   // (以前は state.doc (レイアウト済み) を使っていたため、これらのプロパティを
   //  更新してもレイアウトは初回ロード時のままになっていた)
+  // Web フォントの読み込みが終わるとテキストの実測幅が変わるので、そのたびに
+  // レイアウトをやり直す
+  const textMetricsVersion = useSyncExternalStore(
+    subscribeTextMetrics,
+    getTextMetricsVersion,
+    getTextMetricsVersion,
+  );
   const doc = useMemo(
     () => layoutDocument(substituteVariables(resolveRefs(state.rawDoc))),
-    [state.rawDoc],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- textMetricsVersion は再計算のきっかけ
+    [state.rawDoc, textMetricsVersion],
   );
   const registry = useMemo(() => buildPaintRegistry(doc), [doc]);
 
